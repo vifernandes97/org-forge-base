@@ -18,6 +18,8 @@ import CustomFieldsPage from "@/pages/CustomFieldsPage";
 import LeadsPage from "@/pages/LeadsPage";
 import TasksPage from "@/pages/TasksPage";
 import WebhooksPage from "@/pages/WebhooksPage";
+import TeamPage from "@/pages/TeamPage";
+import OrganizationPage from "@/pages/OrganizationPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -59,6 +61,12 @@ const App = () => (
               } />
               <Route path="/settings/webhooks" element={
                 <PrivateRoute><MainLayout><WebhooksPage /></MainLayout></PrivateRoute>
+              } />
+              <Route path="/settings/team" element={
+                <PrivateRoute><MainLayout><TeamPage /></MainLayout></PrivateRoute>
+              } />
+              <Route path="/settings/organization" element={
+                <PrivateRoute><MainLayout><OrganizationPage /></MainLayout></PrivateRoute>
               } />
 
               {/* Redirect root */}

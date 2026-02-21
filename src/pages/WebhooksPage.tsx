@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useWebhookLogs, useWebhookStats } from '@/hooks/useWebhooks';
 import { useStages } from '@/hooks/useStages';
 import { useFunnels } from '@/hooks/useFunnels';
@@ -113,9 +114,17 @@ export default function WebhooksPage() {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">Carregando...</TableCell>
-                </TableRow>
+                [1,2,3].map(i => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-4" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-6" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                  </TableRow>
+                ))
               ) : logs.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum webhook disparado ainda.</TableCell>
@@ -143,7 +152,7 @@ export default function WebhooksPage() {
                   </TableCell>
                   <TableCell className="text-sm">{log.attempt_number}/3</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => setDetailLog(log)}>
+                    <Button variant="ghost" size="icon" onClick={() => setDetailLog(log)} aria-label="Ver detalhes">
                       <Eye className="h-4 w-4" />
                     </Button>
                   </TableCell>

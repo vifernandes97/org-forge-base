@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { useMyTasks } from '@/hooks/useTasks';
 import { useCompleteTask, useUncompleteTask } from '@/hooks/useTasks';
 import { useOrganization } from '@/contexts/OrganizationContext';
@@ -61,7 +62,11 @@ export default function TasksPage() {
       {isLoading ? (
         <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-20" />)}</div>
       ) : groups.length === 0 ? (
-        <p className="text-muted-foreground text-center py-12">Nenhuma tarefa encontrada</p>
+        <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+          <CheckCircle2 className="h-12 w-12 text-emerald-500/50" />
+          <p className="font-medium">Tudo em dia!</p>
+          <p className="text-sm text-muted-foreground">Nenhuma tarefa pendente.</p>
+        </div>
       ) : (
         <div className="space-y-4">
           {groups.map(group => (
