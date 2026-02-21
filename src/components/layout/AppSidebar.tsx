@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, BarChart3, Settings, GitBranch } from 'lucide-react';
+import { LayoutDashboard, Users, BarChart3, Settings, GitBranch, ListChecks } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import {
   Sidebar,
@@ -20,6 +20,7 @@ const mainNav = [
 
 const settingsNav = [
   { title: 'Funis', url: '/settings/funnels', icon: GitBranch },
+  { title: 'Campos Personalizados', url: '/settings/custom-fields', icon: ListChecks },
 ];
 
 export function AppSidebar() {

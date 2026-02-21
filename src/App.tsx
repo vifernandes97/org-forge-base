@@ -14,6 +14,7 @@ import OnboardingPage from "@/pages/OnboardingPage";
 import DashboardPage from "@/pages/DashboardPage";
 import FunnelsPage from "@/pages/FunnelsPage";
 import FunnelEditPage from "@/pages/FunnelEditPage";
+import CustomFieldsPage from "@/pages/CustomFieldsPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,9 @@ const App = () => (
               } />
               <Route path="/settings/funnels/:id" element={
                 <PrivateRoute><MainLayout><FunnelEditPage /></MainLayout></PrivateRoute>
+              } />
+              <Route path="/settings/custom-fields" element={
+                <PrivateRoute><MainLayout><CustomFieldsPage /></MainLayout></PrivateRoute>
               } />
 
               {/* Redirect root */}
