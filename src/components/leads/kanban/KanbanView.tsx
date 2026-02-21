@@ -6,6 +6,8 @@ import { useCreateActivity } from '@/hooks/useActivities';
 import { useCreateTask } from '@/hooks/useTasks';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
+import { useFunnels } from '@/hooks/useFunnels';
+import { buildWebhookPayload, fireWebhook } from '@/services/webhooks';
 import { KanbanColumn } from './KanbanColumn';
 import { DragOverlayCard } from './DragOverlayCard';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -24,6 +26,7 @@ export function KanbanView({ funnelId }: KanbanViewProps) {
   const createTask = useCreateTask();
   const { user } = useAuth();
   const { organization } = useOrganization();
+  const { data: funnels } = useFunnels();
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
@@ -71,7 +74,6 @@ export function KanbanView({ funnelId }: KanbanViewProps) {
     const fromStage = sortedStages.find(s => s.id === (lead as any).stage_id);
     const toStage = sortedStages.find(s => s.id === targetStageId);
 
-    console.log('[Webhook placeholder] Lead moved:', { leadId, from: (lead as any).stage_id, to: targetStageId });
     moveLead.mutate({ leadId, stageId: targetStageId });
 
     // Auto-register stage_change activity
@@ -103,6 +105,27 @@ export function KanbanView({ funnelId }: KanbanViewProps) {
           due_date: dueDate.toISOString(),
           priority: (lead as any).priority || 'medium',
         });
+      }
+
+      // Fire webhook if new stage has webhook_url configured
+      if (toStage.webhook_url) {
+        const funnel = funnels?.find(f => f.id === (lead as any).funnel_id);
+        const payload = buildWebhookPayload({
+          lead,
+          fromStage: { id: fromStage.id, name: fromStage.name },
+          toStage: { id: toStage.id, name: toStage.name },
+          funnel: { id: funnel?.id || '', name: funnel?.name || '' },
+          user: { id: user.id, full_name: (user as any).user_metadata?.full_name },
+          organization: { id: organization.id, name: organization.name },
+        });
+        // Fire-and-forget
+        fireWebhook({
+          webhook_url: toStage.webhook_url,
+          payload,
+          organization_id: organization.id,
+          stage_id: toStage.id,
+          lead_id: leadId,
+        }).catch(() => {}); // Silently ignore client-side errors
       }
     }
   };

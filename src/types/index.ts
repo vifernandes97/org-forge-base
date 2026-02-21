@@ -146,3 +146,18 @@ export interface TaskWithRelations extends Task {
   lead?: Lead;
   assigned_profile?: Profile;
 }
+
+export interface WebhookLog {
+  id: string;
+  organization_id: string;
+  stage_id: string;
+  lead_id: string | null;
+  webhook_url: string;
+  payload: Record<string, any>;
+  response_status: number | null;
+  response_body: string | null;
+  success: boolean;
+  attempt_number: number;
+  error_message: string | null;
+  created_at: string;
+}

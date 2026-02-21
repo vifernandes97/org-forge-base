@@ -17,6 +17,7 @@ import FunnelEditPage from "@/pages/FunnelEditPage";
 import CustomFieldsPage from "@/pages/CustomFieldsPage";
 import LeadsPage from "@/pages/LeadsPage";
 import TasksPage from "@/pages/TasksPage";
+import WebhooksPage from "@/pages/WebhooksPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,9 @@ const App = () => (
               } />
               <Route path="/settings/custom-fields" element={
                 <PrivateRoute><MainLayout><CustomFieldsPage /></MainLayout></PrivateRoute>
+              } />
+              <Route path="/settings/webhooks" element={
+                <PrivateRoute><MainLayout><WebhooksPage /></MainLayout></PrivateRoute>
               } />
 
               {/* Redirect root */}
