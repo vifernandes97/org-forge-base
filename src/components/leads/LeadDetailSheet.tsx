@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { TaskList } from '@/components/tasks/TaskList';
+import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
+import { Plus } from 'lucide-react';
 import { QuickActivityForm } from './activities/QuickActivityForm';
 import { ActivityTimeline } from './activities/ActivityTimeline';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -28,6 +31,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   const { data: customFields } = useCustomFields();
   const deleteLead = useDeleteLead();
   const [editOpen, setEditOpen] = useState(false);
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
 
   const handleDelete = async () => {
     if (!leadId) return;
@@ -223,8 +227,14 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                   <ActivityTimeline leadId={typedLead.id} />
                 </TabsContent>
 
-                <TabsContent value="tasks" className="flex-1 flex items-center justify-center m-0">
-                  <p className="text-muted-foreground text-sm">🚧 Em construção — Sprint 6</p>
+                <TabsContent value="tasks" className="flex-1 overflow-auto px-6 py-4 space-y-4 m-0">
+                  <div className="flex justify-end">
+                    <Button size="sm" onClick={() => setTaskFormOpen(true)}>
+                      <Plus className="h-4 w-4 mr-1" />Nova Tarefa
+                    </Button>
+                  </div>
+                  <TaskList leadId={typedLead.id} />
+                  <TaskFormDialog open={taskFormOpen} onOpenChange={setTaskFormOpen} leadId={typedLead.id} />
                 </TabsContent>
               </Tabs>
             </>

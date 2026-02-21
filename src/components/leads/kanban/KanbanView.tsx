@@ -3,6 +3,7 @@ import { DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useS
 import { useStages } from '@/hooks/useStages';
 import { useLeadsByFunnel, useMoveLeadToStage } from '@/hooks/useLeads';
 import { useCreateActivity } from '@/hooks/useActivities';
+import { useCreateTask } from '@/hooks/useTasks';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { KanbanColumn } from './KanbanColumn';
@@ -20,6 +21,7 @@ export function KanbanView({ funnelId }: KanbanViewProps) {
   const { data: leads, isLoading: leadsLoading } = useLeadsByFunnel(funnelId);
   const moveLead = useMoveLeadToStage(funnelId);
   const createActivity = useCreateActivity();
+  const createTask = useCreateTask();
   const { user } = useAuth();
   const { organization } = useOrganization();
 
@@ -87,6 +89,21 @@ export function KanbanView({ funnelId }: KanbanViewProps) {
           to_stage_name: toStage.name,
         },
       });
+
+      // Auto-create follow-up task if new stage has SLA
+      if (toStage.sla_hours) {
+        const dueDate = new Date();
+        dueDate.setHours(dueDate.getHours() + toStage.sla_hours);
+        createTask.mutate({
+          organization_id: organization.id,
+          lead_id: leadId,
+          assigned_to: (lead as any).assigned_to || user.id,
+          title: `Follow-up: ${(lead as any).name}`,
+          task_type: 'follow_up',
+          due_date: dueDate.toISOString(),
+          priority: (lead as any).priority || 'medium',
+        });
+      }
     }
   };
 

@@ -16,6 +16,7 @@ import FunnelsPage from "@/pages/FunnelsPage";
 import FunnelEditPage from "@/pages/FunnelEditPage";
 import CustomFieldsPage from "@/pages/CustomFieldsPage";
 import LeadsPage from "@/pages/LeadsPage";
+import TasksPage from "@/pages/TasksPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,9 @@ const App = () => (
               } />
               <Route path="/leads" element={
                 <PrivateRoute><MainLayout><LeadsPage /></MainLayout></PrivateRoute>
+              } />
+              <Route path="/tasks" element={
+                <PrivateRoute><MainLayout><TasksPage /></MainLayout></PrivateRoute>
               } />
               <Route path="/settings/funnels" element={
                 <PrivateRoute><MainLayout><FunnelsPage /></MainLayout></PrivateRoute>

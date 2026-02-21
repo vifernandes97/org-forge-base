@@ -124,3 +124,25 @@ export interface LeadActivity {
 export interface LeadActivityWithUser extends LeadActivity {
   user?: Profile;
 }
+
+export type TaskType = 'follow_up' | 'call' | 'email' | 'meeting' | 'other';
+
+export interface Task {
+  id: string;
+  organization_id: string;
+  lead_id: string;
+  assigned_to: string;
+  title: string;
+  description: string | null;
+  task_type: TaskType;
+  due_date: string;
+  completed_at: string | null;
+  priority: LeadPriority;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TaskWithRelations extends Task {
+  lead?: Lead;
+  assigned_profile?: Profile;
+}
