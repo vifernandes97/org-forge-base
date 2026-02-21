@@ -1,45 +1,34 @@
 
 
-# Fix: RLS Policies Blocking Organization Creation
+# Fix: Organization Creation via SECURITY DEFINER Function
 
 ## Problem
-All RLS policies on `organizations`, `organization_members`, and `profiles` tables are **RESTRICTIVE** instead of **PERMISSIVE**. PostgreSQL requires at least one PERMISSIVE policy to grant access — restrictive policies only further limit access. With zero permissive policies, all operations are denied.
-
-Additionally, the `organization_members` INSERT policy has a self-referencing bug that makes the NOT EXISTS check always return false.
+INSERT into `organizations` table still fails with RLS violation despite policies being PERMISSIVE. The `organization_members` INSERT policy also has a self-referencing subquery issue. These problems compound because org creation requires two inserts (org + member) that depend on each other.
 
 ## Solution
+Create a single `SECURITY DEFINER` database function `create_organization_with_owner(name, slug)` that:
+1. Inserts the organization
+2. Adds the current user as owner in `organization_members`
+3. Returns the created organization
 
-Run a single database migration that:
+Since `SECURITY DEFINER` runs with the function owner's privileges (bypassing RLS), this eliminates all policy conflicts during the onboarding flow.
 
-1. **Drops all existing RLS policies** on `organizations`, `organization_members`, and `profiles`
-2. **Recreates them as PERMISSIVE** (the PostgreSQL default) with the same logic
-3. **Fixes the self-join bug** in the `organization_members` INSERT policy
+## Changes
 
-## Technical Details
+### 1. Database Migration
+- Create function `public.create_organization_with_owner(p_name text, p_slug text)` as `SECURITY DEFINER`
+- The function performs both inserts atomically and returns the organization row
 
-### Migration SQL
+### 2. Update `src/services/organizations.ts`
+- Replace the two separate inserts in `createOrganization()` with a single RPC call: `supabase.rpc('create_organization_with_owner', { p_name, p_slug })`
+- Remove the manual member insertion code
 
-The migration will:
+### 3. Update `src/integrations/supabase/types.ts`
+- This file updates automatically after migration
 
-**profiles table** (3 policies):
-- SELECT: own record only
-- UPDATE: own record only
-- INSERT: own record only (for trigger)
-
-**organizations table** (4 policies):
-- SELECT: user is a member (via `get_user_org_ids()`)
-- INSERT: any authenticated user
-- UPDATE: owner/admin/member role
-- DELETE: owner/admin role
-
-**organization_members table** (4 policies):
-- SELECT: user is member of the org
-- INSERT: owner/admin OR the user adding themselves as first member (fixed subquery)
-- UPDATE: owner/admin
-- DELETE: owner/admin
-
-The fixed INSERT policy for `organization_members` will correctly reference the outer `NEW.organization_id` instead of the self-referencing bug.
-
-### Files Changed
-- One new database migration (SQL only, no code changes needed)
+## Why This Approach
+- Atomic: both inserts succeed or fail together
+- Secure: function runs with elevated privileges only for this specific operation
+- Reliable: no dependency on complex RLS policy interactions during onboarding
+- Clean: simplifies client-side code from ~15 lines to a single RPC call
 
