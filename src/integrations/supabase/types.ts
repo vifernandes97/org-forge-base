@@ -517,6 +517,73 @@ export type Database = {
           },
         ]
       }
+      webhook_logs: {
+        Row: {
+          attempt_number: number
+          created_at: string
+          error_message: string | null
+          id: string
+          lead_id: string | null
+          organization_id: string
+          payload: Json
+          response_body: string | null
+          response_status: number | null
+          stage_id: string
+          success: boolean
+          webhook_url: string
+        }
+        Insert: {
+          attempt_number?: number
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          lead_id?: string | null
+          organization_id: string
+          payload: Json
+          response_body?: string | null
+          response_status?: number | null
+          stage_id: string
+          success: boolean
+          webhook_url: string
+        }
+        Update: {
+          attempt_number?: number
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          lead_id?: string | null
+          organization_id?: string
+          payload?: Json
+          response_body?: string | null
+          response_status?: number | null
+          stage_id?: string
+          success?: boolean
+          webhook_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_logs_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhook_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhook_logs_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
