@@ -16,6 +16,8 @@ import { useStages } from '@/hooks/useStages';
 import { useCustomFields } from '@/hooks/useCustomFields';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { useCreateLead, useUpdateLead } from '@/hooks/useLeads';
+import { useCreateActivity } from '@/hooks/useActivities';
+import { useAuth } from '@/contexts/AuthContext';
 import { CustomFieldRenderer } from '@/components/custom-fields/CustomFieldRenderer';
 import { TagsInput } from './TagsInput';
 import { toast } from 'sonner';
@@ -42,6 +44,8 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
   const { data: members } = useOrgMembers();
   const createLead = useCreateLead();
   const updateLead = useUpdateLead();
+  const createActivityMut = useCreateActivity();
+  const { user } = useAuth();
 
   const [selectedFunnelId, setSelectedFunnelId] = useState<string>('');
   const { data: stages } = useStages(selectedFunnelId || undefined);
@@ -170,6 +174,32 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
           },
           customFields: customFieldsData,
         });
+
+        // Auto-register field_update activity
+        if (user && organization) {
+          const changes: { field: string; old_value: any; new_value: any }[] = [];
+          const fields = ['name', 'email', 'phone', 'company', 'priority', 'source', 'notes'] as const;
+          fields.forEach(f => {
+            const oldVal = lead[f] || '';
+            const newVal = (data as any)[f] || '';
+            if (oldVal !== newVal) changes.push({ field: f, old_value: oldVal, new_value: newVal });
+          });
+          const oldValue = String(lead.value || 0);
+          const newValue = data.value || '0';
+          if (oldValue !== newValue) changes.push({ field: 'value', old_value: oldValue, new_value: newValue });
+
+          if (changes.length > 0) {
+            createActivityMut.mutate({
+              organization_id: organization.id,
+              lead_id: lead.id,
+              user_id: user.id,
+              activity_type: 'field_update',
+              title: `Atualizou informações do lead`,
+              metadata: { changes },
+            });
+          }
+        }
+
         toast.success('Lead atualizado!');
       } else {
         await createLead.mutateAsync({

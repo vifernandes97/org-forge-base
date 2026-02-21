@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { QuickActivityForm } from './activities/QuickActivityForm';
+import { ActivityTimeline } from './activities/ActivityTimeline';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -216,8 +218,9 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                   )}
                 </TabsContent>
 
-                <TabsContent value="activities" className="flex-1 flex items-center justify-center m-0">
-                  <p className="text-muted-foreground text-sm">🚧 Em construção — Sprint 5</p>
+                <TabsContent value="activities" className="flex-1 overflow-auto px-6 py-4 space-y-4 m-0">
+                  <QuickActivityForm leadId={typedLead.id} />
+                  <ActivityTimeline leadId={typedLead.id} />
                 </TabsContent>
 
                 <TabsContent value="tasks" className="flex-1 flex items-center justify-center m-0">

@@ -2,6 +2,9 @@ import { useMemo, useState } from 'react';
 import { DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
 import { useStages } from '@/hooks/useStages';
 import { useLeadsByFunnel, useMoveLeadToStage } from '@/hooks/useLeads';
+import { useCreateActivity } from '@/hooks/useActivities';
+import { useAuth } from '@/contexts/AuthContext';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { KanbanColumn } from './KanbanColumn';
 import { DragOverlayCard } from './DragOverlayCard';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,6 +19,9 @@ export function KanbanView({ funnelId }: KanbanViewProps) {
   const { data: stages, isLoading: stagesLoading } = useStages(funnelId);
   const { data: leads, isLoading: leadsLoading } = useLeadsByFunnel(funnelId);
   const moveLead = useMoveLeadToStage(funnelId);
+  const createActivity = useCreateActivity();
+  const { user } = useAuth();
+  const { organization } = useOrganization();
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
@@ -60,8 +66,28 @@ export function KanbanView({ funnelId }: KanbanViewProps) {
     // Check target is a valid stage
     if (!sortedStages.find(s => s.id === targetStageId)) return;
 
+    const fromStage = sortedStages.find(s => s.id === (lead as any).stage_id);
+    const toStage = sortedStages.find(s => s.id === targetStageId);
+
     console.log('[Webhook placeholder] Lead moved:', { leadId, from: (lead as any).stage_id, to: targetStageId });
     moveLead.mutate({ leadId, stageId: targetStageId });
+
+    // Auto-register stage_change activity
+    if (user && organization && fromStage && toStage) {
+      createActivity.mutate({
+        organization_id: organization.id,
+        lead_id: leadId,
+        user_id: user.id,
+        activity_type: 'stage_change',
+        title: `Moveu de ${fromStage.name} para ${toStage.name}`,
+        metadata: {
+          from_stage_id: fromStage.id,
+          from_stage_name: fromStage.name,
+          to_stage_id: toStage.id,
+          to_stage_name: toStage.name,
+        },
+      });
+    }
   };
 
   if (stagesLoading || leadsLoading) {

@@ -106,3 +106,21 @@ export interface LeadWithRelations extends Lead {
   assigned_profile?: Profile;
   custom_field_values?: CustomFieldValue[];
 }
+
+export type ActivityType = 'note' | 'call' | 'email' | 'meeting' | 'stage_change' | 'field_update' | 'task_created' | 'task_completed';
+
+export interface LeadActivity {
+  id: string;
+  organization_id: string;
+  lead_id: string;
+  user_id: string;
+  activity_type: ActivityType;
+  title: string;
+  description: string | null;
+  metadata: Record<string, any> | null;
+  created_at: string;
+}
+
+export interface LeadActivityWithUser extends LeadActivity {
+  user?: Profile;
+}
