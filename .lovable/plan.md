@@ -1,258 +1,266 @@
 
-# Sistema de Funis e Etapas
+# Sistema de Campos Personalizados
 
 ## Resumo
-Criar o modulo completo de Funis (Funnels) e Etapas (Stages) para o CRM multi-tenant, incluindo tabelas no banco, RLS, paginas de listagem e edicao, drag-and-drop para reordenar etapas, e integracao com a sidebar.
+Adicionar o modulo de Campos Personalizados (Custom Fields) ao CRM, com duas tabelas no banco, pagina de gerenciamento com drag-and-drop, e componente reutilizavel de renderizacao dinamica para uso futuro nos formularios de leads.
 
 ## 1. Migration SQL
 
-Criar uma migration com:
-
 ### Tabelas
-- `funnels` com colunas: id, organization_id (FK), name, description, is_default, created_at, updated_at
-- `stages` com colunas: id, funnel_id (FK CASCADE), organization_id (FK), name, color, position, sla_hours, webhook_url, created_at, updated_at, UNIQUE(funnel_id, position)
-- Trigger `update_updated_at_column` em ambas as tabelas
 
-### RLS (PERMISSIVE, usando `get_user_org_ids()` e `get_user_org_role()`)
+**custom_field_definitions**
+- id, organization_id (FK), field_name, field_label, field_type, options (jsonb), is_required, is_active, position, created_at, updated_at
+- UNIQUE(organization_id, field_name) DEFERRABLE INITIALLY DEFERRED (para permitir reordenacao)
+- Trigger update_updated_at_column
+- Validacao de field_type via CHECK constraint (valores estaticos, sem problema de imutabilidade)
 
-**funnels:**
+**custom_field_values**
+- id, lead_id (uuid, sem FK por enquanto), field_definition_id (FK CASCADE), value (text), created_at, updated_at
+- UNIQUE(lead_id, field_definition_id)
+- Trigger update_updated_at_column
+
+### RLS
+Mesma logica multi-tenant usando `get_user_org_ids()` e `get_user_org_role()`:
+
+**custom_field_definitions:**
 - SELECT: `organization_id IN (SELECT get_user_org_ids())`
-- INSERT: `get_user_org_role(organization_id) IN ('owner','admin')` AND `organization_id IN (SELECT get_user_org_ids())`
-- UPDATE: `get_user_org_role(organization_id) IN ('owner','admin')`
-- DELETE: `get_user_org_role(organization_id) IN ('owner','admin')`
+- INSERT/UPDATE/DELETE: `get_user_org_role(organization_id) IN ('owner','admin')`
 
-**stages:**
-- SELECT: `organization_id IN (SELECT get_user_org_ids())`
-- INSERT: `get_user_org_role(organization_id) IN ('owner','admin')`
-- UPDATE: `get_user_org_role(organization_id) IN ('owner','admin')`
-- DELETE: `get_user_org_role(organization_id) IN ('owner','admin')`
+**custom_field_values:**
+- SELECT: acesso via join com field_definition (verificar org_id da definition)
+- INSERT/UPDATE/DELETE: mesma logica owner/admin via subquery no field_definition
 
 ### Funcao SECURITY DEFINER
-- `create_funnel_with_default_stages(p_org_id uuid, p_name text, p_description text)` -- cria funil + 4 etapas padrao atomicamente, similar ao padrao ja usado para organizacoes.
+- `reorder_custom_fields(p_fields jsonb)` -- batch update de positions, mesmo padrao do `reorder_stages`
 
-## 2. Tipos TypeScript
-
-### `src/types/index.ts`
-Adicionar interfaces `Funnel` e `Stage`.
-
-## 3. Services
-
-### `src/services/funnels.ts`
-- `getFunnels(orgId)` -- lista funis da org
-- `getFunnel(id)` -- detalhe do funil
-- `createFunnel(orgId, name, description)` -- via RPC `create_funnel_with_default_stages`
-- `updateFunnel(id, data)` -- update name/description/is_default
-- `deleteFunnel(id)` -- delete
-- `setDefaultFunnel(orgId, funnelId)` -- desmarcar outros, marcar este
-
-### `src/services/stages.ts`
-- `getStages(funnelId)` -- lista stages ordenadas por position
-- `createStage(data)` -- insert
-- `updateStage(id, data)` -- update
-- `deleteStage(id)` -- delete
-- `reorderStages(stages: {id, position}[])` -- batch update positions
-
-## 4. Hooks (TanStack Query)
-
-### `src/hooks/useFunnels.ts`
-- `useFunnels()` -- useQuery com orgId do contexto
-- `useCreateFunnel()` -- useMutation + invalidate
-- `useUpdateFunnel()` -- useMutation + invalidate
-- `useDeleteFunnel()` -- useMutation + invalidate
-
-### `src/hooks/useStages.ts`
-- `useStages(funnelId)` -- useQuery
-- `useCreateStage()` -- useMutation + invalidate
-- `useUpdateStage()` -- useMutation + invalidate
-- `useDeleteStage()` -- useMutation + invalidate
-- `useReorderStages()` -- useMutation + invalidate
-
-## 5. Paginas
-
-### `src/pages/FunnelsPage.tsx` (rota `/settings/funnels`)
-- Lista funis em cards com nome, descricao, badge "padrao", contagem de etapas
-- Botao "Novo Funil" abre dialog com campos nome e descricao (validacao com zod)
-- Clique no card navega para `/settings/funnels/:id`
-- Owner/admin veem botoes de acao; member/viewer veem somente leitura
-
-### `src/pages/FunnelEditPage.tsx` (rota `/settings/funnels/:id`)
-- Header com nome e descricao editaveis inline
-- Toggle "Funil Padrao"
-- Lista de etapas com drag-and-drop (@dnd-kit/sortable)
-- Cada etapa: color picker, nome editavel, SLA (input numerico), webhook URL, botao deletar
-- Botao "Adicionar Etapa" no final
-- Botao "Deletar Funil" com AlertDialog de confirmacao
-- Impedir deletar ultima etapa
-
-## 6. Componentes
-
-### `src/components/funnels/FunnelCard.tsx`
-Card com info do funil para a listagem.
-
-### `src/components/funnels/CreateFunnelDialog.tsx`
-Dialog modal com formulario de criacao.
-
-### `src/components/funnels/StageItem.tsx`
-Item individual de etapa com campos editaveis, usado dentro do sortable list.
-
-### `src/components/funnels/StageList.tsx`
-Container com DndContext + SortableContext para drag-and-drop das etapas.
-
-## 7. Sidebar
-
-### `src/components/layout/AppSidebar.tsx`
-Atualizar para ter "Configuracoes" como grupo com sub-item "Funis" apontando para `/settings/funnels`. Remover o item "Configuracoes" generico da lista principal.
-
-## 8. Rotas
-
-### `src/App.tsx`
-Adicionar rotas:
-- `/settings/funnels` -> `FunnelsPage` (dentro de PrivateRoute + MainLayout)
-- `/settings/funnels/:id` -> `FunnelEditPage` (dentro de PrivateRoute + MainLayout)
-
-## 9. Dependencia
-
-Instalar `@dnd-kit/core` e `@dnd-kit/sortable` e `@dnd-kit/utilities` para drag-and-drop.
-
-## Detalhes Tecnicos
-
-### Migration SQL completa
+### SQL completo
 
 ```sql
--- funnels table
-CREATE TABLE public.funnels (
+-- custom_field_definitions
+CREATE TABLE public.custom_field_definitions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES public.organizations(id),
-  name text NOT NULL,
-  description text,
-  is_default boolean NOT NULL DEFAULT false,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-
--- stages table
-CREATE TABLE public.stages (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  funnel_id uuid NOT NULL REFERENCES public.funnels(id) ON DELETE CASCADE,
-  organization_id uuid NOT NULL REFERENCES public.organizations(id),
-  name text NOT NULL,
-  color text NOT NULL DEFAULT '#3B82F6',
+  field_name text NOT NULL,
+  field_label text NOT NULL,
+  field_type text NOT NULL CHECK (field_type IN ('text','number','currency','date','select','multi_select','checkbox','url','email','phone')),
+  options jsonb,
+  is_required boolean NOT NULL DEFAULT false,
+  is_active boolean NOT NULL DEFAULT true,
   position integer NOT NULL,
-  sla_hours integer,
-  webhook_url text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(funnel_id, position)
+  CONSTRAINT uq_org_field_name UNIQUE(organization_id, field_name) DEFERRABLE INITIALLY DEFERRED
 );
 
--- Triggers
-CREATE TRIGGER update_funnels_updated_at
-  BEFORE UPDATE ON public.funnels
+CREATE TRIGGER update_custom_field_definitions_updated_at
+  BEFORE UPDATE ON public.custom_field_definitions
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
-CREATE TRIGGER update_stages_updated_at
-  BEFORE UPDATE ON public.stages
+ALTER TABLE public.custom_field_definitions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Members can view custom fields" ON public.custom_field_definitions
+  FOR SELECT USING (organization_id IN (SELECT get_user_org_ids()));
+
+CREATE POLICY "Owner/admin can insert custom fields" ON public.custom_field_definitions
+  FOR INSERT WITH CHECK (get_user_org_role(organization_id) IN ('owner','admin'));
+
+CREATE POLICY "Owner/admin can update custom fields" ON public.custom_field_definitions
+  FOR UPDATE USING (get_user_org_role(organization_id) IN ('owner','admin'));
+
+CREATE POLICY "Owner/admin can delete custom fields" ON public.custom_field_definitions
+  FOR DELETE USING (get_user_org_role(organization_id) IN ('owner','admin'));
+
+-- custom_field_values (lead_id sem FK por enquanto)
+CREATE TABLE public.custom_field_values (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  lead_id uuid NOT NULL,
+  field_definition_id uuid NOT NULL REFERENCES public.custom_field_definitions(id) ON DELETE CASCADE,
+  value text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(lead_id, field_definition_id)
+);
+
+CREATE TRIGGER update_custom_field_values_updated_at
+  BEFORE UPDATE ON public.custom_field_values
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
--- RLS
-ALTER TABLE public.funnels ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.stages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.custom_field_values ENABLE ROW LEVEL SECURITY;
 
--- Funnels policies (PERMISSIVE)
-CREATE POLICY "Members can view funnels" ON public.funnels
-  FOR SELECT USING (organization_id IN (SELECT get_user_org_ids()));
+CREATE POLICY "Members can view field values" ON public.custom_field_values
+  FOR SELECT USING (
+    field_definition_id IN (
+      SELECT id FROM public.custom_field_definitions
+      WHERE organization_id IN (SELECT get_user_org_ids())
+    )
+  );
 
-CREATE POLICY "Owner/admin can insert funnels" ON public.funnels
+CREATE POLICY "Owner/admin can insert field values" ON public.custom_field_values
   FOR INSERT WITH CHECK (
-    get_user_org_role(organization_id) IN ('owner','admin')
+    field_definition_id IN (
+      SELECT id FROM public.custom_field_definitions
+      WHERE get_user_org_role(organization_id) IN ('owner','admin')
+    )
   );
 
-CREATE POLICY "Owner/admin can update funnels" ON public.funnels
+CREATE POLICY "Owner/admin can update field values" ON public.custom_field_values
   FOR UPDATE USING (
-    get_user_org_role(organization_id) IN ('owner','admin')
+    field_definition_id IN (
+      SELECT id FROM public.custom_field_definitions
+      WHERE get_user_org_role(organization_id) IN ('owner','admin')
+    )
   );
 
-CREATE POLICY "Owner/admin can delete funnels" ON public.funnels
+CREATE POLICY "Owner/admin can delete field values" ON public.custom_field_values
   FOR DELETE USING (
-    get_user_org_role(organization_id) IN ('owner','admin')
+    field_definition_id IN (
+      SELECT id FROM public.custom_field_definitions
+      WHERE get_user_org_role(organization_id) IN ('owner','admin')
+    )
   );
 
--- Stages policies (PERMISSIVE)
-CREATE POLICY "Members can view stages" ON public.stages
-  FOR SELECT USING (organization_id IN (SELECT get_user_org_ids()));
-
-CREATE POLICY "Owner/admin can insert stages" ON public.stages
-  FOR INSERT WITH CHECK (
-    get_user_org_role(organization_id) IN ('owner','admin')
-  );
-
-CREATE POLICY "Owner/admin can update stages" ON public.stages
-  FOR UPDATE USING (
-    get_user_org_role(organization_id) IN ('owner','admin')
-  );
-
-CREATE POLICY "Owner/admin can delete stages" ON public.stages
-  FOR DELETE USING (
-    get_user_org_role(organization_id) IN ('owner','admin')
-  );
-
--- SECURITY DEFINER function for atomic funnel creation
-CREATE OR REPLACE FUNCTION public.create_funnel_with_default_stages(
-  p_org_id uuid, p_name text, p_description text DEFAULT NULL
-)
-RETURNS public.funnels
+-- Reorder function
+CREATE OR REPLACE FUNCTION public.reorder_custom_fields(p_fields jsonb)
+RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
 AS $$
 DECLARE
-  v_funnel public.funnels;
   v_user_id uuid;
+  v_org_id uuid;
   v_role text;
+  v_item jsonb;
 BEGIN
   v_user_id := auth.uid();
   IF v_user_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
 
-  v_role := get_user_org_role(p_org_id);
+  SELECT organization_id INTO v_org_id
+  FROM public.custom_field_definitions
+  WHERE id = (p_fields->0->>'id')::uuid;
+
+  IF v_org_id IS NULL THEN RAISE EXCEPTION 'Field not found'; END IF;
+
+  v_role := get_user_org_role(v_org_id);
   IF v_role NOT IN ('owner','admin') THEN RAISE EXCEPTION 'Insufficient permissions'; END IF;
 
-  INSERT INTO public.funnels (organization_id, name, description)
-  VALUES (p_org_id, p_name, p_description)
-  RETURNING * INTO v_funnel;
-
-  INSERT INTO public.stages (funnel_id, organization_id, name, color, position) VALUES
-    (v_funnel.id, p_org_id, 'Novo Lead',     '#6B7280', 0),
-    (v_funnel.id, p_org_id, 'Qualificação',  '#3B82F6', 1),
-    (v_funnel.id, p_org_id, 'Proposta',      '#EAB308', 2),
-    (v_funnel.id, p_org_id, 'Fechamento',    '#22C55E', 3);
-
-  RETURN v_funnel;
+  FOR v_item IN SELECT * FROM jsonb_array_elements(p_fields)
+  LOOP
+    UPDATE public.custom_field_definitions
+    SET position = (v_item->>'position')::integer
+    WHERE id = (v_item->>'id')::uuid
+      AND organization_id = v_org_id;
+  END LOOP;
 END;
 $$;
 ```
 
-### Reorder strategy
-Para reordenar etapas, primeiro dropar a UNIQUE constraint temporariamente nao e viavel. Em vez disso, a funcao `reorderStages` fara updates individuais com position negativo temporario para evitar conflitos, ou usara uma funcao SECURITY DEFINER que faz o batch update em uma transacao desabilitando a constraint temporariamente. A abordagem mais simples: usar `DEFERRABLE INITIALLY IMMEDIATE` na constraint UNIQUE para permitir reordenacao dentro de uma transacao. A migration usara:
+## 2. Tipos TypeScript
 
-```sql
-UNIQUE(funnel_id, position) DEFERRABLE INITIALLY DEFERRED
+### `src/types/index.ts`
+Adicionar:
+
+```text
+CustomFieldType = 'text' | 'number' | 'currency' | 'date' | 'select' | 'multi_select' | 'checkbox' | 'url' | 'email' | 'phone'
+
+CustomFieldDefinition {
+  id, organization_id, field_name, field_label, field_type, options, is_required, is_active, position, created_at, updated_at
+}
+
+CustomFieldValue {
+  id, lead_id, field_definition_id, value, created_at, updated_at
+}
 ```
 
-Isso permite que dentro de uma transacao os positions sejam atualizados sem conflito.
+## 3. Services
 
-### Arquivos criados/modificados
+### `src/services/customFields.ts`
+Seguindo o padrao de `stages.ts`:
+- `getCustomFields(orgId)` -- lista ordenada por position
+- `createCustomField(data)` -- insert
+- `updateCustomField(id, data)` -- update
+- `deleteCustomField(id)` -- delete
+- `reorderCustomFields(fields)` -- via RPC `reorder_custom_fields`
+
+## 4. Hooks
+
+### `src/hooks/useCustomFields.ts`
+Seguindo o padrao de `useStages.ts`:
+- `useCustomFields()` -- useQuery com orgId do OrganizationContext
+- `useCreateCustomField()` -- useMutation + invalidate
+- `useUpdateCustomField()` -- useMutation + invalidate
+- `useDeleteCustomField()` -- useMutation + invalidate
+- `useReorderCustomFields()` -- useMutation + invalidate
+
+## 5. Componentes
+
+### `src/components/custom-fields/CustomFieldItem.tsx`
+Item na lista de campos, seguindo padrao de `StageItem.tsx`:
+- Icone do tipo, label, badges (obrigatorio, inativo)
+- Drag handle, botao editar, botao deletar
+- Clique abre modal de edicao
+
+### `src/components/custom-fields/CustomFieldList.tsx`
+Container com DndContext + SortableContext, seguindo padrao de `StageList.tsx`.
+
+### `src/components/custom-fields/CustomFieldDialog.tsx`
+Modal de criacao/edicao:
+- Campos: label, field_name (auto-gerado slug), tipo (select com icones), obrigatorio (switch), ativo (switch)
+- Secao condicional de opcoes para select/multi_select com lista editavel
+- Preview ao vivo do campo renderizado
+
+### `src/components/custom-fields/CustomFieldRenderer.tsx`
+Componente reutilizavel que recebe `CustomFieldDefinition` + value + onChange e renderiza o input correto:
+- text -> Input
+- number -> Input type=number
+- currency -> Input com prefixo "R$" e formatacao
+- date -> DatePicker (Popover + Calendar do shadcn)
+- select -> Select com opcoes
+- multi_select -> Lista de checkboxes com badges/tags
+- checkbox -> Checkbox
+- url -> Input com validacao de URL
+- email -> Input type=email
+- phone -> Input com mascara
+
+### `src/components/custom-fields/FieldTypeIcon.tsx`
+Componente que retorna o icone lucide adequado para cada field_type.
+
+## 6. Pagina
+
+### `src/pages/CustomFieldsPage.tsx` (rota `/settings/custom-fields`)
+Seguindo o padrao de `FunnelsPage.tsx`:
+- Header com titulo e botao "Novo Campo"
+- Lista de campos com drag-and-drop
+- Estados de loading e vazio
+- Permissoes: owner/admin podem CRUD, member/viewer somente leitura
+
+## 7. Sidebar
+
+### `src/components/layout/AppSidebar.tsx`
+Adicionar ao array `settingsNav`:
+```text
+{ title: 'Campos Personalizados', url: '/settings/custom-fields', icon: ListChecks }
+```
+
+## 8. Rotas
+
+### `src/App.tsx`
+Adicionar rota:
+```text
+/settings/custom-fields -> PrivateRoute + MainLayout + CustomFieldsPage
+```
+
+## Arquivos criados/modificados
 
 | Arquivo | Acao |
 |---------|------|
 | `supabase/migrations/xxx.sql` | Criar |
-| `src/types/index.ts` | Editar (adicionar Funnel, Stage) |
-| `src/services/funnels.ts` | Criar |
-| `src/services/stages.ts` | Criar |
-| `src/hooks/useFunnels.ts` | Criar |
-| `src/hooks/useStages.ts` | Criar |
-| `src/pages/FunnelsPage.tsx` | Criar |
-| `src/pages/FunnelEditPage.tsx` | Criar |
-| `src/components/funnels/FunnelCard.tsx` | Criar |
-| `src/components/funnels/CreateFunnelDialog.tsx` | Criar |
-| `src/components/funnels/StageItem.tsx` | Criar |
-| `src/components/funnels/StageList.tsx` | Criar |
+| `src/types/index.ts` | Editar |
+| `src/services/customFields.ts` | Criar |
+| `src/hooks/useCustomFields.ts` | Criar |
+| `src/components/custom-fields/CustomFieldItem.tsx` | Criar |
+| `src/components/custom-fields/CustomFieldList.tsx` | Criar |
+| `src/components/custom-fields/CustomFieldDialog.tsx` | Criar |
+| `src/components/custom-fields/CustomFieldRenderer.tsx` | Criar |
+| `src/components/custom-fields/FieldTypeIcon.tsx` | Criar |
+| `src/pages/CustomFieldsPage.tsx` | Criar |
 | `src/components/layout/AppSidebar.tsx` | Editar |
 | `src/App.tsx` | Editar |
