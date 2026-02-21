@@ -1,155 +1,164 @@
 
 
-# Visualizacoes Kanban e Lista para Leads
+# Sistema de Historico de Atividades dos Leads
 
 ## Resumo
-Reescrever a pagina `/leads` para suportar dois modos de visualizacao (Kanban e Lista) com seletor de funil, persistencia em localStorage, drag-and-drop no Kanban para mover leads entre etapas, e tabela com ordenacao, selecao multipla, acoes em lote e paginacao na Lista.
+Criar a tabela `lead_activities` com RLS multi-tenant, timeline visual na aba "Atividades" do sheet do lead, formulario rapido para registrar atividades manuais (nota, ligacao, email, reuniao), e registro automatico de atividades ao mover etapa no Kanban e ao editar o lead.
 
-## 1. Novos Services
+## 1. Migration SQL
 
-### `src/services/leads.ts` (editar)
-Adicionar funcoes:
-- `getLeadsByFunnel(funnelId)` -- busca leads de um funil especifico com joins (stage, funnel, assigned_profile), sem limite de 1000 (paginar se necessario)
-- `getLeadsListPaginated(funnelId, page, pageSize, sortBy, sortOrder)` -- busca paginada com `.range()` e `.order()` dinamico, retorna `{ data, count }`
-- `moveLeadToStage(leadId, stageId)` -- update apenas stage_id (triggers cuidam dos timestamps)
-- `bulkMoveLeads(leadIds, stageId)` -- update batch de stage_id
-- `bulkAssignLeads(leadIds, assignedTo)` -- update batch de assigned_to
-- `bulkDeleteLeads(leadIds)` -- delete batch
+### Tabela lead_activities
 
-## 2. Novos Hooks
+```sql
+CREATE TABLE public.lead_activities (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id),
+  lead_id uuid NOT NULL REFERENCES public.leads(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES public.profiles(id),
+  activity_type text NOT NULL,
+  title text NOT NULL,
+  description text,
+  metadata jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Validation trigger for activity_type
+CREATE OR REPLACE FUNCTION public.validate_activity_type()
+RETURNS trigger LANGUAGE plpgsql SET search_path TO 'public' AS $$
+BEGIN
+  IF NEW.activity_type NOT IN ('note','call','email','meeting','stage_change','field_update','task_created','task_completed') THEN
+    RAISE EXCEPTION 'Invalid activity_type: %', NEW.activity_type;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER validate_activity_type_trigger
+  BEFORE INSERT OR UPDATE ON public.lead_activities
+  FOR EACH ROW EXECUTE FUNCTION public.validate_activity_type();
+
+-- Indexes
+CREATE INDEX idx_lead_activities_lead_id ON public.lead_activities(lead_id);
+CREATE INDEX idx_lead_activities_created_at ON public.lead_activities(created_at DESC);
+
+-- RLS
+ALTER TABLE public.lead_activities ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Members can view activities" ON public.lead_activities
+  FOR SELECT USING (organization_id IN (SELECT get_user_org_ids()));
+
+CREATE POLICY "Owner/admin/member can insert activities" ON public.lead_activities
+  FOR INSERT WITH CHECK (
+    get_user_org_role(organization_id) IN ('owner','admin','member')
+  );
+
+CREATE POLICY "Owner/admin can delete activities" ON public.lead_activities
+  FOR DELETE USING (
+    get_user_org_role(organization_id) IN ('owner','admin')
+  );
+```
+
+## 2. Tipos TypeScript
+
+### `src/types/index.ts`
+Adicionar:
+
+```text
+ActivityType = 'note' | 'call' | 'email' | 'meeting' | 'stage_change' | 'field_update' | 'task_created' | 'task_completed'
+
+LeadActivity {
+  id, organization_id, lead_id, user_id, activity_type, title, description, metadata, created_at
+}
+
+LeadActivityWithUser extends LeadActivity {
+  user?: Profile
+}
+```
+
+## 3. Services
+
+### `src/services/activities.ts` (criar)
+- `getLeadActivities(leadId, page, pageSize)` -- lista atividades com join em profiles, paginada, order by created_at DESC
+- `createActivity(data: { organization_id, lead_id, user_id, activity_type, title, description?, metadata? })` -- insert
+- `createActivityAndUpdateLead(data)` -- insere atividade + update last_activity_at do lead (no mesmo fluxo)
+
+## 4. Hooks
+
+### `src/hooks/useActivities.ts` (criar)
+- `useLeadActivities(leadId, page, pageSize)` -- useQuery com queryKey `['lead-activities', leadId, page]`
+- `useCreateActivity()` -- useMutation que insere atividade + invalida queries de atividades e lead detail
+
+## 5. Componentes
+
+### `src/components/leads/activities/ActivityTimeline.tsx` (criar)
+Timeline vertical com linha a esquerda conectando os itens:
+- Cada item: icone colorido do tipo, titulo, descricao (expand/collapse se longa), avatar+nome do autor, data relativa
+- Botao "Carregar mais" no final se houver mais paginas
+- Icones por tipo:
+  - note: MessageSquare (cinza)
+  - call: Phone (verde)
+  - email: Mail (azul)
+  - meeting: Calendar (roxo)
+  - stage_change: ArrowRight (amarelo)
+  - field_update: Edit (cinza)
+  - task_created: CheckSquare (laranja)
+  - task_completed: CheckCircle (verde)
+
+### `src/components/leads/activities/QuickActivityForm.tsx` (criar)
+Card no topo da timeline com 4 botoes rapidos (Nota, Ligacao, Email, Reuniao). Ao clicar:
+- Nota: textarea simples
+- Ligacao: textarea + input de duracao (minutos)
+- Email: textarea + input de assunto
+- Reuniao: textarea + input de data/hora
+Ao submeter: criar atividade + atualizar last_activity_at do lead.
+
+### `src/components/leads/activities/ActivityIcon.tsx` (criar)
+Componente que retorna o icone lucide + cor adequados para cada activity_type.
+
+## 6. Integracoes com codigo existente
+
+### `src/components/leads/LeadDetailSheet.tsx` (editar)
+- Substituir placeholder "Em construcao - Sprint 5" pela timeline real:
+  - Renderizar `<QuickActivityForm>` + `<ActivityTimeline>` na aba "Atividades"
 
 ### `src/hooks/useLeads.ts` (editar)
-Adicionar:
-- `useLeadsByFunnel(funnelId)` -- useQuery com queryKey `['leads-kanban', funnelId]`
-- `useLeadsList(funnelId, page, pageSize, sortBy, sortOrder)` -- useQuery com queryKey `['leads-list', funnelId, page, pageSize, sortBy, sortOrder]`
-- `useMoveLeadToStage()` -- useMutation com optimistic update (atualizar cache do kanban instantaneamente)
-- `useBulkMoveLeads()`, `useBulkAssignLeads()`, `useBulkDeleteLeads()` -- useMutations
+- No `useMoveLeadToStage`: apos mover o lead, criar atividade automatica de tipo `stage_change` com metadata contendo from/to stage names
+  - Para obter os nomes das etapas, usar os dados do cache do TanStack Query (stages ja estao carregados)
 
-As mutations devem invalidar tanto `leads-kanban` quanto `leads-list`.
-
-## 3. Pagina LeadsPage refatorada
-
-### `src/pages/LeadsPage.tsx` (reescrever)
-- Estado `viewMode` ('kanban' | 'list') persistido em localStorage
-- Estado `selectedFunnelId` persistido em localStorage, default = primeiro funil ou funil padrao (is_default)
-- Header: titulo, select de funil, toggle kanban/lista (icones LayoutGrid e List), botao Novo Lead
-- Renderiza `<KanbanView>` ou `<ListView>` conforme modo
-- Mantem LeadFormDialog e LeadDetailSheet existentes
-
-## 4. Componentes Kanban
-
-### `src/components/leads/kanban/KanbanView.tsx`
-- Recebe funnelId
-- Busca stages do funil + leads do funil
-- Agrupa leads por stage_id em memo
-- Layout: flex horizontal com overflow-x-auto
-- DndContext com colisao customizada (closestCorners para multi-container)
-- Ao dropar lead em nova coluna: optimistic update + mutacao `moveLeadToStage`
-- Skeleton loading
-
-### `src/components/leads/kanban/KanbanColumn.tsx`
-- Recebe stage, leads[], onCardClick
-- Header: borda colorida (border-top com cor da etapa), nome, contagem, soma de valores
-- Corpo: lista vertical de KanbanCard com scroll vertical
-- Usa useDroppable do @dnd-kit para receber cards
-
-### `src/components/leads/kanban/KanbanCard.tsx`
-- Recebe lead (LeadWithRelations)
-- Usa useDraggable do @dnd-kit
-- Layout compacto:
-  - Nome (bold, truncado)
-  - Empresa (secundario)
-  - Valor em R$ (se > 0)
-  - Avatar pequeno do responsavel
-  - Dot colorido de prioridade (green/yellow/orange/red)
-  - Tags (max 2 + "+N")
-  - Tempo na etapa (formato curto: "3d", "12h", "45min") -- vermelho se acima do SLA
-- Clique abre sheet de detalhe
-
-### `src/components/leads/kanban/DragOverlayCard.tsx`
-- Card renderizado durante o drag (dentro do DragOverlay do @dnd-kit)
-- Visual elevado com sombra
-
-## 5. Componentes Lista
-
-### `src/components/leads/list/ListView.tsx`
-- Recebe funnelId
-- Busca leads paginados com sort
-- Estado local: page, pageSize (25/50/100), sortBy, sortOrder
-- Tabela com headers clicaveis para ordenar
-- Checkbox no header para selecionar todos da pagina
-- Barra de acoes em lote (aparece quando ha selecao)
-- Paginacao no rodape
-- Clique na linha abre sheet de detalhe
-
-### `src/components/leads/list/BulkActionsBar.tsx`
-- Mostra quando selectedIds.length > 0
-- Botoes: "Mover para etapa" (dropdown com stages), "Atribuir" (dropdown com membros), "Deletar" (com AlertDialog)
-- Contagem de selecionados
-
-## 6. Sidebar e Rotas
-Nenhuma alteracao necessaria -- a rota `/leads` e o item na sidebar ja existem.
+### `src/components/leads/LeadFormDialog.tsx` (editar)
+- No `onSubmit` de edicao: apos atualizar o lead, criar atividade automatica de tipo `field_update` com titulo "Atualizou informacoes do lead" e metadata com os campos alterados
+  - Comparar valores antigos (do `lead` prop) com novos para determinar quais campos mudaram
 
 ## Arquivos criados/modificados
 
 | Arquivo | Acao |
 |---------|------|
-| `src/services/leads.ts` | Editar (adicionar funcoes) |
-| `src/hooks/useLeads.ts` | Editar (adicionar hooks) |
-| `src/pages/LeadsPage.tsx` | Reescrever |
-| `src/components/leads/kanban/KanbanView.tsx` | Criar |
-| `src/components/leads/kanban/KanbanColumn.tsx` | Criar |
-| `src/components/leads/kanban/KanbanCard.tsx` | Criar |
-| `src/components/leads/kanban/DragOverlayCard.tsx` | Criar |
-| `src/components/leads/list/ListView.tsx` | Criar |
-| `src/components/leads/list/BulkActionsBar.tsx` | Criar |
+| supabase/migrations/xxx.sql | Criar |
+| src/types/index.ts | Editar (ActivityType, LeadActivity) |
+| src/services/activities.ts | Criar |
+| src/hooks/useActivities.ts | Criar |
+| src/components/leads/activities/ActivityIcon.tsx | Criar |
+| src/components/leads/activities/ActivityTimeline.tsx | Criar |
+| src/components/leads/activities/QuickActivityForm.tsx | Criar |
+| src/components/leads/LeadDetailSheet.tsx | Editar (substituir placeholder) |
+| src/hooks/useLeads.ts | Editar (auto-activity no move) |
+| src/components/leads/LeadFormDialog.tsx | Editar (auto-activity no update) |
 
 ## Detalhes Tecnicos
 
-### Drag and Drop no Kanban
-Usar DndContext com `rectIntersection` collision detection. Cada coluna e um droppable com id = stage_id. Cada card e um draggable com id = lead_id. No onDragEnd:
+### Atividade automatica no drag-and-drop
+No `useMoveLeadToStage`, adicionar no `onSuccess`:
+- Buscar nomes das etapas (from/to) do cache de stages
+- Chamar `createActivity` com activity_type='stage_change', title="Moveu de {from} para {to}", metadata com IDs e nomes
 
-```text
-1. Identificar stage_id de destino (over.id ou container do over)
-2. Se stage mudou:
-   a. Optimistic update: atualizar cache do TanStack Query instantaneamente
-   b. Chamar mutacao moveLeadToStage(leadId, newStageId)
-   c. Em caso de erro, reverter cache
-```
+### Atividade automatica na edicao
+No `LeadFormDialog.onSubmit` (modo edicao), apos sucesso:
+- Comparar lead original com valores novos
+- Se houve mudancas, criar atividade com activity_type='field_update' e metadata listando os campos alterados
 
-### Optimistic Update para Kanban
-No useMoveLeadToStage, usar onMutate para atualizar o cache antes da resposta:
+### Paginacao da timeline
+Usar estado local `page` no componente, comecar em 0, incrementar ao clicar "Carregar mais". Cada pagina busca 20 atividades. Concatenar resultados anteriores com novos.
 
-```text
-onMutate: async ({ leadId, stageId }) => {
-  await qc.cancelQueries(['leads-kanban', funnelId])
-  const prev = qc.getQueryData(['leads-kanban', funnelId])
-  // atualizar lead.stage_id no cache
-  qc.setQueryData(['leads-kanban', funnelId], updated)
-  return { prev }
-}
-onError: (_, __, ctx) => {
-  qc.setQueryData(['leads-kanban', funnelId], ctx.prev)
-}
-onSettled: () => {
-  qc.invalidateQueries(['leads-kanban', funnelId])
-}
-```
-
-### Tempo na etapa (formato curto)
-Funcao helper `formatStageTime(stageEnteredAt)`:
-- < 1 hora: "Xmin"
-- < 24 horas: "Xh"
-- >= 24 horas: "Xd"
-
-### Paginacao na Lista
-Usar `.range(from, to)` do Supabase com `{ count: 'exact' }` para obter total de registros. Calcular paginas no componente.
-
-### Responsividade
-- Kanban: scroll horizontal natural funciona em mobile
-- Lista: esconder colunas email, telefone, tags e data de criacao em telas < md usando classes `hidden md:table-cell`
-
-### localStorage keys
-- `crm_leads_view_mode` -> 'kanban' | 'list'
-- `crm_leads_funnel_id` -> uuid string
+### Data relativa
+Usar `formatDistanceToNow` do date-fns com locale ptBR para exibir "ha 5 min", "ha 2 horas", etc.
 
