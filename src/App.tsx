@@ -18,6 +18,9 @@ import CustomFieldsPage from "@/pages/CustomFieldsPage";
 import LeadsPage from "@/pages/LeadsPage";
 import TasksPage from "@/pages/TasksPage";
 import WebhooksPage from "@/pages/WebhooksPage";
+import InboundWebhooksPage from "@/pages/InboundWebhooksPage";
+import InboundWebhookEditPage from "@/pages/InboundWebhookEditPage";
+import InboundWebhookLogsPage from "@/pages/InboundWebhookLogsPage";
 import TeamPage from "@/pages/TeamPage";
 import OrganizationPage from "@/pages/OrganizationPage";
 import NotFound from "@/pages/NotFound";
@@ -61,6 +64,15 @@ const App = () => (
               } />
               <Route path="/settings/webhooks" element={
                 <PrivateRoute><MainLayout><WebhooksPage /></MainLayout></PrivateRoute>
+              } />
+              <Route path="/settings/inbound-webhooks" element={
+                <PrivateRoute><MainLayout><InboundWebhooksPage /></MainLayout></PrivateRoute>
+              } />
+              <Route path="/settings/inbound-webhooks/logs" element={
+                <PrivateRoute><MainLayout><InboundWebhookLogsPage /></MainLayout></PrivateRoute>
+              } />
+              <Route path="/settings/inbound-webhooks/:id" element={
+                <PrivateRoute><MainLayout><InboundWebhookEditPage /></MainLayout></PrivateRoute>
               } />
               <Route path="/settings/team" element={
                 <PrivateRoute><MainLayout><TeamPage /></MainLayout></PrivateRoute>
