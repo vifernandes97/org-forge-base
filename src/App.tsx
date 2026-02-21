@@ -12,6 +12,8 @@ import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
 import OnboardingPage from "@/pages/OnboardingPage";
 import DashboardPage from "@/pages/DashboardPage";
+import FunnelsPage from "@/pages/FunnelsPage";
+import FunnelEditPage from "@/pages/FunnelEditPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +37,12 @@ const App = () => (
               {/* Protected — auth + org required */}
               <Route path="/dashboard" element={
                 <PrivateRoute><MainLayout><DashboardPage /></MainLayout></PrivateRoute>
+              } />
+              <Route path="/settings/funnels" element={
+                <PrivateRoute><MainLayout><FunnelsPage /></MainLayout></PrivateRoute>
+              } />
+              <Route path="/settings/funnels/:id" element={
+                <PrivateRoute><MainLayout><FunnelEditPage /></MainLayout></PrivateRoute>
               } />
 
               {/* Redirect root */}
