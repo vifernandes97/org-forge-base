@@ -1,276 +1,209 @@
 
 
-# Dashboard com Metricas
+# Sprint Final: Gestao de Equipe e Polish
 
 ## Resumo
-Substituir o placeholder do DashboardPage por um dashboard completo com cards de resumo, graficos interativos (recharts) e ranking de equipe. Criar RPC functions no banco para queries agregadas performaticas, hooks dedicados e componentes modulares com loading skeletons.
+Este sprint cobre duas grandes areas: (1) gestao de equipe com paginas de membros e organizacao, e (2) polish geral da aplicacao incluindo empty states, loading states, toasts, responsividade, acessibilidade e branding.
 
-## 1. Migration SQL - RPC Functions
+## 1. Paginas novas
 
-Criar 4 funcoes RPC para agregar dados no servidor:
+### 1.1 Pagina /settings/team (TeamPage.tsx)
 
-### get_dashboard_summary(p_org_id, p_funnel_id, p_date_from, p_date_to)
-Retorna JSON com:
-- total_leads: count de leads ativos (filtrado por funnel se informado)
-- new_leads: count de leads criados no periodo
-- new_leads_previous: count de leads criados no periodo anterior (para calcular variacao %)
-- pipeline_value: sum de value de todos leads ativos
-- conversion_count: leads que estao na ultima etapa (max position) criados no periodo
+**Secao 1 - Membros atuais:**
+- Tabela: avatar, nome, e-mail, role (badge colorido), data de entrada (`accepted_at` ou `created_at`), status (Ativo se `accepted_at`, Pendente se nao)
+- Owner: nao pode ser removido nem ter role alterada
+- O proprio usuario nao pode alterar sua propria role
+- Select para alterar role (apenas owner/admin podem): chama `updateMemberRole(memberId, newRole)` via update em `organization_members`
+- Botao remover com AlertDialog de confirmacao: deleta de `organization_members`
 
-### get_leads_by_period(p_org_id, p_funnel_id, p_date_from, p_date_to, p_interval)
-Retorna tabela (period_start, lead_count) agrupando leads criados por dia/semana/mes.
+**Secao 2 - Convidar membro:**
+- Formulario: e-mail (input) + role (select: admin, member, viewer)
+- Logica ao convidar:
+  1. Buscar profiles onde `email = inputEmail`
+  2. Se existe: insert em `organization_members` com `user_id`, `accepted_at = now()`
+  3. Se nao existe: insert com `invited_email`, `invited_at = now()`, `accepted_at = null`, `user_id = auth.uid()` (temporario, sera ajustado)
+  4. Mostrar toast de sucesso com link copiavel (placeholder para convite)
+- Lista de convites pendentes (where `accepted_at IS NULL`) com botao cancelar
 
-### get_funnel_metrics(p_org_id, p_funnel_id)
-Retorna tabela (stage_id, stage_name, stage_color, stage_position, lead_count, total_value) para cada etapa do funil.
+**Problema:** `organization_members.user_id` e NOT NULL e referencia `profiles.id`. Para convites pendentes sem usuario existente, precisamos de uma abordagem. A solucao: quando o e-mail nao existe em profiles, apenas mostrar um toast informando que o usuario precisa se registrar primeiro, e criar o registro somente quando existe. Isso evita alterar o schema.
 
-### get_team_ranking(p_org_id, p_date_from, p_date_to, p_funnel_id)
-Retorna tabela (user_id, full_name, avatar_url, leads_count, converted_count, total_value) agrupado por assigned_to, ordenado por total_value desc, limit 10.
+### 1.2 Pagina /settings/organization (OrganizationPage.tsx)
 
-Todas as funcoes usam SECURITY DEFINER com validacao de que o usuario autenticado pertence a organizacao.
+- Formulario: nome (input), slug (input com validacao de unicidade via `checkSlugAvailable`)
+- Logo: input de URL de imagem (evita complexidade de Storage por ora)
+- Salvar: `update organizations set name, slug, logo_url where id = orgId`
+- Botao "Deletar organizacao":
+  - Somente owner
+  - AlertDialog com input: usuario deve digitar o nome da org para confirmar
+  - Ao confirmar: `delete from organizations where id = orgId`
+  - Redirecionar para /onboarding ou /login
 
-## 2. Services
+### 1.3 Sidebar atualizada
 
-### `src/services/dashboard.ts` (criar)
-- `getDashboardSummary(orgId, funnelId, dateFrom, dateTo)` -- chama rpc get_dashboard_summary
-- `getLeadsByPeriod(orgId, funnelId, dateFrom, dateTo, interval)` -- chama rpc get_leads_by_period
-- `getFunnelMetrics(orgId, funnelId)` -- chama rpc get_funnel_metrics
-- `getLeadsBySource(orgId, funnelId, dateFrom, dateTo)` -- query simples: select source, count(*) from leads group by source (sem RPC, pois e leve)
-- `getTeamRanking(orgId, dateFrom, dateTo, funnelId)` -- chama rpc get_team_ranking
-- `getPendingTasksCount(userId)` -- count de tasks com completed_at null
-- `getOverdueTasksCount(userId)` -- count de tasks atrasadas
+Atualizar `settingsNav` em `AppSidebar.tsx`:
+```text
+Settings >
+  Organizacao (/settings/organization) - icone Building2
+  Equipe (/settings/team) - icone Users
+  Funis (/settings/funnels) - icone GitBranch
+  Campos Personalizados (/settings/custom-fields) - icone ListChecks
+  Webhooks (/settings/webhooks) - icone Webhook
+```
 
-## 3. Hooks
+### 1.4 Rotas em App.tsx
 
-### `src/hooks/useDashboard.ts` (criar)
-- `useDashboardSummary(period, funnelId)` -- useQuery
-- `useLeadsByPeriod(period, funnelId)` -- useQuery, calcula interval automaticamente (day/week/month)
-- `useFunnelMetrics(funnelId)` -- useQuery
-- `useLeadsBySource(period, funnelId)` -- useQuery
-- `useTeamRanking(period, funnelId)` -- useQuery
+Adicionar:
+- `/settings/team` -> PrivateRoute + MainLayout + TeamPage
+- `/settings/organization` -> PrivateRoute + MainLayout + OrganizationPage
 
-O hook recebe um objeto `period` com `{ dateFrom, dateTo, key }` e o converte em parametros para os services.
+## 2. Services e Hooks
 
-### Helper: `useDashboardPeriod()`
-Gerencia o estado do periodo selecionado. Retorna `{ period, setPeriodKey, setCustomRange }` com:
-- Calculo automatico de dateFrom/dateTo baseado na opcao selecionada
-- Calculo do periodo anterior para comparacao de variacao %
+### `src/services/team.ts` (criar)
+- `getOrgMembersWithProfiles(orgId)` -- busca `organization_members` com join em `profiles`
+- `inviteMember(orgId, email, role)` -- busca profile por email, cria membro
+- `updateMemberRole(memberId, role)` -- update em `organization_members`
+- `removeMember(memberId)` -- delete de `organization_members`
+- `findProfileByEmail(email)` -- select de profiles por email
 
-## 4. Componentes
+### `src/services/organizations.ts` (editar)
+- `updateOrganization(orgId, data)` -- update em organizations
+- `deleteOrganization(orgId)` -- delete de organizations
 
-### `src/components/dashboard/DashboardFilters.tsx` (criar)
-- Select de periodo: "Ultimos 7 dias", "Ultimos 30 dias", "Ultimos 90 dias", "Este mes", "Mes passado", "Este ano", "Personalizado"
-- Quando "Personalizado": date range picker inline
-- Select de funil: "Todos os funis" + lista de funis da org
+### `src/hooks/useTeam.ts` (criar)
+- `useOrgMembers(orgId)` -- useQuery
+- `useInviteMember()` -- useMutation + invalidate
+- `useUpdateMemberRole()` -- useMutation + invalidate
+- `useRemoveMember()` -- useMutation + invalidate
 
-### `src/components/dashboard/SummaryCards.tsx` (criar)
-- Grid de 6 cards usando shadcn Card
-- Cada card: icone, titulo, valor principal, variacao % (onde aplicavel)
-- Loading skeleton individual por card
-- Cards: Total Leads, Novos Leads (com variacao %), Valor Pipeline, Taxa Conversao, Tarefas Pendentes, Tarefas Atrasadas
+## 3. Polish - Empty States
 
-### `src/components/dashboard/FunnelChart.tsx` (criar)
-- Barras horizontais decrescentes mostrando leads por etapa
-- Usar recharts BarChart horizontal
-- Cor de cada barra = cor da etapa
-- Label com contagem e %
+Atualizar os seguintes componentes com empty states amigaveis (icone ilustrativo + texto + CTA quando aplicavel):
 
-### `src/components/dashboard/LeadsByPeriodChart.tsx` (criar)
-- AreaChart com gradiente azul
-- Eixo X: datas formatadas
-- Tooltip com data e contagem
-- Skeleton enquanto carrega
+| Componente | Mensagem |
+|------------|----------|
+| LeadsPage (sem funil) | "Configure seu primeiro funil para comecar a gerenciar seus leads." + botao ir para /settings/funnels |
+| KanbanView (sem leads) | Ja tem empty columns, manter |
+| ListView (sem leads) | "Nenhum lead encontrado neste funil." - ja existe, melhorar com icone |
+| TasksPage (vazio) | "Tudo em dia! Nenhuma tarefa pendente." + icone CheckCircle |
+| ActivityTimeline (vazio) | "Nenhuma atividade registrada ainda." |
+| FunnelsPage (vazio) | Ja tem, manter |
+| CustomFieldsPage (vazio) | Ja tem, manter |
+| WebhooksPage (vazio) | Ja tem na tabela |
 
-### `src/components/dashboard/ValueByStageChart.tsx` (criar)
-- BarChart horizontal
-- Cada barra = etapa, valor = soma de lead.value
-- Formato monetario R$ no eixo
-- Cor = cor da etapa
+## 4. Polish - Loading States
 
-### `src/components/dashboard/LeadsBySourceChart.tsx` (criar)
-- PieChart/DonutChart
-- Cada fatia = source
-- Legenda lateral com contagem e %
+Verificar e garantir skeletons em:
+- Dashboard: ja tem via SummaryCards e chart components ✓
+- Kanban: ja tem ✓
+- Lista: ja tem ✓
+- LeadDetailSheet: trocar "Carregando..." por skeleton estruturado
+- TasksPage: ja tem ✓
+- FunnelsPage: ja tem ✓
+- CustomFieldsPage: ja tem ✓
+- WebhooksPage: trocar "Carregando..." por skeleton na tabela
+- TeamPage: adicionar skeleton
+- OrganizationPage: adicionar skeleton
 
-### `src/components/dashboard/TeamRankingTable.tsx` (criar)
-- Tabela com colunas: Avatar, Nome, Leads, Convertidos, Valor Total, Taxa Conversao
-- Ordenado por valor total desc
-- Max 10 linhas
-- Skeleton enquanto carrega
+## 5. Polish - Toasts
 
-## 5. Pagina DashboardPage
+Revisar e adicionar toasts onde faltam:
+- LeadFormDialog: verificar se tem toast de sucesso/erro
+- KanbanView: lead movido (nao precisa toast a cada drag, seria muito)
+- TeamPage: "Membro convidado", "Role atualizada", "Membro removido"
+- OrganizationPage: "Organizacao atualizada", "Organizacao excluida"
+- Filtros salvos: verificar se SaveFilterDialog tem toast
 
-### `src/pages/DashboardPage.tsx` (reescrever)
-Layout:
-- Header com titulo "Dashboard" + DashboardFilters
-- Grid de 6 SummaryCards (3 por linha desktop, 2 mobile)
-- Grid 2x2 de graficos (desktop), 1 coluna (mobile/tablet):
-  - FunnelChart + LeadsByPeriodChart
-  - ValueByStageChart + LeadsBySourceChart
-- TeamRankingTable full-width
+## 6. Polish - Responsividade
 
-Cada secao com seu proprio loading skeleton independente.
+- MainLayout: ja usa SidebarProvider com collapsible ✓
+- Kanban: verificar `overflow-x-auto` e touch scroll - ja tem ✓
+- LeadDetailSheet: usar `w-full sm:max-w-lg` - ja tem ✓
+- Dashboard: grid responsivo - ja tem ✓
+- Tabelas (ListView, TeamPage, WebhooksPage): adicionar `overflow-x-auto` wrapper
+- Cards do dashboard: grid responsivo ja configurado ✓
+
+## 7. Polish - Acessibilidade
+
+- Adicionar `aria-label` em botoes icon-only que nao tem (Pencil, Trash2, Eye, etc.)
+- Inputs com labels associados (verificar formularios)
+- Focus management: Sheet e Dialog ja gerenciam focus via Radix ✓
+- Contraste: verificar badges e cores - usar classes do Tailwind que respeitam tema ✓
+
+## 8. Polish - Branding
+
+### Titulo da aba dinamico
+- Criar hook `useDocumentTitle` ou efeito no `OrganizationContext` que atualiza `document.title`
+- Quando logado com org: `{org.name} - CRM`
+- Quando logado sem org: `CRM`
+- Quando deslogado: `CRM`
+
+### Favicon
+- Atualizar `index.html` com favicon SVG inline simples (icone de funil/pipeline)
+- Atualizar titulo default para "CRM"
 
 ## Arquivos criados/modificados
 
 | Arquivo | Acao |
 |---------|------|
-| supabase/migrations/xxx.sql | Criar (4 RPC functions) |
-| src/services/dashboard.ts | Criar |
-| src/hooks/useDashboard.ts | Criar |
-| src/components/dashboard/DashboardFilters.tsx | Criar |
-| src/components/dashboard/SummaryCards.tsx | Criar |
-| src/components/dashboard/FunnelChart.tsx | Criar |
-| src/components/dashboard/LeadsByPeriodChart.tsx | Criar |
-| src/components/dashboard/ValueByStageChart.tsx | Criar |
-| src/components/dashboard/LeadsBySourceChart.tsx | Criar |
-| src/components/dashboard/TeamRankingTable.tsx | Criar |
-| src/pages/DashboardPage.tsx | Reescrever |
+| src/services/team.ts | Criar |
+| src/hooks/useTeam.ts | Criar |
+| src/pages/TeamPage.tsx | Criar |
+| src/pages/OrganizationPage.tsx | Criar |
+| src/services/organizations.ts | Editar (updateOrg, deleteOrg) |
+| src/components/layout/AppSidebar.tsx | Editar (novos itens settings) |
+| src/App.tsx | Editar (novas rotas) |
+| src/pages/LeadsPage.tsx | Editar (empty state melhorado) |
+| src/pages/TasksPage.tsx | Editar (empty state melhorado) |
+| src/components/leads/LeadDetailSheet.tsx | Editar (skeleton loading) |
+| src/pages/WebhooksPage.tsx | Editar (skeleton loading) |
+| src/contexts/OrganizationContext.tsx | Editar (document.title) |
+| index.html | Editar (favicon, titulo) |
 
 ## Detalhes Tecnicos
 
-### Formato monetario
-Helper `formatCurrency(value)` que formata como R$ com abreviacao:
-- < 1000: R$ 500
-- >= 1000 e < 1M: R$ 1,5K
-- >= 1M: R$ 1,2M
+### Convite de membros
+Como `user_id` em `organization_members` e NOT NULL, a abordagem sera:
+1. Buscar profile por email
+2. Se encontrado: criar membro normalmente com `user_id = profile.id`
+3. Se nao encontrado: mostrar toast informando "Usuario nao encontrado. Ele precisa se registrar primeiro." e nao criar o registro
+4. Isso simplifica e evita alteracoes de schema
 
-### Calculo de periodo anterior
-Para variacao % dos "Novos Leads":
-- Se periodo = ultimos 7 dias, periodo anterior = 7 dias antes disso
-- Mesma logica para 30, 90 dias
-- "Este mes": mes anterior
-- "Este ano": ano anterior
+Alternativa mais completa (se quisermos convites pendentes reais): seria necessario tornar `user_id` nullable ou criar tabela separada `pending_invites`. Mas isso adiciona complexidade de schema. A abordagem simples acima e adequada para o sprint final.
 
-### Intervalo do grafico de leads por periodo
-- Periodo < 30 dias: agrupar por dia
-- Periodo < 90 dias: agrupar por semana
-- Periodo >= 90 dias: agrupar por mes
-
-### RPC get_dashboard_summary
-```sql
-CREATE OR REPLACE FUNCTION public.get_dashboard_summary(
-  p_org_id uuid, p_funnel_id uuid, p_date_from timestamptz, p_date_to timestamptz
-) RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
-DECLARE
-  v_result jsonb;
-  v_period_length interval;
-  v_prev_from timestamptz;
-  v_prev_to timestamptz;
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM organization_members WHERE organization_id = p_org_id AND user_id = auth.uid()) THEN
-    RAISE EXCEPTION 'Access denied';
-  END IF;
-
-  v_period_length := p_date_to - p_date_from;
-  v_prev_from := p_date_from - v_period_length;
-  v_prev_to := p_date_from;
-
-  SELECT jsonb_build_object(
-    'total_leads', (SELECT count(*) FROM leads WHERE organization_id = p_org_id AND (p_funnel_id IS NULL OR funnel_id = p_funnel_id)),
-    'new_leads', (SELECT count(*) FROM leads WHERE organization_id = p_org_id AND (p_funnel_id IS NULL OR funnel_id = p_funnel_id) AND created_at >= p_date_from AND created_at <= p_date_to),
-    'new_leads_previous', (SELECT count(*) FROM leads WHERE organization_id = p_org_id AND (p_funnel_id IS NULL OR funnel_id = p_funnel_id) AND created_at >= v_prev_from AND created_at <= v_prev_to),
-    'pipeline_value', COALESCE((SELECT sum(value) FROM leads WHERE organization_id = p_org_id AND (p_funnel_id IS NULL OR funnel_id = p_funnel_id)), 0),
-    'conversion_count', (
-      SELECT count(*) FROM leads l
-      JOIN stages s ON l.stage_id = s.id
-      WHERE l.organization_id = p_org_id
-        AND (p_funnel_id IS NULL OR l.funnel_id = p_funnel_id)
-        AND l.created_at >= p_date_from AND l.created_at <= p_date_to
-        AND s.position = (SELECT max(s2.position) FROM stages s2 WHERE s2.funnel_id = l.funnel_id)
-    )
-  ) INTO v_result;
-  RETURN v_result;
-END;
-$$;
-```
-
-### RPC get_leads_by_period
-```sql
-CREATE OR REPLACE FUNCTION public.get_leads_by_period(
-  p_org_id uuid, p_funnel_id uuid, p_date_from timestamptz, p_date_to timestamptz, p_interval text
-) RETURNS TABLE(period_start timestamptz, lead_count bigint) LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM organization_members WHERE organization_id = p_org_id AND user_id = auth.uid()) THEN
-    RAISE EXCEPTION 'Access denied';
-  END IF;
-  RETURN QUERY
-    SELECT date_trunc(p_interval, l.created_at) as period_start, count(*) as lead_count
-    FROM leads l
-    WHERE l.organization_id = p_org_id
-      AND (p_funnel_id IS NULL OR l.funnel_id = p_funnel_id)
-      AND l.created_at >= p_date_from AND l.created_at <= p_date_to
-    GROUP BY 1 ORDER BY 1;
-END;
-$$;
-```
-
-### RPC get_funnel_metrics
-```sql
-CREATE OR REPLACE FUNCTION public.get_funnel_metrics(p_org_id uuid, p_funnel_id uuid)
-RETURNS TABLE(stage_id uuid, stage_name text, stage_color text, stage_position int, lead_count bigint, total_value numeric)
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM organization_members WHERE organization_id = p_org_id AND user_id = auth.uid()) THEN
-    RAISE EXCEPTION 'Access denied';
-  END IF;
-  RETURN QUERY
-    SELECT s.id, s.name, s.color, s.position, count(l.id), COALESCE(sum(l.value), 0)
-    FROM stages s
-    LEFT JOIN leads l ON l.stage_id = s.id AND l.organization_id = p_org_id
-    WHERE s.funnel_id = p_funnel_id AND s.organization_id = p_org_id
-    GROUP BY s.id, s.name, s.color, s.position
-    ORDER BY s.position;
-END;
-$$;
-```
-
-### RPC get_team_ranking
-```sql
-CREATE OR REPLACE FUNCTION public.get_team_ranking(
-  p_org_id uuid, p_date_from timestamptz, p_date_to timestamptz, p_funnel_id uuid
-) RETURNS TABLE(user_id uuid, full_name text, avatar_url text, leads_count bigint, converted_count bigint, total_value numeric)
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM organization_members WHERE organization_id = p_org_id AND user_id = auth.uid()) THEN
-    RAISE EXCEPTION 'Access denied';
-  END IF;
-  RETURN QUERY
-    SELECT l.assigned_to, p.full_name, p.avatar_url,
-      count(*),
-      count(*) FILTER (WHERE s.position = (SELECT max(s2.position) FROM stages s2 WHERE s2.funnel_id = l.funnel_id)),
-      COALESCE(sum(l.value), 0)
-    FROM leads l
-    JOIN profiles p ON p.id = l.assigned_to
-    JOIN stages s ON s.id = l.stage_id
-    WHERE l.organization_id = p_org_id
-      AND (p_funnel_id IS NULL OR l.funnel_id = p_funnel_id)
-      AND l.created_at >= p_date_from AND l.created_at <= p_date_to
-    GROUP BY l.assigned_to, p.full_name, p.avatar_url
-    ORDER BY sum(l.value) DESC
-    LIMIT 10;
-END;
-$$;
-```
-
-### Leads por fonte (sem RPC)
-Query simples via supabase client:
+### Documento title
+No `OrganizationContext`, adicionar um `useEffect` que atualiza `document.title`:
 ```text
-supabase.from('leads')
-  .select('source')
-  .eq('organization_id', orgId)
-  .gte('created_at', dateFrom)
-  .lte('created_at', dateTo)
+useEffect(() => {
+  document.title = organization ? `${organization.name} — CRM` : 'CRM';
+}, [organization]);
 ```
-Agrupar client-side por source e contar.
 
-### Recharts
-Usar componentes do recharts ja instalado:
-- AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
-- BarChart, Bar
-- PieChart, Pie, Cell, Legend
+### Favicon SVG
+Usar um SVG simples em `public/favicon.svg` com icone de pipeline/funil e referenciar em `index.html`:
+```text
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+```
 
-### Cores dos graficos
-- Pie chart: paleta de cores pre-definida para sources
-- Barras: usar cor da etapa (stage.color)
-- Area: gradiente azul (#3B82F6 -> transparent)
+### RLS para team operations
+As operacoes de equipe ja estao cobertas pelas RLS existentes:
+- SELECT em `organization_members`: membros da org podem ver ✓
+- UPDATE em `organization_members`: owner/admin podem atualizar ✓
+- DELETE em `organization_members`: owner/admin podem deletar ✓
+- INSERT em `organization_members`: owner/admin podem inserir ✓
+- SELECT em `profiles`: membros da org podem ver profiles de colegas ✓
+
+Nao sao necessarias novas migrations.
+
+### Skeleton no LeadDetailSheet
+Substituir o "Carregando..." por:
+- Skeleton no header (nome, badges)
+- Skeleton nas tabs (linhas de info)
+- Manter mesma estrutura visual
+
+### Acessibilidade - aria-labels
+Adicionar em:
+- LeadDetailSheet: botoes Pencil ("Editar lead"), Trash2 ("Excluir lead")
+- WebhooksPage: botao Eye ("Ver detalhes")
+- ListView: botoes de paginacao
+- Header: avatar menu ("Menu do usuario")
 
