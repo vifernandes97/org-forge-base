@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOrganization } from '@/contexts/OrganizationContext';
+import type { LeadFilters } from '@/types';
 import {
   getLeads, getLead, createLead, updateLead, deleteLead,
   upsertCustomFieldValues, getLeadsByFunnel, getLeadsListPaginated,
@@ -24,10 +25,10 @@ export function useLead(id: string | undefined) {
   });
 }
 
-export function useLeadsByFunnel(funnelId: string | undefined) {
+export function useLeadsByFunnel(funnelId: string | undefined, filters?: LeadFilters) {
   return useQuery({
-    queryKey: ['leads-kanban', funnelId],
-    queryFn: () => getLeadsByFunnel(funnelId!),
+    queryKey: ['leads-kanban', funnelId, filters],
+    queryFn: () => getLeadsByFunnel(funnelId!, filters),
     enabled: !!funnelId,
   });
 }
@@ -37,11 +38,12 @@ export function useLeadsList(
   page: number,
   pageSize: number,
   sortBy: string,
-  sortOrder: 'asc' | 'desc'
+  sortOrder: 'asc' | 'desc',
+  filters?: LeadFilters
 ) {
   return useQuery({
-    queryKey: ['leads-list', funnelId, page, pageSize, sortBy, sortOrder],
-    queryFn: () => getLeadsListPaginated(funnelId!, page, pageSize, sortBy, sortOrder),
+    queryKey: ['leads-list', funnelId, page, pageSize, sortBy, sortOrder, filters],
+    queryFn: () => getLeadsListPaginated(funnelId!, page, pageSize, sortBy, sortOrder, filters),
     enabled: !!funnelId,
   });
 }
@@ -104,9 +106,10 @@ export function useMoveLeadToStage(funnelId: string | undefined) {
     mutationFn: ({ leadId, stageId }: { leadId: string; stageId: string }) =>
       moveLeadToStage(leadId, stageId),
     onMutate: async ({ leadId, stageId }) => {
-      await qc.cancelQueries({ queryKey: ['leads-kanban', funnelId] });
-      const prev = qc.getQueryData(['leads-kanban', funnelId]);
-      qc.setQueryData(['leads-kanban', funnelId], (old: any[] | undefined) => {
+      await qc.cancelQueries({ queryKey: ['leads-kanban'] });
+      const queries = qc.getQueriesData({ queryKey: ['leads-kanban', funnelId] });
+      const prev = queries[0]?.[1];
+      qc.setQueriesData({ queryKey: ['leads-kanban', funnelId] }, (old: any[] | undefined) => {
         if (!old) return old;
         return old.map((l: any) =>
           l.id === leadId ? { ...l, stage_id: stageId, stage_entered_at: new Date().toISOString() } : l
@@ -115,10 +118,12 @@ export function useMoveLeadToStage(funnelId: string | undefined) {
       return { prev };
     },
     onError: (_, __, ctx) => {
-      if (ctx?.prev) qc.setQueryData(['leads-kanban', funnelId], ctx.prev);
+      if (ctx?.prev) {
+        qc.setQueriesData({ queryKey: ['leads-kanban', funnelId] }, ctx.prev);
+      }
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: ['leads-kanban', funnelId] });
+      qc.invalidateQueries({ queryKey: ['leads-kanban'] });
       qc.invalidateQueries({ queryKey: ['leads-list'] });
     },
   });

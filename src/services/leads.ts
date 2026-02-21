@@ -1,5 +1,57 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { Lead } from '@/types';
+import type { Lead, LeadFilters } from '@/types';
+
+function applyFilters(query: any, filters?: LeadFilters) {
+  if (!filters) return query;
+  if (filters.search) {
+    const s = `%${filters.search}%`;
+    query = query.or(`name.ilike.${s},email.ilike.${s},company.ilike.${s},phone.ilike.${s}`);
+  }
+  if (filters.stage_ids?.length) {
+    query = query.in('stage_id', filters.stage_ids);
+  }
+  if (filters.assigned_to?.length) {
+    const hasNone = filters.assigned_to.includes('__none__');
+    const ids = filters.assigned_to.filter(id => id !== '__none__');
+    if (hasNone && ids.length) {
+      query = query.or(`assigned_to.is.null,assigned_to.in.(${ids.join(',')})`);
+    } else if (hasNone) {
+      query = query.is('assigned_to', null);
+    } else {
+      query = query.in('assigned_to', ids);
+    }
+  }
+  if (filters.priorities?.length) {
+    query = query.in('priority', filters.priorities);
+  }
+  if (filters.sources?.length) {
+    query = query.in('source', filters.sources);
+  }
+  if (filters.tags?.length) {
+    for (const tag of filters.tags) {
+      query = query.contains('tags', [tag]);
+    }
+  }
+  if (filters.value_min !== undefined) {
+    query = query.gte('value', filters.value_min);
+  }
+  if (filters.value_max !== undefined) {
+    query = query.lte('value', filters.value_max);
+  }
+  if (filters.created_at_from) {
+    query = query.gte('created_at', filters.created_at_from);
+  }
+  if (filters.created_at_to) {
+    query = query.lte('created_at', filters.created_at_to);
+  }
+  if (filters.last_activity_from) {
+    query = query.gte('last_activity_at', filters.last_activity_from);
+  }
+  if (filters.last_activity_to) {
+    query = query.lte('last_activity_at', filters.last_activity_to);
+  }
+  return query;
+}
 
 export async function getLeads(orgId: string): Promise<Lead[]> {
   const { data, error } = await supabase
@@ -79,12 +131,14 @@ export async function getOrgMembers(orgId: string) {
   return data as any[];
 }
 
-export async function getLeadsByFunnel(funnelId: string) {
-  const { data, error } = await supabase
+export async function getLeadsByFunnel(funnelId: string, filters?: LeadFilters) {
+  let query = supabase
     .from('leads')
     .select('*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*)')
-    .eq('funnel_id', funnelId)
-    .order('last_activity_at', { ascending: false });
+    .eq('funnel_id', funnelId);
+  query = applyFilters(query, filters);
+  query = query.order('last_activity_at', { ascending: false });
+  const { data, error } = await query;
   if (error) throw error;
   return data as any[];
 }
@@ -94,16 +148,18 @@ export async function getLeadsListPaginated(
   page: number,
   pageSize: number,
   sortBy: string,
-  sortOrder: 'asc' | 'desc'
+  sortOrder: 'asc' | 'desc',
+  filters?: LeadFilters
 ) {
   const from = page * pageSize;
   const to = from + pageSize - 1;
-  const { data, error, count } = await supabase
+  let query = supabase
     .from('leads')
     .select('*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*)', { count: 'exact' })
-    .eq('funnel_id', funnelId)
-    .order(sortBy as any, { ascending: sortOrder === 'asc' })
-    .range(from, to);
+    .eq('funnel_id', funnelId);
+  query = applyFilters(query, filters);
+  query = query.order(sortBy as any, { ascending: sortOrder === 'asc' }).range(from, to);
+  const { data, error, count } = await query;
   if (error) throw error;
   return { data: data as any[], count: count || 0 };
 }

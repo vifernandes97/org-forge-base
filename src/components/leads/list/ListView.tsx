@@ -14,12 +14,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import type { LeadFilters } from '@/types';
 
 interface ListViewProps {
   funnelId: string;
+  filters?: LeadFilters;
 }
 
-export function ListView({ funnelId }: ListViewProps) {
+export function ListView({ funnelId, filters }: ListViewProps) {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(25);
   const [sortBy, setSortBy] = useState('last_activity_at');
@@ -28,7 +30,7 @@ export function ListView({ funnelId }: ListViewProps) {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
 
   const { data: stages } = useStages(funnelId);
-  const { data: result, isLoading } = useLeadsList(funnelId, page, pageSize, sortBy, sortOrder);
+  const { data: result, isLoading } = useLeadsList(funnelId, page, pageSize, sortBy, sortOrder, filters);
 
   const leads = result?.data || [];
   const totalCount = result?.count || 0;
