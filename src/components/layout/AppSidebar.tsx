@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, BarChart3, Settings, GitBranch, ListChecks } from 'lucide-react';
+import { LayoutDashboard, Users, BarChart3, Settings, GitBranch, ListChecks, Contact } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import {
   Sidebar,
@@ -14,7 +14,7 @@ import { useOrganization } from '@/contexts/OrganizationContext';
 
 const mainNav = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
-  { title: 'Contatos', url: '/contacts', icon: Users },
+  { title: 'Leads', url: '/leads', icon: Contact },
   { title: 'Relatórios', url: '/reports', icon: BarChart3 },
 ];
 
