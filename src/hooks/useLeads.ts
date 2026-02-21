@@ -1,6 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOrganization } from '@/contexts/OrganizationContext';
-import { getLeads, getLead, createLead, updateLead, deleteLead, upsertCustomFieldValues } from '@/services/leads';
+import {
+  getLeads, getLead, createLead, updateLead, deleteLead,
+  upsertCustomFieldValues, getLeadsByFunnel, getLeadsListPaginated,
+  moveLeadToStage, bulkMoveLeads, bulkAssignLeads, bulkDeleteLeads,
+} from '@/services/leads';
 
 export function useLeads() {
   const { organization } = useOrganization();
@@ -20,6 +24,28 @@ export function useLead(id: string | undefined) {
   });
 }
 
+export function useLeadsByFunnel(funnelId: string | undefined) {
+  return useQuery({
+    queryKey: ['leads-kanban', funnelId],
+    queryFn: () => getLeadsByFunnel(funnelId!),
+    enabled: !!funnelId,
+  });
+}
+
+export function useLeadsList(
+  funnelId: string | undefined,
+  page: number,
+  pageSize: number,
+  sortBy: string,
+  sortOrder: 'asc' | 'desc'
+) {
+  return useQuery({
+    queryKey: ['leads-list', funnelId, page, pageSize, sortBy, sortOrder],
+    queryFn: () => getLeadsListPaginated(funnelId!, page, pageSize, sortBy, sortOrder),
+    enabled: !!funnelId,
+  });
+}
+
 export function useCreateLead() {
   const qc = useQueryClient();
   const { organization } = useOrganization();
@@ -33,6 +59,8 @@ export function useCreateLead() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['leads', organization?.id] });
+      qc.invalidateQueries({ queryKey: ['leads-kanban'] });
+      qc.invalidateQueries({ queryKey: ['leads-list'] });
     },
   });
 }
@@ -51,6 +79,8 @@ export function useUpdateLead() {
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['leads', organization?.id] });
       qc.invalidateQueries({ queryKey: ['lead', vars.id] });
+      qc.invalidateQueries({ queryKey: ['leads-kanban'] });
+      qc.invalidateQueries({ queryKey: ['leads-list'] });
     },
   });
 }
@@ -62,6 +92,69 @@ export function useDeleteLead() {
     mutationFn: deleteLead,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['leads', organization?.id] });
+      qc.invalidateQueries({ queryKey: ['leads-kanban'] });
+      qc.invalidateQueries({ queryKey: ['leads-list'] });
+    },
+  });
+}
+
+export function useMoveLeadToStage(funnelId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ leadId, stageId }: { leadId: string; stageId: string }) =>
+      moveLeadToStage(leadId, stageId),
+    onMutate: async ({ leadId, stageId }) => {
+      await qc.cancelQueries({ queryKey: ['leads-kanban', funnelId] });
+      const prev = qc.getQueryData(['leads-kanban', funnelId]);
+      qc.setQueryData(['leads-kanban', funnelId], (old: any[] | undefined) => {
+        if (!old) return old;
+        return old.map((l: any) =>
+          l.id === leadId ? { ...l, stage_id: stageId, stage_entered_at: new Date().toISOString() } : l
+        );
+      });
+      return { prev };
+    },
+    onError: (_, __, ctx) => {
+      if (ctx?.prev) qc.setQueryData(['leads-kanban', funnelId], ctx.prev);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['leads-kanban', funnelId] });
+      qc.invalidateQueries({ queryKey: ['leads-list'] });
+    },
+  });
+}
+
+export function useBulkMoveLeads() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ leadIds, stageId }: { leadIds: string[]; stageId: string }) =>
+      bulkMoveLeads(leadIds, stageId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['leads-kanban'] });
+      qc.invalidateQueries({ queryKey: ['leads-list'] });
+    },
+  });
+}
+
+export function useBulkAssignLeads() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ leadIds, assignedTo }: { leadIds: string[]; assignedTo: string | null }) =>
+      bulkAssignLeads(leadIds, assignedTo),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['leads-kanban'] });
+      qc.invalidateQueries({ queryKey: ['leads-list'] });
+    },
+  });
+}
+
+export function useBulkDeleteLeads() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (leadIds: string[]) => bulkDeleteLeads(leadIds),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['leads-kanban'] });
+      qc.invalidateQueries({ queryKey: ['leads-list'] });
     },
   });
 }

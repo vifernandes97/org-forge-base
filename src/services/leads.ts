@@ -78,3 +78,67 @@ export async function getOrgMembers(orgId: string) {
   if (error) throw error;
   return data as any[];
 }
+
+export async function getLeadsByFunnel(funnelId: string) {
+  const { data, error } = await supabase
+    .from('leads')
+    .select('*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*)')
+    .eq('funnel_id', funnelId)
+    .order('last_activity_at', { ascending: false });
+  if (error) throw error;
+  return data as any[];
+}
+
+export async function getLeadsListPaginated(
+  funnelId: string,
+  page: number,
+  pageSize: number,
+  sortBy: string,
+  sortOrder: 'asc' | 'desc'
+) {
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
+  const { data, error, count } = await supabase
+    .from('leads')
+    .select('*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*)', { count: 'exact' })
+    .eq('funnel_id', funnelId)
+    .order(sortBy as any, { ascending: sortOrder === 'asc' })
+    .range(from, to);
+  if (error) throw error;
+  return { data: data as any[], count: count || 0 };
+}
+
+export async function moveLeadToStage(leadId: string, stageId: string) {
+  const { data, error } = await supabase
+    .from('leads')
+    .update({ stage_id: stageId })
+    .eq('id', leadId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Lead;
+}
+
+export async function bulkMoveLeads(leadIds: string[], stageId: string) {
+  const { error } = await supabase
+    .from('leads')
+    .update({ stage_id: stageId })
+    .in('id', leadIds);
+  if (error) throw error;
+}
+
+export async function bulkAssignLeads(leadIds: string[], assignedTo: string | null) {
+  const { error } = await supabase
+    .from('leads')
+    .update({ assigned_to: assignedTo })
+    .in('id', leadIds);
+  if (error) throw error;
+}
+
+export async function bulkDeleteLeads(leadIds: string[]) {
+  const { error } = await supabase
+    .from('leads')
+    .delete()
+    .in('id', leadIds);
+  if (error) throw error;
+}
