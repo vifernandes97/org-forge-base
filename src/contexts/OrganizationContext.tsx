@@ -65,6 +65,12 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { fetchOrgs(); }, [fetchOrgs]);
 
+  // Dynamic document title
+  useEffect(() => {
+    const org = organizations.find(o => o.id === activeOrgId);
+    document.title = org ? `${org.name} — CRM` : 'CRM';
+  }, [organizations, activeOrgId]);
+
   const setActiveOrg = (orgId: string) => {
     setActiveOrgId(orgId);
     localStorage.setItem(ACTIVE_ORG_KEY, orgId);

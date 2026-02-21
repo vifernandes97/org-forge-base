@@ -28,3 +28,19 @@ export async function checkSlugAvailable(slug: string): Promise<boolean> {
   if (error) throw error;
   return !data;
 }
+
+export async function updateOrganization(orgId: string, updates: { name?: string; slug?: string; logo_url?: string | null }) {
+  const { error } = await supabase
+    .from('organizations')
+    .update(updates)
+    .eq('id', orgId);
+  if (error) throw error;
+}
+
+export async function deleteOrganization(orgId: string) {
+  const { error } = await supabase
+    .from('organizations')
+    .delete()
+    .eq('id', orgId);
+  if (error) throw error;
+}

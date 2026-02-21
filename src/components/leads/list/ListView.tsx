@@ -196,11 +196,11 @@ export function ListView({ funnelId, filters }: ListViewProps) {
           </Select>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="outline" size="icon" className="h-7 w-7" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
+          <Button variant="outline" size="icon" className="h-7 w-7" disabled={page === 0} onClick={() => setPage(p => p - 1)} aria-label="Página anterior">
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="text-sm px-2">{page + 1} / {Math.max(1, totalPages)}</span>
-          <Button variant="outline" size="icon" className="h-7 w-7" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
+          <Button variant="outline" size="icon" className="h-7 w-7" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)} aria-label="Próxima página">
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>

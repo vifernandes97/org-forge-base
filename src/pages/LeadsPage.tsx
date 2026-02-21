@@ -9,7 +9,7 @@ import { LeadFilterBar } from '@/components/leads/filters/LeadFilterBar';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Toggle } from '@/components/ui/toggle';
-import { Plus, LayoutGrid, List } from 'lucide-react';
+import { Plus, LayoutGrid, List, Contact } from 'lucide-react';
 
 type ViewMode = 'kanban' | 'list';
 
@@ -121,10 +121,19 @@ export default function LeadsPage() {
           <ListView funnelId={selectedFunnelId} filters={filters} />
         )
       ) : (
-        <div className="flex items-center justify-center rounded-lg border border-dashed p-12 text-center">
-          <p className="text-muted-foreground">
-            {funnelsLoading ? 'Carregando funis...' : 'Crie um funil para começar a gerenciar seus leads.'}
-          </p>
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center gap-4">
+          <Contact className="h-12 w-12 text-muted-foreground/50" />
+          <div className="space-y-1">
+            <p className="font-medium">Nenhum funil configurado</p>
+            <p className="text-sm text-muted-foreground">
+              {funnelsLoading ? 'Carregando funis...' : 'Configure seu primeiro funil para começar a gerenciar seus leads.'}
+            </p>
+          </div>
+          {!funnelsLoading && (
+            <Button variant="outline" onClick={() => window.location.href = '/settings/funnels'}>
+              Configurar funil
+            </Button>
+          )}
         </div>
       )}
 

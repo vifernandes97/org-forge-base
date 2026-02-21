@@ -16,6 +16,7 @@ import { useLead, useDeleteLead } from '@/hooks/useLeads';
 import { useCustomFields } from '@/hooks/useCustomFields';
 import { LeadFormDialog } from './LeadFormDialog';
 import { Pencil, Trash2, Clock, AlertTriangle, Building2, Mail, Phone, Tag, User, DollarSign, FileText } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { differenceInHours, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -58,7 +59,21 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
       <Sheet open={!!leadId} onOpenChange={open => { if (!open) onClose(); }}>
         <SheetContent className="w-full sm:max-w-lg p-0 flex flex-col">
           {isLoading || !typedLead ? (
-            <div className="flex items-center justify-center h-full text-muted-foreground">Carregando...</div>
+            <div className="px-6 pt-6 pb-4 space-y-4">
+              <div className="flex items-start justify-between">
+                <Skeleton className="h-7 w-48" />
+                <div className="flex gap-1.5"><Skeleton className="h-8 w-8" /><Skeleton className="h-8 w-8" /></div>
+              </div>
+              <div className="flex gap-2"><Skeleton className="h-5 w-16" /><Skeleton className="h-5 w-20" /></div>
+              <Separator />
+              <div className="space-y-3">
+                {[1,2,3,4].map(i => <Skeleton key={i} className="h-5 w-3/4" />)}
+              </div>
+              <Separator />
+              <div className="space-y-3">
+                {[1,2,3].map(i => <Skeleton key={i} className="h-5 w-2/3" />)}
+              </div>
+            </div>
           ) : (
             <>
               {/* Header */}
@@ -66,12 +81,12 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                 <div className="flex items-start justify-between gap-2">
                   <SheetTitle className="text-xl leading-tight">{typedLead.name}</SheetTitle>
                   <div className="flex gap-1.5 shrink-0">
-                    <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)}>
+                    <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)} aria-label="Editar lead">
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" aria-label="Excluir lead">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </AlertDialogTrigger>
