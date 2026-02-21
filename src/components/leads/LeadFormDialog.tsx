@@ -293,10 +293,10 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
                   control={form.control}
                   name="assigned_to"
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select value={field.value || "none"} onValueChange={v => field.onChange(v === "none" ? "" : v)}>
                       <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Nenhum</SelectItem>
+                        <SelectItem value="none">Nenhum</SelectItem>
                         {members?.map(m => (
                           <SelectItem key={m.user_id} value={m.user_id}>
                             <span className="flex items-center gap-2">
