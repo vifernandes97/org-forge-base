@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, BarChart3, Settings, GitBranch, ListChecks, Contact } from 'lucide-react';
+import { LayoutDashboard, Users, BarChart3, Settings, GitBranch, ListChecks, Contact, CheckSquare } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import {
   Sidebar,
@@ -11,10 +11,13 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { useOrganization } from '@/contexts/OrganizationContext';
+import { useTaskBadgeCounts } from '@/hooks/useTasks';
+import { Badge } from '@/components/ui/badge';
 
 const mainNav = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Leads', url: '/leads', icon: Contact },
+  { title: 'Tarefas', url: '/tasks', icon: CheckSquare },
   { title: 'Relatórios', url: '/reports', icon: BarChart3 },
 ];
 
@@ -25,6 +28,8 @@ const settingsNav = [
 
 export function AppSidebar() {
   const { organization } = useOrganization();
+  const { data: badgeCounts } = useTaskBadgeCounts();
+  const totalBadge = (badgeCounts?.overdue || 0) + (badgeCounts?.today || 0);
 
   return (
     <Sidebar collapsible="icon" className="border-r">
@@ -48,6 +53,11 @@ export function AppSidebar() {
                     <NavLink to={item.url} end activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium">
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
+                      {item.url === '/tasks' && totalBadge > 0 && (
+                        <Badge variant={badgeCounts?.overdue ? 'destructive' : 'secondary'} className="ml-auto h-5 min-w-[20px] px-1.5 text-[10px]">
+                          {totalBadge}
+                        </Badge>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
