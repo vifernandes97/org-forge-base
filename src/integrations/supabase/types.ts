@@ -669,6 +669,55 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      get_dashboard_summary: {
+        Args: {
+          p_date_from: string
+          p_date_to: string
+          p_funnel_id: string
+          p_org_id: string
+        }
+        Returns: Json
+      }
+      get_funnel_metrics: {
+        Args: { p_funnel_id: string; p_org_id: string }
+        Returns: {
+          lead_count: number
+          stage_color: string
+          stage_id: string
+          stage_name: string
+          stage_position: number
+          total_value: number
+        }[]
+      }
+      get_leads_by_period: {
+        Args: {
+          p_date_from: string
+          p_date_to: string
+          p_funnel_id: string
+          p_interval: string
+          p_org_id: string
+        }
+        Returns: {
+          lead_count: number
+          period_start: string
+        }[]
+      }
+      get_team_ranking: {
+        Args: {
+          p_date_from: string
+          p_date_to: string
+          p_funnel_id: string
+          p_org_id: string
+        }
+        Returns: {
+          avatar_url: string
+          converted_count: number
+          full_name: string
+          leads_count: number
+          total_value: number
+          user_id: string
+        }[]
+      }
       get_user_org_ids: { Args: never; Returns: string[] }
       get_user_org_role: { Args: { org_id: string }; Returns: string }
       reorder_custom_fields: { Args: { p_fields: Json }; Returns: undefined }
