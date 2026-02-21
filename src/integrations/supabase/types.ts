@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      funnels: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_default: boolean
+          name: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_default?: boolean
+          name: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_default?: boolean
+          name?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funnels_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_members: {
         Row: {
           accepted_at: string | null
@@ -116,11 +154,83 @@ export type Database = {
         }
         Relationships: []
       }
+      stages: {
+        Row: {
+          color: string
+          created_at: string
+          funnel_id: string
+          id: string
+          name: string
+          organization_id: string
+          position: number
+          sla_hours: number | null
+          updated_at: string
+          webhook_url: string | null
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          funnel_id: string
+          id?: string
+          name: string
+          organization_id: string
+          position: number
+          sla_hours?: number | null
+          updated_at?: string
+          webhook_url?: string | null
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          funnel_id?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          position?: number
+          sla_hours?: number | null
+          updated_at?: string
+          webhook_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stages_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "funnels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stages_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      create_funnel_with_default_stages: {
+        Args: { p_description?: string; p_name: string; p_org_id: string }
+        Returns: {
+          created_at: string
+          description: string | null
+          id: string
+          is_default: boolean
+          name: string
+          organization_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "funnels"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_organization_with_owner: {
         Args: { p_name: string; p_slug: string }
         Returns: {
@@ -140,6 +250,7 @@ export type Database = {
       }
       get_user_org_ids: { Args: never; Returns: string[] }
       get_user_org_role: { Args: { org_id: string }; Returns: string }
+      reorder_stages: { Args: { p_stages: Json }; Returns: undefined }
     }
     Enums: {
       org_role: "owner" | "admin" | "member" | "viewer"
