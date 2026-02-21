@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, BarChart3, Settings, GitBranch, ListChecks, Contact, CheckSquare, Webhook, Building2 } from 'lucide-react';
+import { LayoutDashboard, Users, BarChart3, Settings, GitBranch, ListChecks, Contact, CheckSquare, Webhook, Building2, ArrowUpFromLine, ArrowDownToLine } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import {
   Sidebar,
@@ -25,7 +25,8 @@ const settingsNav = [
   { title: 'Equipe', url: '/settings/team', icon: Users },
   { title: 'Funis', url: '/settings/funnels', icon: GitBranch },
   { title: 'Campos Personalizados', url: '/settings/custom-fields', icon: ListChecks },
-  { title: 'Webhooks', url: '/settings/webhooks', icon: Webhook },
+  { title: 'Webhooks de Saída', url: '/settings/webhooks', icon: ArrowUpFromLine },
+  { title: 'Webhooks de Entrada', url: '/settings/inbound-webhooks', icon: ArrowDownToLine },
 ];
 
 export function AppSidebar() {

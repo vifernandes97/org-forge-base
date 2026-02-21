@@ -144,6 +144,143 @@ export type Database = {
           },
         ]
       }
+      inbound_webhook_logs: {
+        Row: {
+          action: string
+          changes_applied: Json | null
+          created_at: string
+          error_message: string | null
+          id: string
+          inbound_webhook_id: string
+          ip_address: string | null
+          lead_id: string | null
+          mapped_data: Json | null
+          organization_id: string
+          raw_payload: Json
+        }
+        Insert: {
+          action: string
+          changes_applied?: Json | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          inbound_webhook_id: string
+          ip_address?: string | null
+          lead_id?: string | null
+          mapped_data?: Json | null
+          organization_id: string
+          raw_payload: Json
+        }
+        Update: {
+          action?: string
+          changes_applied?: Json | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          inbound_webhook_id?: string
+          ip_address?: string | null
+          lead_id?: string | null
+          mapped_data?: Json | null
+          organization_id?: string
+          raw_payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_webhook_logs_inbound_webhook_id_fkey"
+            columns: ["inbound_webhook_id"]
+            isOneToOne: false
+            referencedRelation: "inbound_webhooks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_webhook_logs_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_webhook_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inbound_webhooks: {
+        Row: {
+          api_key: string
+          created_at: string
+          default_assigned_to: string | null
+          default_source: string
+          default_tags: string[]
+          duplicate_strategy: string
+          field_mapping: Json
+          funnel_id: string | null
+          id: string
+          is_active: boolean
+          name: string
+          organization_id: string
+          target_stage: string
+          updated_at: string
+        }
+        Insert: {
+          api_key: string
+          created_at?: string
+          default_assigned_to?: string | null
+          default_source?: string
+          default_tags?: string[]
+          duplicate_strategy?: string
+          field_mapping?: Json
+          funnel_id?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          organization_id: string
+          target_stage?: string
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string
+          created_at?: string
+          default_assigned_to?: string | null
+          default_source?: string
+          default_tags?: string[]
+          duplicate_strategy?: string
+          field_mapping?: Json
+          funnel_id?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          organization_id?: string
+          target_stage?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_webhooks_default_assigned_to_fkey"
+            columns: ["default_assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_webhooks_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "funnels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_webhooks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_activities: {
         Row: {
           activity_type: string
