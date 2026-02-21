@@ -11,29 +11,12 @@ export async function getUserOrganizations(): Promise<(OrganizationMember & { or
 }
 
 export async function createOrganization(name: string, slug: string) {
-  // 1. Create org
-  const { data: org, error: orgError } = await supabase
-    .from('organizations')
-    .insert({ name, slug })
-    .select()
-    .single();
-  if (orgError) throw orgError;
-
-  // 2. Add current user as owner
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const { error: memberError } = await supabase
-    .from('organization_members')
-    .insert({
-      organization_id: org.id,
-      user_id: user.id,
-      role: 'owner' as any,
-      accepted_at: new Date().toISOString(),
-    });
-  if (memberError) throw memberError;
-
-  return org;
+  const { data, error } = await supabase.rpc('create_organization_with_owner', {
+    p_name: name,
+    p_slug: slug,
+  });
+  if (error) throw error;
+  return data;
 }
 
 export async function checkSlugAvailable(slug: string): Promise<boolean> {
