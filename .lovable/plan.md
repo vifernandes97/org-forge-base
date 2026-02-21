@@ -1,296 +1,155 @@
 
 
-# Modulo de Leads
+# Visualizacoes Kanban e Lista para Leads
 
 ## Resumo
-Criar o modulo completo de Leads para o CRM multi-tenant, incluindo tabela no banco com RLS, FK na custom_field_values, pagina de listagem, formulario de criacao/edicao com campos personalizados dinamicos, e sheet de detalhe do lead.
+Reescrever a pagina `/leads` para suportar dois modos de visualizacao (Kanban e Lista) com seletor de funil, persistencia em localStorage, drag-and-drop no Kanban para mover leads entre etapas, e tabela com ordenacao, selecao multipla, acoes em lote e paginacao na Lista.
 
-## 1. Migration SQL
+## 1. Novos Services
 
-### Tabela leads
-- id, organization_id (FK), funnel_id (FK), stage_id (FK), name, email, phone, company, assigned_to (FK profiles), value (numeric 12,2), tags (text[]), source, priority (CHECK), notes, created_at, updated_at, last_activity_at, stage_entered_at
-- Trigger update_updated_at_column
-- Trigger para atualizar last_activity_at em qualquer UPDATE
-- Trigger para atualizar stage_entered_at quando stage_id muda
-- Indices em organization_id, funnel_id, stage_id, assigned_to, created_at, last_activity_at, priority
+### `src/services/leads.ts` (editar)
+Adicionar funcoes:
+- `getLeadsByFunnel(funnelId)` -- busca leads de um funil especifico com joins (stage, funnel, assigned_profile), sem limite de 1000 (paginar se necessario)
+- `getLeadsListPaginated(funnelId, page, pageSize, sortBy, sortOrder)` -- busca paginada com `.range()` e `.order()` dinamico, retorna `{ data, count }`
+- `moveLeadToStage(leadId, stageId)` -- update apenas stage_id (triggers cuidam dos timestamps)
+- `bulkMoveLeads(leadIds, stageId)` -- update batch de stage_id
+- `bulkAssignLeads(leadIds, assignedTo)` -- update batch de assigned_to
+- `bulkDeleteLeads(leadIds)` -- delete batch
 
-### FK na custom_field_values
-- `ALTER TABLE custom_field_values ADD CONSTRAINT fk_lead FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE`
+## 2. Novos Hooks
 
-### RLS (PERMISSIVE)
-- SELECT: `organization_id IN (SELECT get_user_org_ids())`
-- INSERT: `get_user_org_role(organization_id) IN ('owner','admin','member')`
-- UPDATE: `get_user_org_role(organization_id) IN ('owner','admin','member')`
-- DELETE: `get_user_org_role(organization_id) IN ('owner','admin')`
-
-### Trigger para stage_entered_at e last_activity_at
-
-```sql
-CREATE OR REPLACE FUNCTION public.update_lead_timestamps()
-RETURNS trigger
-LANGUAGE plpgsql
-SET search_path TO 'public'
-AS $$
-BEGIN
-  NEW.last_activity_at = now();
-  IF OLD.stage_id IS DISTINCT FROM NEW.stage_id THEN
-    NEW.stage_entered_at = now();
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER update_lead_timestamps_trigger
-  BEFORE UPDATE ON public.leads
-  FOR EACH ROW EXECUTE FUNCTION public.update_lead_timestamps();
-```
-
-### SQL completo
-
-```sql
--- Priority validation via trigger (not CHECK, for immutability safety)
-CREATE TABLE public.leads (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES public.organizations(id),
-  funnel_id uuid NOT NULL REFERENCES public.funnels(id),
-  stage_id uuid NOT NULL REFERENCES public.stages(id),
-  name text NOT NULL,
-  email text,
-  phone text,
-  company text,
-  assigned_to uuid REFERENCES public.profiles(id),
-  value numeric(12,2) NOT NULL DEFAULT 0,
-  tags text[] NOT NULL DEFAULT '{}',
-  source text,
-  priority text NOT NULL DEFAULT 'medium',
-  notes text,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  last_activity_at timestamptz NOT NULL DEFAULT now(),
-  stage_entered_at timestamptz NOT NULL DEFAULT now()
-);
-
--- Priority validation trigger
-CREATE OR REPLACE FUNCTION public.validate_lead_priority()
-RETURNS trigger LANGUAGE plpgsql SET search_path TO 'public' AS $$
-BEGIN
-  IF NEW.priority NOT IN ('low','medium','high','urgent') THEN
-    RAISE EXCEPTION 'Invalid priority: %', NEW.priority;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER validate_lead_priority_trigger
-  BEFORE INSERT OR UPDATE ON public.leads
-  FOR EACH ROW EXECUTE FUNCTION public.validate_lead_priority();
-
--- Timestamp triggers
-CREATE TRIGGER update_leads_updated_at
-  BEFORE UPDATE ON public.leads
-  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-CREATE OR REPLACE FUNCTION public.update_lead_timestamps()
-RETURNS trigger LANGUAGE plpgsql SET search_path TO 'public' AS $$
-BEGIN
-  NEW.last_activity_at = now();
-  IF OLD.stage_id IS DISTINCT FROM NEW.stage_id THEN
-    NEW.stage_entered_at = now();
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER update_lead_timestamps_trigger
-  BEFORE UPDATE ON public.leads
-  FOR EACH ROW EXECUTE FUNCTION public.update_lead_timestamps();
-
--- Indexes
-CREATE INDEX idx_leads_organization_id ON public.leads(organization_id);
-CREATE INDEX idx_leads_funnel_id ON public.leads(funnel_id);
-CREATE INDEX idx_leads_stage_id ON public.leads(stage_id);
-CREATE INDEX idx_leads_assigned_to ON public.leads(assigned_to);
-CREATE INDEX idx_leads_created_at ON public.leads(created_at);
-CREATE INDEX idx_leads_last_activity_at ON public.leads(last_activity_at);
-CREATE INDEX idx_leads_priority ON public.leads(priority);
-
--- RLS
-ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Members can view leads" ON public.leads
-  FOR SELECT USING (organization_id IN (SELECT get_user_org_ids()));
-
-CREATE POLICY "Owner/admin/member can insert leads" ON public.leads
-  FOR INSERT WITH CHECK (
-    get_user_org_role(organization_id) IN ('owner','admin','member')
-  );
-
-CREATE POLICY "Owner/admin/member can update leads" ON public.leads
-  FOR UPDATE USING (
-    get_user_org_role(organization_id) IN ('owner','admin','member')
-  );
-
-CREATE POLICY "Owner/admin can delete leads" ON public.leads
-  FOR DELETE USING (
-    get_user_org_role(organization_id) IN ('owner','admin')
-  );
-
--- Add FK to custom_field_values
-ALTER TABLE public.custom_field_values
-  ADD CONSTRAINT fk_lead
-  FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE CASCADE;
-```
-
-## 2. Tipos TypeScript
-
-### `src/types/index.ts`
+### `src/hooks/useLeads.ts` (editar)
 Adicionar:
+- `useLeadsByFunnel(funnelId)` -- useQuery com queryKey `['leads-kanban', funnelId]`
+- `useLeadsList(funnelId, page, pageSize, sortBy, sortOrder)` -- useQuery com queryKey `['leads-list', funnelId, page, pageSize, sortBy, sortOrder]`
+- `useMoveLeadToStage()` -- useMutation com optimistic update (atualizar cache do kanban instantaneamente)
+- `useBulkMoveLeads()`, `useBulkAssignLeads()`, `useBulkDeleteLeads()` -- useMutations
 
-```text
-LeadPriority = 'low' | 'medium' | 'high' | 'urgent'
+As mutations devem invalidar tanto `leads-kanban` quanto `leads-list`.
 
-Lead {
-  id, organization_id, funnel_id, stage_id, name, email, phone, company,
-  assigned_to, value, tags, source, priority, notes,
-  created_at, updated_at, last_activity_at, stage_entered_at
-}
+## 3. Pagina LeadsPage refatorada
 
-LeadWithRelations extends Lead {
-  stage?: Stage
-  funnel?: Funnel
-  assigned_profile?: Profile
-  custom_field_values?: CustomFieldValue[]
-}
-```
+### `src/pages/LeadsPage.tsx` (reescrever)
+- Estado `viewMode` ('kanban' | 'list') persistido em localStorage
+- Estado `selectedFunnelId` persistido em localStorage, default = primeiro funil ou funil padrao (is_default)
+- Header: titulo, select de funil, toggle kanban/lista (icones LayoutGrid e List), botao Novo Lead
+- Renderiza `<KanbanView>` ou `<ListView>` conforme modo
+- Mantem LeadFormDialog e LeadDetailSheet existentes
 
-## 3. Services
+## 4. Componentes Kanban
 
-### `src/services/leads.ts`
-- `getLeads(orgId, filters?)` -- lista leads com joins opcionais (stage, funnel, assigned_to profile)
-- `getLead(id)` -- detalhe com joins: stage, funnel, profiles (assigned_to), custom_field_values
-- `createLead(data)` -- insert lead
-- `updateLead(id, data)` -- update lead
-- `deleteLead(id)` -- delete
-- `upsertCustomFieldValues(leadId, values: {field_definition_id, value}[])` -- upsert batch dos custom field values
+### `src/components/leads/kanban/KanbanView.tsx`
+- Recebe funnelId
+- Busca stages do funil + leads do funil
+- Agrupa leads por stage_id em memo
+- Layout: flex horizontal com overflow-x-auto
+- DndContext com colisao customizada (closestCorners para multi-container)
+- Ao dropar lead em nova coluna: optimistic update + mutacao `moveLeadToStage`
+- Skeleton loading
 
-## 4. Hooks
+### `src/components/leads/kanban/KanbanColumn.tsx`
+- Recebe stage, leads[], onCardClick
+- Header: borda colorida (border-top com cor da etapa), nome, contagem, soma de valores
+- Corpo: lista vertical de KanbanCard com scroll vertical
+- Usa useDroppable do @dnd-kit para receber cards
 
-### `src/hooks/useLeads.ts`
-- `useLeads(filters?)` -- useQuery com orgId do contexto
-- `useLead(id)` -- useQuery com joins
-- `useCreateLead()` -- useMutation + invalidate leads
-- `useUpdateLead()` -- useMutation + invalidate leads + lead detail
-- `useDeleteLead()` -- useMutation + invalidate leads
+### `src/components/leads/kanban/KanbanCard.tsx`
+- Recebe lead (LeadWithRelations)
+- Usa useDraggable do @dnd-kit
+- Layout compacto:
+  - Nome (bold, truncado)
+  - Empresa (secundario)
+  - Valor em R$ (se > 0)
+  - Avatar pequeno do responsavel
+  - Dot colorido de prioridade (green/yellow/orange/red)
+  - Tags (max 2 + "+N")
+  - Tempo na etapa (formato curto: "3d", "12h", "45min") -- vermelho se acima do SLA
+- Clique abre sheet de detalhe
 
-### `src/hooks/useOrgMembers.ts`
-- `useOrgMembers()` -- lista membros da org com perfil (para select de responsavel)
+### `src/components/leads/kanban/DragOverlayCard.tsx`
+- Card renderizado durante o drag (dentro do DragOverlay do @dnd-kit)
+- Visual elevado com sombra
 
-## 5. Componentes
+## 5. Componentes Lista
 
-### `src/components/leads/LeadFormDialog.tsx`
-Modal de criacao/edicao com duas secoes:
-- Secao 1: campos fixos (nome, email, telefone, empresa, funil, etapa, responsavel, valor, prioridade, fonte, tags, notas)
-- Secao 2: campos personalizados usando CustomFieldRenderer
-- Validacao com zod (schema dinamico combinando fixos + personalizados)
-- Ao mudar funil, recarregar etapas daquele funil e selecionar a primeira
-- Tags como input com chips (Enter para adicionar, X para remover)
-- Prioridade com cores: low=cinza, medium=azul, high=laranja, urgent=vermelho
+### `src/components/leads/list/ListView.tsx`
+- Recebe funnelId
+- Busca leads paginados com sort
+- Estado local: page, pageSize (25/50/100), sortBy, sortOrder
+- Tabela com headers clicaveis para ordenar
+- Checkbox no header para selecionar todos da pagina
+- Barra de acoes em lote (aparece quando ha selecao)
+- Paginacao no rodape
+- Clique na linha abre sheet de detalhe
 
-### `src/components/leads/LeadDetailSheet.tsx`
-Sheet lateral (Drawer) com:
-- Header: nome editavel inline, badge prioridade, badge etapa, botoes editar/deletar
-- Tabs: "Informacoes", "Atividades" (placeholder), "Tarefas" (placeholder)
-- Aba Informacoes: todos os campos organizados, campos personalizados, avatar do responsavel, tempo na etapa (com alerta SLA)
+### `src/components/leads/list/BulkActionsBar.tsx`
+- Mostra quando selectedIds.length > 0
+- Botoes: "Mover para etapa" (dropdown com stages), "Atribuir" (dropdown com membros), "Deletar" (com AlertDialog)
+- Contagem de selecionados
 
-### `src/components/leads/LeadCard.tsx`
-Card compacto para a listagem de leads (nome, empresa, valor, prioridade badge, etapa badge, responsavel avatar).
-
-### `src/components/leads/PriorityBadge.tsx`
-Componente de badge de prioridade com cores.
-
-### `src/components/leads/TagsInput.tsx`
-Input de tags com chips.
-
-## 6. Pagina
-
-### `src/pages/LeadsPage.tsx` (rota `/leads`)
-- Header com titulo e botao "Novo Lead"
-- Listagem simples em tabela/cards dos leads da org
-- Clique no lead abre LeadDetailSheet
-- Filtros basicos (sera expandido em sprints futuros)
-
-## 7. Sidebar
-
-### `src/components/layout/AppSidebar.tsx`
-Substituir "Contatos" por "Leads" no mainNav, apontando para `/leads`.
-
-## 8. Rotas
-
-### `src/App.tsx`
-Adicionar rotas:
-- `/leads` -> PrivateRoute + MainLayout + LeadsPage
-- Remover ou redirecionar `/contacts` para `/leads`
+## 6. Sidebar e Rotas
+Nenhuma alteracao necessaria -- a rota `/leads` e o item na sidebar ja existem.
 
 ## Arquivos criados/modificados
 
 | Arquivo | Acao |
 |---------|------|
-| `supabase/migrations/xxx.sql` | Criar |
-| `src/types/index.ts` | Editar (Lead, LeadPriority, LeadWithRelations) |
-| `src/services/leads.ts` | Criar |
-| `src/hooks/useLeads.ts` | Criar |
-| `src/hooks/useOrgMembers.ts` | Criar |
-| `src/components/leads/LeadFormDialog.tsx` | Criar |
-| `src/components/leads/LeadDetailSheet.tsx` | Criar |
-| `src/components/leads/LeadCard.tsx` | Criar |
-| `src/components/leads/PriorityBadge.tsx` | Criar |
-| `src/components/leads/TagsInput.tsx` | Criar |
-| `src/pages/LeadsPage.tsx` | Criar |
-| `src/components/layout/AppSidebar.tsx` | Editar (Contatos -> Leads) |
-| `src/App.tsx` | Editar (adicionar rotas /leads) |
+| `src/services/leads.ts` | Editar (adicionar funcoes) |
+| `src/hooks/useLeads.ts` | Editar (adicionar hooks) |
+| `src/pages/LeadsPage.tsx` | Reescrever |
+| `src/components/leads/kanban/KanbanView.tsx` | Criar |
+| `src/components/leads/kanban/KanbanColumn.tsx` | Criar |
+| `src/components/leads/kanban/KanbanCard.tsx` | Criar |
+| `src/components/leads/kanban/DragOverlayCard.tsx` | Criar |
+| `src/components/leads/list/ListView.tsx` | Criar |
+| `src/components/leads/list/BulkActionsBar.tsx` | Criar |
 
 ## Detalhes Tecnicos
 
-### Formulario com schema zod dinamico
-O schema do formulario sera gerado em runtime combinando campos fixos com campos personalizados ativos da org:
+### Drag and Drop no Kanban
+Usar DndContext com `rectIntersection` collision detection. Cada coluna e um droppable com id = stage_id. Cada card e um draggable com id = lead_id. No onDragEnd:
 
 ```text
-baseSchema = z.object({
-  name: z.string().min(2),
-  email: z.string().email().optional().or(z.literal('')),
-  phone: z.string().optional(),
-  company: z.string().optional(),
-  funnel_id: z.string().uuid(),
-  stage_id: z.string().uuid(),
-  assigned_to: z.string().uuid().optional().or(z.literal('')),
-  value: z.number().min(0).default(0),
-  priority: z.enum(['low','medium','high','urgent']),
-  source: z.string().optional(),
-  tags: z.array(z.string()),
-  notes: z.string().optional(),
-})
-
-Para cada custom field ativo:
-- is_required + text/url/email/phone -> z.string().min(1)
-- is_required + number/currency -> z.string().min(1) (armazenado como texto)
-- is_required + select -> z.string().min(1)
-- is_required + checkbox -> z.string() (sempre tem valor)
-- nao obrigatorio -> z.string().optional()
+1. Identificar stage_id de destino (over.id ou container do over)
+2. Se stage mudou:
+   a. Optimistic update: atualizar cache do TanStack Query instantaneamente
+   b. Chamar mutacao moveLeadToStage(leadId, newStageId)
+   c. Em caso de erro, reverter cache
 ```
 
-### Upsert de custom field values
-Ao salvar lead, apos o insert/update do lead, fazer upsert batch dos custom_field_values:
+### Optimistic Update para Kanban
+No useMoveLeadToStage, usar onMutate para atualizar o cache antes da resposta:
 
 ```text
-supabase.from('custom_field_values')
-  .upsert(values, { onConflict: 'lead_id,field_definition_id' })
+onMutate: async ({ leadId, stageId }) => {
+  await qc.cancelQueries(['leads-kanban', funnelId])
+  const prev = qc.getQueryData(['leads-kanban', funnelId])
+  // atualizar lead.stage_id no cache
+  qc.setQueryData(['leads-kanban', funnelId], updated)
+  return { prev }
+}
+onError: (_, __, ctx) => {
+  qc.setQueryData(['leads-kanban', funnelId], ctx.prev)
+}
+onSettled: () => {
+  qc.invalidateQueries(['leads-kanban', funnelId])
+}
 ```
 
-### Calculo de SLA no detalhe
-No LeadDetailSheet, calcular tempo na etapa:
-- `hoursInStage = differenceInHours(now, lead.stage_entered_at)`
-- Se stage.sla_hours e hoursInStage > sla_hours, mostrar alerta vermelho
+### Tempo na etapa (formato curto)
+Funcao helper `formatStageTime(stageEnteredAt)`:
+- < 1 hora: "Xmin"
+- < 24 horas: "Xh"
+- >= 24 horas: "Xd"
 
-### Listagem de membros para select de responsavel
-Buscar organization_members com join em profiles para popular o select de "Responsavel" com avatar e nome.
+### Paginacao na Lista
+Usar `.range(from, to)` do Supabase com `{ count: 'exact' }` para obter total de registros. Calcular paginas no componente.
+
+### Responsividade
+- Kanban: scroll horizontal natural funciona em mobile
+- Lista: esconder colunas email, telefone, tags e data de criacao em telas < md usando classes `hidden md:table-cell`
+
+### localStorage keys
+- `crm_leads_view_mode` -> 'kanban' | 'list'
+- `crm_leads_funnel_id` -> uuid string
 
