@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
+import { differenceInHours } from 'date-fns';
 import { useStages } from '@/hooks/useStages';
 import { useLeadsByFunnel, useMoveLeadToStage } from '@/hooks/useLeads';
 import { useCreateActivity } from '@/hooks/useActivities';
@@ -12,15 +13,31 @@ import { KanbanColumn } from './KanbanColumn';
 import { DragOverlayCard } from './DragOverlayCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LeadDetailSheet } from '@/components/leads/LeadDetailSheet';
-import type { LeadWithRelations } from '@/types';
+import type { LeadWithRelations, LeadFilters, StageTimeFilter } from '@/types';
 
 interface KanbanViewProps {
   funnelId: string;
+  filters?: LeadFilters;
 }
 
-export function KanbanView({ funnelId }: KanbanViewProps) {
+function matchesStageTime(lead: any, stageTime: StageTimeFilter, stages: any[]): boolean {
+  const hours = differenceInHours(new Date(), new Date(lead.stage_entered_at));
+  switch (stageTime) {
+    case 'less_24h': return hours < 24;
+    case '1_3_days': return hours >= 24 && hours < 72;
+    case '3_7_days': return hours >= 72 && hours < 168;
+    case 'more_7_days': return hours >= 168;
+    case 'above_sla': {
+      const stage = stages.find(s => s.id === lead.stage_id);
+      return stage?.sla_hours ? hours > stage.sla_hours : false;
+    }
+    default: return true;
+  }
+}
+
+export function KanbanView({ funnelId, filters }: KanbanViewProps) {
   const { data: stages, isLoading: stagesLoading } = useStages(funnelId);
-  const { data: leads, isLoading: leadsLoading } = useLeadsByFunnel(funnelId);
+  const { data: leads, isLoading: leadsLoading } = useLeadsByFunnel(funnelId, filters);
   const moveLead = useMoveLeadToStage(funnelId);
   const createActivity = useCreateActivity();
   const createTask = useCreateTask();
@@ -40,18 +57,28 @@ export function KanbanView({ funnelId }: KanbanViewProps) {
     [stages]
   );
 
+  // Apply client-side filters (stage_time, custom_fields)
+  const filteredLeads = useMemo(() => {
+    let result = leads || [];
+    if (filters?.stage_time) {
+      result = result.filter((l: any) => matchesStageTime(l, filters.stage_time!, sortedStages));
+    }
+    // Custom field filtering would go here if custom_field_values were loaded
+    return result;
+  }, [leads, filters, sortedStages]);
+
   const leadsByStage = useMemo(() => {
     const map: Record<string, LeadWithRelations[]> = {};
     sortedStages.forEach(s => { map[s.id] = []; });
-    (leads || []).forEach((l: any) => {
+    (filteredLeads || []).forEach((l: any) => {
       if (map[l.stage_id]) map[l.stage_id].push(l);
     });
     return map;
-  }, [leads, sortedStages]);
+  }, [filteredLeads, sortedStages]);
 
   const activeLead = useMemo(
-    () => (leads || []).find((l: any) => l.id === activeId) as LeadWithRelations | undefined,
-    [leads, activeId]
+    () => (filteredLeads || []).find((l: any) => l.id === activeId) as LeadWithRelations | undefined,
+    [filteredLeads, activeId]
   );
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -68,7 +95,6 @@ export function KanbanView({ funnelId }: KanbanViewProps) {
     const lead = (leads || []).find((l: any) => l.id === leadId);
     if (!lead || (lead as any).stage_id === targetStageId) return;
 
-    // Check target is a valid stage
     if (!sortedStages.find(s => s.id === targetStageId)) return;
 
     const fromStage = sortedStages.find(s => s.id === (lead as any).stage_id);
@@ -76,7 +102,6 @@ export function KanbanView({ funnelId }: KanbanViewProps) {
 
     moveLead.mutate({ leadId, stageId: targetStageId });
 
-    // Auto-register stage_change activity
     if (user && organization && fromStage && toStage) {
       createActivity.mutate({
         organization_id: organization.id,
@@ -92,7 +117,6 @@ export function KanbanView({ funnelId }: KanbanViewProps) {
         },
       });
 
-      // Auto-create follow-up task if new stage has SLA
       if (toStage.sla_hours) {
         const dueDate = new Date();
         dueDate.setHours(dueDate.getHours() + toStage.sla_hours);
@@ -107,7 +131,6 @@ export function KanbanView({ funnelId }: KanbanViewProps) {
         });
       }
 
-      // Fire webhook if new stage has webhook_url configured
       if (toStage.webhook_url) {
         const funnel = funnels?.find(f => f.id === (lead as any).funnel_id);
         const payload = buildWebhookPayload({
@@ -118,14 +141,13 @@ export function KanbanView({ funnelId }: KanbanViewProps) {
           user: { id: user.id, full_name: (user as any).user_metadata?.full_name },
           organization: { id: organization.id, name: organization.name },
         });
-        // Fire-and-forget
         fireWebhook({
           webhook_url: toStage.webhook_url,
           payload,
           organization_id: organization.id,
           stage_id: toStage.id,
           lead_id: leadId,
-        }).catch(() => {}); // Silently ignore client-side errors
+        }).catch(() => {});
       }
     }
   };

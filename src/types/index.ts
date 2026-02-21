@@ -161,3 +161,32 @@ export interface WebhookLog {
   error_message: string | null;
   created_at: string;
 }
+
+export interface SavedFilter {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  name: string;
+  filters: LeadFilters;
+  is_shared: boolean;
+  created_at: string;
+}
+
+export type StageTimeFilter = 'less_24h' | '1_3_days' | '3_7_days' | 'more_7_days' | 'above_sla';
+
+export interface LeadFilters {
+  search?: string;
+  stage_ids?: string[];
+  assigned_to?: string[];
+  priorities?: LeadPriority[];
+  tags?: string[];
+  sources?: string[];
+  value_min?: number;
+  value_max?: number;
+  created_at_from?: string;
+  created_at_to?: string;
+  last_activity_from?: string;
+  last_activity_to?: string;
+  stage_time?: StageTimeFilter;
+  custom_fields?: Record<string, any>;
+}

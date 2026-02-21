@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useFunnels } from '@/hooks/useFunnels';
+import { useLeadFilters } from '@/hooks/useLeadFilters';
 import { LeadFormDialog } from '@/components/leads/LeadFormDialog';
 import { KanbanView } from '@/components/leads/kanban/KanbanView';
 import { ListView } from '@/components/leads/list/ListView';
+import { LeadFilterBar } from '@/components/leads/filters/LeadFilterBar';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Toggle } from '@/components/ui/toggle';
@@ -18,6 +20,7 @@ export default function LeadsPage() {
   const { isOwner, isAdmin, isMember } = useOrganization();
   const { data: funnels, isLoading: funnelsLoading } = useFunnels();
   const canCreate = isOwner || isAdmin || isMember;
+  const { filters, searchInput, setFilter, clearFilters, applyFilters, activeFilterCount } = useLeadFilters();
 
   const [viewMode, setViewMode] = useState<ViewMode>(() =>
     (localStorage.getItem(LS_VIEW_KEY) as ViewMode) || 'kanban'
@@ -97,12 +100,25 @@ export default function LeadsPage() {
         </div>
       </div>
 
+      {/* Filter Bar */}
+      {selectedFunnelId && (
+        <LeadFilterBar
+          funnelId={selectedFunnelId}
+          filters={filters}
+          searchInput={searchInput}
+          activeFilterCount={activeFilterCount}
+          setFilter={setFilter}
+          clearFilters={clearFilters}
+          applyFilters={applyFilters}
+        />
+      )}
+
       {/* Content */}
       {selectedFunnelId ? (
         viewMode === 'kanban' ? (
-          <KanbanView funnelId={selectedFunnelId} />
+          <KanbanView funnelId={selectedFunnelId} filters={filters} />
         ) : (
-          <ListView funnelId={selectedFunnelId} />
+          <ListView funnelId={selectedFunnelId} filters={filters} />
         )
       ) : (
         <div className="flex items-center justify-center rounded-lg border border-dashed p-12 text-center">

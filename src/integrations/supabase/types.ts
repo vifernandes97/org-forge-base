@@ -396,6 +396,51 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_filters: {
+        Row: {
+          created_at: string
+          filters: Json
+          id: string
+          is_shared: boolean
+          name: string
+          organization_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          filters: Json
+          id?: string
+          is_shared?: boolean
+          name: string
+          organization_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          filters?: Json
+          id?: string
+          is_shared?: boolean
+          name?: string
+          organization_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_filters_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_filters_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stages: {
         Row: {
           color: string
