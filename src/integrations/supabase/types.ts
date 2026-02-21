@@ -14,6 +14,91 @@ export type Database = {
   }
   public: {
     Tables: {
+      custom_field_definitions: {
+        Row: {
+          created_at: string
+          field_label: string
+          field_name: string
+          field_type: string
+          id: string
+          is_active: boolean
+          is_required: boolean
+          options: Json | null
+          organization_id: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          field_label: string
+          field_name: string
+          field_type: string
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          options?: Json | null
+          organization_id: string
+          position: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          field_label?: string
+          field_name?: string
+          field_type?: string
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          options?: Json | null
+          organization_id?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_field_definitions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      custom_field_values: {
+        Row: {
+          created_at: string
+          field_definition_id: string
+          id: string
+          lead_id: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          created_at?: string
+          field_definition_id: string
+          id?: string
+          lead_id: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          created_at?: string
+          field_definition_id?: string
+          id?: string
+          lead_id?: string
+          updated_at?: string
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_field_values_field_definition_id_fkey"
+            columns: ["field_definition_id"]
+            isOneToOne: false
+            referencedRelation: "custom_field_definitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       funnels: {
         Row: {
           created_at: string
@@ -250,6 +335,7 @@ export type Database = {
       }
       get_user_org_ids: { Args: never; Returns: string[] }
       get_user_org_role: { Args: { org_id: string }; Returns: string }
+      reorder_custom_fields: { Args: { p_fields: Json }; Returns: undefined }
       reorder_stages: { Args: { p_stages: Json }; Returns: undefined }
     }
     Enums: {

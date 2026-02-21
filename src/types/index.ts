@@ -51,3 +51,28 @@ export interface Stage {
   created_at: string;
   updated_at: string;
 }
+
+export type CustomFieldType = 'text' | 'number' | 'currency' | 'date' | 'select' | 'multi_select' | 'checkbox' | 'url' | 'email' | 'phone';
+
+export interface CustomFieldDefinition {
+  id: string;
+  organization_id: string;
+  field_name: string;
+  field_label: string;
+  field_type: CustomFieldType;
+  options: string[] | null;
+  is_required: boolean;
+  is_active: boolean;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomFieldValue {
+  id: string;
+  lead_id: string;
+  field_definition_id: string;
+  value: string | null;
+  created_at: string;
+  updated_at: string;
+}
