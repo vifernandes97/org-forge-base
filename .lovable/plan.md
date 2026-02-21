@@ -1,209 +1,305 @@
 
-
-# Sprint Final: Gestao de Equipe e Polish
+# Sistema de Webhook de Entrada (Inbound)
 
 ## Resumo
-Este sprint cobre duas grandes areas: (1) gestao de equipe com paginas de membros e organizacao, e (2) polish geral da aplicacao incluindo empty states, loading states, toasts, responsividade, acessibilidade e branding.
+Criar um sistema completo de captacao automatica de leads via webhooks de entrada, com Edge Function publica que aceita dados de formularios externos (Elementor, Typeform, etc.), mapeamento de campos configuravel, deduplicacao inteligente, e interface de gestao com logs e testes.
 
-## 1. Paginas novas
+## 1. Migration SQL
 
-### 1.1 Pagina /settings/team (TeamPage.tsx)
+### Tabela inbound_webhooks
+```sql
+CREATE TABLE public.inbound_webhooks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  api_key text NOT NULL UNIQUE,
+  is_active boolean NOT NULL DEFAULT true,
+  funnel_id uuid REFERENCES public.funnels(id) ON DELETE SET NULL,
+  target_stage text NOT NULL DEFAULT 'first',
+  default_source text NOT NULL DEFAULT 'formulário',
+  default_assigned_to uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  default_tags text[] NOT NULL DEFAULT '{}',
+  duplicate_strategy text NOT NULL DEFAULT 'update',
+  field_mapping jsonb NOT NULL DEFAULT '{}',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 
-**Secao 1 - Membros atuais:**
-- Tabela: avatar, nome, e-mail, role (badge colorido), data de entrada (`accepted_at` ou `created_at`), status (Ativo se `accepted_at`, Pendente se nao)
-- Owner: nao pode ser removido nem ter role alterada
-- O proprio usuario nao pode alterar sua propria role
-- Select para alterar role (apenas owner/admin podem): chama `updateMemberRole(memberId, newRole)` via update em `organization_members`
-- Botao remover com AlertDialog de confirmacao: deleta de `organization_members`
+CREATE INDEX idx_inbound_webhooks_org ON public.inbound_webhooks(organization_id);
+CREATE INDEX idx_inbound_webhooks_api_key ON public.inbound_webhooks(api_key);
 
-**Secao 2 - Convidar membro:**
-- Formulario: e-mail (input) + role (select: admin, member, viewer)
-- Logica ao convidar:
-  1. Buscar profiles onde `email = inputEmail`
-  2. Se existe: insert em `organization_members` com `user_id`, `accepted_at = now()`
-  3. Se nao existe: insert com `invited_email`, `invited_at = now()`, `accepted_at = null`, `user_id = auth.uid()` (temporario, sera ajustado)
-  4. Mostrar toast de sucesso com link copiavel (placeholder para convite)
-- Lista de convites pendentes (where `accepted_at IS NULL`) com botao cancelar
-
-**Problema:** `organization_members.user_id` e NOT NULL e referencia `profiles.id`. Para convites pendentes sem usuario existente, precisamos de uma abordagem. A solucao: quando o e-mail nao existe em profiles, apenas mostrar um toast informando que o usuario precisa se registrar primeiro, e criar o registro somente quando existe. Isso evita alterar o schema.
-
-### 1.2 Pagina /settings/organization (OrganizationPage.tsx)
-
-- Formulario: nome (input), slug (input com validacao de unicidade via `checkSlugAvailable`)
-- Logo: input de URL de imagem (evita complexidade de Storage por ora)
-- Salvar: `update organizations set name, slug, logo_url where id = orgId`
-- Botao "Deletar organizacao":
-  - Somente owner
-  - AlertDialog com input: usuario deve digitar o nome da org para confirmar
-  - Ao confirmar: `delete from organizations where id = orgId`
-  - Redirecionar para /onboarding ou /login
-
-### 1.3 Sidebar atualizada
-
-Atualizar `settingsNav` em `AppSidebar.tsx`:
-```text
-Settings >
-  Organizacao (/settings/organization) - icone Building2
-  Equipe (/settings/team) - icone Users
-  Funis (/settings/funnels) - icone GitBranch
-  Campos Personalizados (/settings/custom-fields) - icone ListChecks
-  Webhooks (/settings/webhooks) - icone Webhook
+ALTER TABLE public.inbound_webhooks ENABLE ROW LEVEL SECURITY;
 ```
 
-### 1.4 Rotas em App.tsx
+Validation trigger para `duplicate_strategy`:
+```sql
+CREATE OR REPLACE FUNCTION public.validate_inbound_webhook_strategy()
+RETURNS trigger LANGUAGE plpgsql SET search_path TO 'public' AS $$
+BEGIN
+  IF NEW.duplicate_strategy NOT IN ('update','create_new','ignore') THEN
+    RAISE EXCEPTION 'Invalid duplicate_strategy: %', NEW.duplicate_strategy;
+  END IF;
+  RETURN NEW;
+END;
+$$;
 
-Adicionar:
-- `/settings/team` -> PrivateRoute + MainLayout + TeamPage
-- `/settings/organization` -> PrivateRoute + MainLayout + OrganizationPage
+CREATE TRIGGER trg_validate_inbound_webhook_strategy
+  BEFORE INSERT OR UPDATE ON public.inbound_webhooks
+  FOR EACH ROW EXECUTE FUNCTION public.validate_inbound_webhook_strategy();
+```
 
-## 2. Services e Hooks
+RLS policies:
+- SELECT: membros da org (`organization_id IN (SELECT get_user_org_ids())`)
+- INSERT: owner/admin (`get_user_org_role(organization_id) IN ('owner','admin')`)
+- UPDATE: owner/admin
+- DELETE: owner/admin
 
-### `src/services/team.ts` (criar)
-- `getOrgMembersWithProfiles(orgId)` -- busca `organization_members` com join em `profiles`
-- `inviteMember(orgId, email, role)` -- busca profile por email, cria membro
-- `updateMemberRole(memberId, role)` -- update em `organization_members`
-- `removeMember(memberId)` -- delete de `organization_members`
-- `findProfileByEmail(email)` -- select de profiles por email
+Trigger `update_updated_at_column` no update.
 
-### `src/services/organizations.ts` (editar)
-- `updateOrganization(orgId, data)` -- update em organizations
-- `deleteOrganization(orgId)` -- delete de organizations
+### Tabela inbound_webhook_logs
+```sql
+CREATE TABLE public.inbound_webhook_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  inbound_webhook_id uuid NOT NULL REFERENCES public.inbound_webhooks(id) ON DELETE CASCADE,
+  lead_id uuid REFERENCES public.leads(id) ON DELETE SET NULL,
+  action text NOT NULL,
+  raw_payload jsonb NOT NULL,
+  mapped_data jsonb,
+  changes_applied jsonb,
+  error_message text,
+  ip_address text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 
-### `src/hooks/useTeam.ts` (criar)
-- `useOrgMembers(orgId)` -- useQuery
-- `useInviteMember()` -- useMutation + invalidate
-- `useUpdateMemberRole()` -- useMutation + invalidate
-- `useRemoveMember()` -- useMutation + invalidate
+CREATE INDEX idx_inbound_logs_org ON public.inbound_webhook_logs(organization_id);
+CREATE INDEX idx_inbound_logs_webhook ON public.inbound_webhook_logs(inbound_webhook_id);
+CREATE INDEX idx_inbound_logs_action ON public.inbound_webhook_logs(action);
+CREATE INDEX idx_inbound_logs_created ON public.inbound_webhook_logs(created_at DESC);
 
-## 3. Polish - Empty States
+ALTER TABLE public.inbound_webhook_logs ENABLE ROW LEVEL SECURITY;
+```
 
-Atualizar os seguintes componentes com empty states amigaveis (icone ilustrativo + texto + CTA quando aplicavel):
+RLS policies:
+- SELECT: membros da org
+- INSERT: nenhuma policy para anon/authenticated (a Edge Function usa service_role para inserir, bypassa RLS)
+- DELETE: owner/admin
 
-| Componente | Mensagem |
-|------------|----------|
-| LeadsPage (sem funil) | "Configure seu primeiro funil para comecar a gerenciar seus leads." + botao ir para /settings/funnels |
-| KanbanView (sem leads) | Ja tem empty columns, manter |
-| ListView (sem leads) | "Nenhum lead encontrado neste funil." - ja existe, melhorar com icone |
-| TasksPage (vazio) | "Tudo em dia! Nenhuma tarefa pendente." + icone CheckCircle |
-| ActivityTimeline (vazio) | "Nenhuma atividade registrada ainda." |
-| FunnelsPage (vazio) | Ja tem, manter |
-| CustomFieldsPage (vazio) | Ja tem, manter |
-| WebhooksPage (vazio) | Ja tem na tabela |
+## 2. Edge Function: inbound-webhook
 
-## 4. Polish - Loading States
+Arquivo: `supabase/functions/inbound-webhook/index.ts`
 
-Verificar e garantir skeletons em:
-- Dashboard: ja tem via SummaryCards e chart components ✓
-- Kanban: ja tem ✓
-- Lista: ja tem ✓
-- LeadDetailSheet: trocar "Carregando..." por skeleton estruturado
-- TasksPage: ja tem ✓
-- FunnelsPage: ja tem ✓
-- CustomFieldsPage: ja tem ✓
-- WebhooksPage: trocar "Carregando..." por skeleton na tabela
-- TeamPage: adicionar skeleton
-- OrganizationPage: adicionar skeleton
+Configuracao em `supabase/config.toml`:
+```toml
+[functions.inbound-webhook]
+verify_jwt = false
+```
 
-## 5. Polish - Toasts
+### Fluxo da funcao:
+1. CORS: aceitar todas as origens, metodos POST e OPTIONS
+2. Parsear body (JSON, form-urlencoded, multipart)
+3. Normalizar payload: extrair `form_fields` se existir, flatten
+4. Extrair API key de: header `X-API-Key`, query param `api_key`, campo `api_key` do body
+5. Buscar `inbound_webhooks` pela `api_key` usando service_role client
+6. Validar: webhook existe e `is_active = true`, senao 401
+7. Rate limiting: contar logs dos ultimos 60 segundos para esta api_key; se >= 100, retornar 429
+8. Aplicar mapeamento de campos (`field_mapping`): para cada campo CRM, buscar valor no payload pela chave mapeada; se nao mapeado, tentar auto-deteccao por nomes comuns
+9. Validar: pelo menos `name` ou `email` presente, senao 422
+10. Resolver funil: `inbound_webhook.funnel_id` ou funil `is_default=true` da org
+11. Resolver primeira etapa: `stages` do funil com menor `position`
+12. Logica de deduplicacao baseada em `duplicate_strategy`:
+    - **update**: buscar lead por email na org; se existe, merge inteligente (nunca apagar dados com valores vazios), registrar changes_applied
+    - **create_new**: sempre criar novo lead
+    - **ignore**: se lead com mesmo email existe, retornar `action: 'ignored'`
+13. Ao criar lead: inserir `custom_field_values`, registrar atividade, verificar webhook de saida na etapa, verificar SLA
+14. Ao atualizar lead: atualizar campos, registrar atividade com lista de mudancas
+15. Logar em `inbound_webhook_logs` (sempre, inclusive erros)
+16. Retornar resposta JSON com `success`, `action`, `lead_id`
 
-Revisar e adicionar toasts onde faltam:
-- LeadFormDialog: verificar se tem toast de sucesso/erro
-- KanbanView: lead movido (nao precisa toast a cada drag, seria muito)
-- TeamPage: "Membro convidado", "Role atualizada", "Membro removido"
-- OrganizationPage: "Organizacao atualizada", "Organizacao excluida"
-- Filtros salvos: verificar se SaveFilterDialog tem toast
+### Auto-deteccao de campos (fallback):
+- name: "name", "nome", "full_name", "nome_completo", "your-name", "your_name"
+- email: "email", "e-mail", "your-email", "your_email", "email_address"
+- phone: "phone", "telefone", "tel", "your-phone", "whatsapp", "celular"
+- company: "company", "empresa", "company_name", "razao_social"
 
-## 6. Polish - Responsividade
+Busca case-insensitive, ignorando hifens e underscores na comparacao.
 
-- MainLayout: ja usa SidebarProvider com collapsible ✓
-- Kanban: verificar `overflow-x-auto` e touch scroll - ja tem ✓
-- LeadDetailSheet: usar `w-full sm:max-w-lg` - ja tem ✓
-- Dashboard: grid responsivo - ja tem ✓
-- Tabelas (ListView, TeamPage, WebhooksPage): adicionar `overflow-x-auto` wrapper
-- Cards do dashboard: grid responsivo ja configurado ✓
+### Campos extras nao mapeados:
+Concatenar no campo `notes` do lead como "Campo extra: valor\n".
 
-## 7. Polish - Acessibilidade
+## 3. Services
 
-- Adicionar `aria-label` em botoes icon-only que nao tem (Pencil, Trash2, Eye, etc.)
-- Inputs com labels associados (verificar formularios)
-- Focus management: Sheet e Dialog ja gerenciam focus via Radix ✓
-- Contraste: verificar badges e cores - usar classes do Tailwind que respeitam tema ✓
+### `src/services/inboundWebhooks.ts` (criar)
+- `getInboundWebhooks(orgId)` -- lista webhooks de entrada
+- `getInboundWebhook(id)` -- detalhe de um webhook
+- `createInboundWebhook(data)` -- insert (gerar api_key como `crypto.randomUUID()`)
+- `updateInboundWebhook(id, data)` -- update
+- `deleteInboundWebhook(id)` -- delete
+- `regenerateApiKey(id)` -- update api_key com novo UUID
+- `getInboundWebhookLogs(orgId, filters)` -- logs paginados com filtros
+- `getInboundWebhookLogsByWebhook(webhookId, limit)` -- logs recentes de um webhook
+- `testInboundWebhook(webhookId, payload)` -- POST para o endpoint com payload de teste
 
-## 8. Polish - Branding
+## 4. Hooks
 
-### Titulo da aba dinamico
-- Criar hook `useDocumentTitle` ou efeito no `OrganizationContext` que atualiza `document.title`
-- Quando logado com org: `{org.name} - CRM`
-- Quando logado sem org: `CRM`
-- Quando deslogado: `CRM`
+### `src/hooks/useInboundWebhooks.ts` (criar)
+- `useInboundWebhooks()` -- lista
+- `useInboundWebhook(id)` -- detalhe
+- `useCreateInboundWebhook()` -- mutation
+- `useUpdateInboundWebhook()` -- mutation
+- `useDeleteInboundWebhook()` -- mutation
+- `useRegenerateApiKey()` -- mutation
+- `useInboundWebhookLogs(filters)` -- logs paginados
+- `useInboundWebhookLogsByWebhook(webhookId)` -- logs recentes
+- `useTestInboundWebhook()` -- mutation
 
-### Favicon
-- Atualizar `index.html` com favicon SVG inline simples (icone de funil/pipeline)
-- Atualizar titulo default para "CRM"
+## 5. Paginas e Componentes
+
+### `src/pages/InboundWebhooksPage.tsx` (criar)
+- Lista de webhooks de entrada em cards
+- Cada card: nome, status (toggle), data criacao, contagem de leads captados, ultimo lead
+- Botao "+ Novo Webhook de Entrada"
+- Clicar no card abre a pagina de edicao
+
+### `src/pages/InboundWebhookEditPage.tsx` (criar)
+Pagina completa de edicao/criacao com 5 secoes:
+
+**Secao 1 - Configuracao geral:**
+- Nome, toggle ativo/inativo
+- Funil destino (select), responsavel padrao (select), fonte padrao (input), tags padrao (input)
+- Estrategia de duplicados (radio: update/create_new/ignore)
+
+**Secao 2 - URL e API Key (read-only):**
+- Endpoint URL (montada com `VITE_SUPABASE_URL`)
+- API Key com botoes copiar
+- Botao "Regenerar API Key" com confirmacao
+- Card de instrucoes para Elementor (colapsavel)
+
+**Secao 3 - Mapeamento de campos:**
+- Tabela duas colunas: campo CRM (fixo) + input para nome do campo externo
+- Campos fixos: name, email, phone, company, value, notes
+- Campos personalizados ativos da org (dinamico)
+- Tooltip explicativo
+
+**Secao 4 - Testar webhook:**
+- Textarea para payload JSON
+- Botao "Enviar teste"
+- Resultado inline (sucesso/erro com detalhes)
+
+**Secao 5 - Logs recentes:**
+- Ultimos 20 logs deste webhook
+- Badge colorido por acao (created/updated/ignored/error)
+- Botao "Ver todos" -> /settings/inbound-webhooks/logs
+
+### `src/pages/InboundWebhookLogsPage.tsx` (criar)
+- Tabela completa de logs da org
+- Filtros: webhook (select), acao (multi-select), periodo (date range)
+- Colunas: data/hora, webhook nome, acao, lead, IP
+- Expandir mostra: raw_payload, mapped_data, changes_applied, error_message
+- Paginacao 50/pagina
+
+## 6. Integracoes
+
+### `src/components/layout/AppSidebar.tsx` (editar)
+- Renomear "Webhooks" para "Webhooks de Saida"
+- Adicionar "Webhooks de Entrada" abaixo, com icone `ArrowDownToLine` ou similar
+
+### `src/App.tsx` (editar)
+- Rota `/settings/inbound-webhooks` -> InboundWebhooksPage
+- Rota `/settings/inbound-webhooks/new` -> InboundWebhookEditPage (modo criacao)
+- Rota `/settings/inbound-webhooks/:id` -> InboundWebhookEditPage (modo edicao)
+- Rota `/settings/inbound-webhooks/logs` -> InboundWebhookLogsPage
+
+### `src/types/index.ts` (editar)
+Adicionar interfaces:
+- `InboundWebhook`
+- `InboundWebhookLog`
+- `InboundWebhookLogFilters`
 
 ## Arquivos criados/modificados
 
 | Arquivo | Acao |
 |---------|------|
-| src/services/team.ts | Criar |
-| src/hooks/useTeam.ts | Criar |
-| src/pages/TeamPage.tsx | Criar |
-| src/pages/OrganizationPage.tsx | Criar |
-| src/services/organizations.ts | Editar (updateOrg, deleteOrg) |
-| src/components/layout/AppSidebar.tsx | Editar (novos itens settings) |
+| supabase/migrations/xxx.sql | Criar (2 tabelas + RLS + trigger) |
+| supabase/functions/inbound-webhook/index.ts | Criar (Edge Function) |
+| supabase/config.toml | Editar (verify_jwt = false para inbound-webhook) |
+| src/types/index.ts | Editar (novas interfaces) |
+| src/services/inboundWebhooks.ts | Criar |
+| src/hooks/useInboundWebhooks.ts | Criar |
+| src/pages/InboundWebhooksPage.tsx | Criar |
+| src/pages/InboundWebhookEditPage.tsx | Criar |
+| src/pages/InboundWebhookLogsPage.tsx | Criar |
+| src/components/layout/AppSidebar.tsx | Editar |
 | src/App.tsx | Editar (novas rotas) |
-| src/pages/LeadsPage.tsx | Editar (empty state melhorado) |
-| src/pages/TasksPage.tsx | Editar (empty state melhorado) |
-| src/components/leads/LeadDetailSheet.tsx | Editar (skeleton loading) |
-| src/pages/WebhooksPage.tsx | Editar (skeleton loading) |
-| src/contexts/OrganizationContext.tsx | Editar (document.title) |
-| index.html | Editar (favicon, titulo) |
 
 ## Detalhes Tecnicos
 
-### Convite de membros
-Como `user_id` em `organization_members` e NOT NULL, a abordagem sera:
-1. Buscar profile por email
-2. Se encontrado: criar membro normalmente com `user_id = profile.id`
-3. Se nao encontrado: mostrar toast informando "Usuario nao encontrado. Ele precisa se registrar primeiro." e nao criar o registro
-4. Isso simplifica e evita alteracoes de schema
+### Geracao de API Key
+No client, ao criar webhook: `crypto.randomUUID()` gera um UUID v4 como api_key. Para regenerar, gera novo UUID e atualiza.
 
-Alternativa mais completa (se quisermos convites pendentes reais): seria necessario tornar `user_id` nullable ou criar tabela separada `pending_invites`. Mas isso adiciona complexidade de schema. A abordagem simples acima e adequada para o sprint final.
+### Rate Limiting na Edge Function
+Contar registros em `inbound_webhook_logs` onde `inbound_webhook_id` = webhook.id e `created_at > now() - 1 minute` usando service_role. Se count >= 100, retornar 429.
 
-### Documento title
-No `OrganizationContext`, adicionar um `useEffect` que atualiza `document.title`:
+### Parsing multiformat na Edge Function
 ```text
-useEffect(() => {
-  document.title = organization ? `${organization.name} — CRM` : 'CRM';
-}, [organization]);
+const contentType = req.headers.get('content-type') || '';
+if (contentType.includes('application/json')) {
+  rawData = await req.json();
+} else if (contentType.includes('application/x-www-form-urlencoded')) {
+  const text = await req.text();
+  rawData = Object.fromEntries(new URLSearchParams(text));
+} else if (contentType.includes('multipart/form-data')) {
+  const formData = await req.formData();
+  rawData = {};
+  for (const [key, value] of formData.entries()) {
+    if (typeof value === 'string') rawData[key] = value;
+  }
+}
+// Normalizar: se rawData.form_fields existe, usar form_fields
+if (rawData.form_fields && typeof rawData.form_fields === 'object') {
+  rawData = rawData.form_fields;
+}
 ```
 
-### Favicon SVG
-Usar um SVG simples em `public/favicon.svg` com icone de pipeline/funil e referenciar em `index.html`:
+### Normalizacao de nomes de campo para auto-deteccao
+Funcao helper que remove hifens, underscores, e converte para lowercase para comparar:
 ```text
-<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+function normalizeFieldName(name: string): string {
+  return name.toLowerCase().replace(/[-_\s]/g, '');
+}
+```
+Isso permite que "your-name", "your_name", "Your Name" sejam todos reconhecidos.
+
+### Merge inteligente (update)
+Para cada campo do lead:
+- Se valor novo e nao-vazio E diferente do atual -> sobrescrever, registrar mudanca
+- Se valor novo e vazio/null/undefined -> manter valor existente
+- Tags: merge (uniao do array existente com novos tags, sem duplicatas)
+- Custom fields: upsert com mesma logica
+
+### Webhook de saida e SLA
+Apos criar um lead via inbound webhook:
+- Verificar se a primeira etapa (`target_stage`) tem `webhook_url` definido -> invocar `fire-webhook`
+- Verificar se a etapa tem `sla_hours` definido -> criar task de follow-up com `due_date = now() + sla_hours`
+
+### URL do endpoint para o usuario
+Montada no client usando `import.meta.env.VITE_SUPABASE_URL`:
+```text
+`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/inbound-webhook`
 ```
 
-### RLS para team operations
-As operacoes de equipe ja estao cobertas pelas RLS existentes:
-- SELECT em `organization_members`: membros da org podem ver ✓
-- UPDATE em `organization_members`: owner/admin podem atualizar ✓
-- DELETE em `organization_members`: owner/admin podem deletar ✓
-- INSERT em `organization_members`: owner/admin podem inserir ✓
-- SELECT em `profiles`: membros da org podem ver profiles de colegas ✓
+### Instrucoes Elementor (colapsavel no UI)
+Texto estatico com passos numerados explicando como configurar o webhook no Elementor, incluindo onde encontrar os IDs dos campos.
 
-Nao sao necessarias novas migrations.
+### Permissoes
+- Owner/Admin: CRUD completo em inbound_webhooks, ver logs
+- Member: somente leitura (ver webhooks e logs)
+- Viewer: sem acesso (esconder item do sidebar se role = viewer -- ou simplesmente mostrar mas as queries retornam vazio)
 
-### Skeleton no LeadDetailSheet
-Substituir o "Carregando..." por:
-- Skeleton no header (nome, badges)
-- Skeleton nas tabs (linhas de info)
-- Manter mesma estrutura visual
-
-### Acessibilidade - aria-labels
-Adicionar em:
-- LeadDetailSheet: botoes Pencil ("Editar lead"), Trash2 ("Excluir lead")
-- WebhooksPage: botao Eye ("Ver detalhes")
-- ListView: botoes de paginacao
-- Header: avatar menu ("Menu do usuario")
-
+### config.toml
+Adicionar secao:
+```toml
+[functions.inbound-webhook]
+verify_jwt = false
+```
+Nota: o arquivo config.toml e auto-gerenciado, mas a secao de functions precisa estar presente para desabilitar JWT.
