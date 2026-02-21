@@ -97,6 +97,13 @@ export type Database = {
             referencedRelation: "custom_field_definitions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_lead"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
         ]
       }
       funnels: {
@@ -133,6 +140,98 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          assigned_to: string | null
+          company: string | null
+          created_at: string
+          email: string | null
+          funnel_id: string
+          id: string
+          last_activity_at: string
+          name: string
+          notes: string | null
+          organization_id: string
+          phone: string | null
+          priority: string
+          source: string | null
+          stage_entered_at: string
+          stage_id: string
+          tags: string[]
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          assigned_to?: string | null
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          funnel_id: string
+          id?: string
+          last_activity_at?: string
+          name: string
+          notes?: string | null
+          organization_id: string
+          phone?: string | null
+          priority?: string
+          source?: string | null
+          stage_entered_at?: string
+          stage_id: string
+          tags?: string[]
+          updated_at?: string
+          value?: number
+        }
+        Update: {
+          assigned_to?: string | null
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          funnel_id?: string
+          id?: string
+          last_activity_at?: string
+          name?: string
+          notes?: string | null
+          organization_id?: string
+          phone?: string | null
+          priority?: string
+          source?: string | null
+          stage_entered_at?: string
+          stage_id?: string
+          tags?: string[]
+          updated_at?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "funnels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "stages"
             referencedColumns: ["id"]
           },
         ]

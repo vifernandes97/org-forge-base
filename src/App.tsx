@@ -15,6 +15,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import FunnelsPage from "@/pages/FunnelsPage";
 import FunnelEditPage from "@/pages/FunnelEditPage";
 import CustomFieldsPage from "@/pages/CustomFieldsPage";
+import LeadsPage from "@/pages/LeadsPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,9 @@ const App = () => (
               {/* Protected — auth + org required */}
               <Route path="/dashboard" element={
                 <PrivateRoute><MainLayout><DashboardPage /></MainLayout></PrivateRoute>
+              } />
+              <Route path="/leads" element={
+                <PrivateRoute><MainLayout><LeadsPage /></MainLayout></PrivateRoute>
               } />
               <Route path="/settings/funnels" element={
                 <PrivateRoute><MainLayout><FunnelsPage /></MainLayout></PrivateRoute>

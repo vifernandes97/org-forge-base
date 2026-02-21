@@ -76,3 +76,33 @@ export interface CustomFieldValue {
   created_at: string;
   updated_at: string;
 }
+
+export type LeadPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export interface Lead {
+  id: string;
+  organization_id: string;
+  funnel_id: string;
+  stage_id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  assigned_to: string | null;
+  value: number;
+  tags: string[];
+  source: string | null;
+  priority: LeadPriority;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  last_activity_at: string;
+  stage_entered_at: string;
+}
+
+export interface LeadWithRelations extends Lead {
+  stage?: Stage;
+  funnel?: Funnel;
+  assigned_profile?: Profile;
+  custom_field_values?: CustomFieldValue[];
+}
