@@ -177,20 +177,20 @@ export default function InboundWebhookEditPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Funil destino</Label>
-              <Select value={funnelId} onValueChange={setFunnelId}>
+              <Select value={funnelId || '__default__'} onValueChange={v => setFunnelId(v === '__default__' ? '' : v)}>
                 <SelectTrigger><SelectValue placeholder="Funil padrão" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Funil padrão</SelectItem>
+                  <SelectItem value="__default__">Funil padrão</SelectItem>
                   {funnels?.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label>Responsável padrão</Label>
-              <Select value={assignedTo} onValueChange={setAssignedTo}>
+              <Select value={assignedTo || '__none__'} onValueChange={v => setAssignedTo(v === '__none__' ? '' : v)}>
                 <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum</SelectItem>
+                  <SelectItem value="__none__">Nenhum</SelectItem>
                   {members?.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
                 </SelectContent>
               </Select>
