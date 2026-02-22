@@ -2,7 +2,13 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Lead, LeadFilters } from '@/types';
 
 function applyFilters(query: any, filters?: LeadFilters) {
-  if (!filters) return query;
+  if (!filters) {
+    query = query.is('archived_at', null);
+    return query;
+  }
+  if (!filters.show_archived) {
+    query = query.is('archived_at', null);
+  }
   if (filters.search) {
     const s = `%${filters.search}%`;
     query = query.or(`name.ilike.${s},email.ilike.${s},company.ilike.${s},phone.ilike.${s}`);
@@ -58,6 +64,7 @@ export async function getLeads(orgId: string): Promise<Lead[]> {
     .from('leads')
     .select('*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*)')
     .eq('organization_id', orgId)
+    .is('archived_at', null)
     .order('last_activity_at', { ascending: false });
   if (error) throw error;
   return data as any;
@@ -197,4 +204,26 @@ export async function bulkDeleteLeads(leadIds: string[]) {
     .delete()
     .in('id', leadIds);
   if (error) throw error;
+}
+
+export async function archiveLead(id: string, archiveReasonId: string) {
+  const { data, error } = await supabase
+    .from('leads')
+    .update({ archived_at: new Date().toISOString(), archive_reason_id: archiveReasonId } as any)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as any;
+}
+
+export async function unarchiveLead(id: string) {
+  const { data, error } = await supabase
+    .from('leads')
+    .update({ archived_at: null, archive_reason_id: null } as any)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as any;
 }

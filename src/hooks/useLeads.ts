@@ -5,6 +5,7 @@ import {
   getLeads, getLead, createLead, updateLead, deleteLead,
   upsertCustomFieldValues, getLeadsByFunnel, getLeadsListPaginated,
   moveLeadToStage, bulkMoveLeads, bulkAssignLeads, bulkDeleteLeads,
+  archiveLead, unarchiveLead,
 } from '@/services/leads';
 
 export function useLeads() {
@@ -158,6 +159,35 @@ export function useBulkDeleteLeads() {
   return useMutation({
     mutationFn: (leadIds: string[]) => bulkDeleteLeads(leadIds),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['leads-kanban'] });
+      qc.invalidateQueries({ queryKey: ['leads-list'] });
+    },
+  });
+}
+
+export function useArchiveLead() {
+  const qc = useQueryClient();
+  const { organization } = useOrganization();
+  return useMutation({
+    mutationFn: ({ leadId, reasonId }: { leadId: string; reasonId: string }) =>
+      archiveLead(leadId, reasonId),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['leads', organization?.id] });
+      qc.invalidateQueries({ queryKey: ['lead', vars.leadId] });
+      qc.invalidateQueries({ queryKey: ['leads-kanban'] });
+      qc.invalidateQueries({ queryKey: ['leads-list'] });
+    },
+  });
+}
+
+export function useUnarchiveLead() {
+  const qc = useQueryClient();
+  const { organization } = useOrganization();
+  return useMutation({
+    mutationFn: (leadId: string) => unarchiveLead(leadId),
+    onSuccess: (_, leadId) => {
+      qc.invalidateQueries({ queryKey: ['leads', organization?.id] });
+      qc.invalidateQueries({ queryKey: ['lead', leadId] });
       qc.invalidateQueries({ queryKey: ['leads-kanban'] });
       qc.invalidateQueries({ queryKey: ['leads-list'] });
     },

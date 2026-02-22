@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      archive_reasons: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          organization_id: string
+          position: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          organization_id: string
+          position?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          organization_id?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "archive_reasons_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       custom_field_definitions: {
         Row: {
           created_at: string
@@ -341,6 +376,8 @@ export type Database = {
       }
       leads: {
         Row: {
+          archive_reason_id: string | null
+          archived_at: string | null
           assigned_to: string | null
           company: string | null
           created_at: string
@@ -361,6 +398,8 @@ export type Database = {
           value: number
         }
         Insert: {
+          archive_reason_id?: string | null
+          archived_at?: string | null
           assigned_to?: string | null
           company?: string | null
           created_at?: string
@@ -381,6 +420,8 @@ export type Database = {
           value?: number
         }
         Update: {
+          archive_reason_id?: string | null
+          archived_at?: string | null
           assigned_to?: string | null
           company?: string | null
           created_at?: string
@@ -401,6 +442,13 @@ export type Database = {
           value?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "leads_archive_reason_id_fkey"
+            columns: ["archive_reason_id"]
+            isOneToOne: false
+            referencedRelation: "archive_reasons"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "leads_assigned_to_fkey"
             columns: ["assigned_to"]

@@ -98,6 +98,8 @@ export interface Lead {
   updated_at: string;
   last_activity_at: string;
   stage_entered_at: string;
+  archived_at: string | null;
+  archive_reason_id: string | null;
 }
 
 export interface LeadWithRelations extends Lead {
@@ -189,4 +191,5 @@ export interface LeadFilters {
   last_activity_to?: string;
   stage_time?: StageTimeFilter;
   custom_fields?: Record<string, any>;
+  show_archived?: boolean;
 }

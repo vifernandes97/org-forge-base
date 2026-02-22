@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { TaskList } from '@/components/tasks/TaskList';
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
-import { Plus } from 'lucide-react';
+import { Plus, Archive, ArchiveRestore } from 'lucide-react';
 import { QuickActivityForm } from './activities/QuickActivityForm';
 import { ActivityTimeline } from './activities/ActivityTimeline';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -10,16 +10,22 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { PriorityBadge } from './PriorityBadge';
-import { useLead, useDeleteLead } from '@/hooks/useLeads';
+import { useLead, useDeleteLead, useArchiveLead, useUnarchiveLead } from '@/hooks/useLeads';
+import { useActiveArchiveReasons } from '@/hooks/useArchiveReasons';
 import { useCustomFields } from '@/hooks/useCustomFields';
+
 import { LeadFormDialog } from './LeadFormDialog';
 import { Pencil, Trash2, Clock, AlertTriangle, Building2, Mail, Phone, Tag, User, DollarSign, FileText } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { differenceInHours, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { createActivity } from '@/services/activities';
+import { useAuth } from '@/contexts/AuthContext';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import type { LeadWithRelations } from '@/types';
 
 interface LeadDetailSheetProps {
@@ -30,9 +36,16 @@ interface LeadDetailSheetProps {
 export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   const { data: lead, isLoading } = useLead(leadId || undefined);
   const { data: customFields } = useCustomFields();
+  const { data: archiveReasons } = useActiveArchiveReasons();
   const deleteLead = useDeleteLead();
+  const archiveLeadMut = useArchiveLead();
+  const unarchiveLeadMut = useUnarchiveLead();
+  const { user } = useAuth();
+  const { organization } = useOrganization();
   const [editOpen, setEditOpen] = useState(false);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [selectedReasonId, setSelectedReasonId] = useState<string>('');
 
   const handleDelete = async () => {
     if (!leadId) return;
@@ -45,6 +58,46 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
     }
   };
 
+  const handleArchive = async () => {
+    if (!leadId || !selectedReasonId || !user || !organization) return;
+    try {
+      const reason = archiveReasons?.find(r => r.id === selectedReasonId);
+      await archiveLeadMut.mutateAsync({ leadId, reasonId: selectedReasonId });
+      await createActivity({
+        organization_id: organization.id,
+        lead_id: leadId,
+        user_id: user.id,
+        activity_type: 'note',
+        title: 'Lead arquivado',
+        description: `Motivo: ${reason?.label || 'N/A'}`,
+        metadata: { source: 'archive', reason_id: selectedReasonId, reason_label: reason?.label },
+      });
+      toast.success('Lead arquivado!');
+      setArchiveDialogOpen(false);
+      setSelectedReasonId('');
+      onClose();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao arquivar');
+    }
+  };
+
+  const handleUnarchive = async () => {
+    if (!leadId || !user || !organization) return;
+    try {
+      await unarchiveLeadMut.mutateAsync(leadId);
+      await createActivity({
+        organization_id: organization.id,
+        lead_id: leadId,
+        user_id: user.id,
+        activity_type: 'note',
+        title: 'Lead desarquivado',
+      });
+      toast.success('Lead desarquivado!');
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao desarquivar');
+    }
+  };
+
   const typedLead = lead as LeadWithRelations | undefined;
 
   // SLA calculation
@@ -53,6 +106,8 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
     : 0;
   const slaHours = (typedLead as any)?.stage?.sla_hours;
   const slaExceeded = slaHours && hoursInStage > slaHours;
+
+  const isArchived = !!typedLead?.archived_at;
 
   return (
     <>
@@ -76,11 +131,29 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
             </div>
           ) : (
             <>
+              {/* Archived banner */}
+              {isArchived && (
+                <div className="bg-muted border-b px-6 py-3 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Archive className="h-4 w-4" />
+                    <span>Este lead está arquivado.</span>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleUnarchive} disabled={unarchiveLeadMut.isPending}>
+                    <ArchiveRestore className="h-3.5 w-3.5 mr-1" /> Desarquivar
+                  </Button>
+                </div>
+              )}
+
               {/* Header */}
               <SheetHeader className="px-6 pt-6 pb-4 border-b space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <SheetTitle className="text-xl leading-tight">{typedLead.name}</SheetTitle>
                   <div className="flex gap-1.5 shrink-0">
+                    {!isArchived && (
+                      <Button variant="ghost" size="icon" onClick={() => setArchiveDialogOpen(true)} aria-label="Arquivar lead">
+                        <Archive className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)} aria-label="Editar lead">
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -108,6 +181,11 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                   {typedLead.stage && (
                     <Badge variant="outline" style={{ borderColor: typedLead.stage.color, color: typedLead.stage.color }}>
                       {typedLead.stage.name}
+                    </Badge>
+                  )}
+                  {isArchived && (
+                    <Badge variant="secondary" className="gap-1">
+                      <Archive className="h-3 w-3" /> Arquivado
                     </Badge>
                   )}
                   {slaExceeded && (
@@ -256,6 +334,33 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Archive dialog */}
+      <AlertDialog open={archiveDialogOpen} onOpenChange={v => { setArchiveDialogOpen(v); if (!v) setSelectedReasonId(''); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Arquivar lead</AlertDialogTitle>
+            <AlertDialogDescription>Selecione o motivo do arquivamento.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <Select value={selectedReasonId || '__placeholder__'} onValueChange={v => setSelectedReasonId(v === '__placeholder__' ? '' : v)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione um motivo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__placeholder__" disabled>Selecione um motivo</SelectItem>
+              {(archiveReasons || []).map(r => (
+                <SelectItem key={r.id} value={r.id}>{r.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleArchive} disabled={!selectedReasonId || archiveLeadMut.isPending}>
+              Arquivar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {typedLead && (
         <LeadFormDialog open={editOpen} onOpenChange={setEditOpen} lead={typedLead} />
