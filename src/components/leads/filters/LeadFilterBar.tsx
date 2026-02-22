@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
-import { Search, SlidersHorizontal, X, Star } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Star, Archive } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { FilterMultiSelect } from './FilterMultiSelect';
 import { FilterDateRange } from './FilterDateRange';
@@ -232,6 +233,18 @@ export function LeadFilterBar({
               values={filters.custom_fields || {}}
               onChange={handleCustomFieldChange}
             />
+
+            {/* Show archived */}
+            <div className="flex items-center gap-2 h-8 px-2">
+              <Checkbox
+                id="show-archived"
+                checked={!!filters.show_archived}
+                onCheckedChange={v => setFilter('show_archived', v === true ? true : undefined)}
+              />
+              <label htmlFor="show-archived" className="text-xs cursor-pointer flex items-center gap-1">
+                <Archive className="h-3 w-3" /> Mostrar arquivados
+              </label>
+            </div>
           </div>
         </CollapsibleContent>
       </Collapsible>

@@ -23,6 +23,7 @@ import InboundWebhookEditPage from "@/pages/InboundWebhookEditPage";
 import InboundWebhookLogsPage from "@/pages/InboundWebhookLogsPage";
 import TeamPage from "@/pages/TeamPage";
 import OrganizationPage from "@/pages/OrganizationPage";
+import ArchiveReasonsPage from "@/pages/ArchiveReasonsPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -79,6 +80,9 @@ const App = () => (
               } />
               <Route path="/settings/organization" element={
                 <PrivateRoute><MainLayout><OrganizationPage /></MainLayout></PrivateRoute>
+              } />
+              <Route path="/settings/archive-reasons" element={
+                <PrivateRoute><MainLayout><ArchiveReasonsPage /></MainLayout></PrivateRoute>
               } />
 
               {/* Redirect root */}
