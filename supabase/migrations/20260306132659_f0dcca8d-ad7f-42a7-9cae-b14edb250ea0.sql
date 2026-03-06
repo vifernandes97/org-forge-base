@@ -1,0 +1,1 @@
+DELETE FROM leads WHERE organization_id = '13a96fcb-faed-42f4-8a88-85c0a7103b98';
