@@ -1,35 +1,67 @@
 
+# Reestruturar Automações: Trigger primeiro, Ação depois
 
-# Seed de 10 Leads com Dados Aleatórios
+## Problema atual
+O dialog começa pedindo "Tipo de ação" (o que fazer), mas o fluxo mental correto é: **primeiro definir o gatilho** (o que acontece), **depois a ação** (o que fazer quando acontecer).
 
-## Contexto identificado
-- **User ID:** `a3376ca3-d7c9-4140-bd10-cee295a0f3e8`
-- **Organization:** `13a96fcb-faed-42f4-8a88-85c0a7103b98`
-- **Funil:** "Funil de Vendas" (`8473568a-aa3f-4303-b693-06627d5d2968`)
-- **Etapas:** Novo Lead, Qualificação, Proposta, Fechamento
-- **Campo personalizado:** "Tipo de negócio" (select: Importador / Exportador)
+## Nova estrutura do formulário
 
-## Plano
+### 1. Novo campo: `trigger_type`
+Tipo de gatilho que inicia a automação:
+- `stage_enter` — "Lead entra em uma etapa"
+- `status_change` — "Lead muda de status"
 
-Executar uma migration SQL que insere:
+### 2. Fluxo do dialog reorganizado
 
-1. **10 leads** com dados fictícios variados (nomes, emails, telefones, empresas brasileiras, valores, tags, fontes, prioridades), distribuídos entre as 4 etapas do funil.
+```text
+┌─────────────────────────────────────────┐
+│  QUANDO (Gatilho)                       │
+│  ┌─ Tipo de gatilho ─────────────────┐  │
+│  │ [Lead entra em etapa ▾]           │  │
+│  └───────────────────────────────────┘  │
+│  ┌─ Funil ──────┐ ┌─ Etapa ─────────┐  │
+│  │ [Vendas ▾]   │ │ [Proposta ▾]    │  │
+│  └──────────────┘ └─────────────────┘  │
+│                    ➜                    │
+│  ENTÃO (Ação)                           │
+│  ┌─ Tipo de ação ────────────────────┐  │
+│  │ [Criar Tarefa ▾]                  │  │
+│  └───────────────────────────────────┘  │
+│  ... campos da ação selecionada ...     │
+└─────────────────────────────────────────┘
+```
 
-2. **10 custom_field_values** vinculando cada lead ao campo "Tipo de negócio" alternando entre "Importador" e "Exportador".
+- Quando `trigger_type = stage_enter`: mostra selects Funil + Etapa
+- Quando `trigger_type = status_change`: mostra select de Status (open/won/inactive)
+- Ações disponíveis: Criar Tarefa, Disparar Webhook, Mover Lead de Funil (todas disponíveis para qualquer gatilho)
 
-### Dados dos leads (exemplo):
+### 3. Mudanças no banco de dados
+Adicionar coluna `trigger_type` à tabela `stage_task_templates`:
+```sql
+ALTER TABLE stage_task_templates 
+  ADD COLUMN trigger_type text NOT NULL DEFAULT 'stage_enter';
+```
+Atualizar trigger de validação para aceitar `stage_enter` e `status_change`.
 
-| Nome | Empresa | Etapa | Valor | Prioridade | Tipo Negócio |
-|------|---------|-------|-------|------------|--------------|
-| Carlos Silva | TechBR Ltda | Novo Lead | 15000 | medium | Importador |
-| Ana Oliveira | Global Trade SA | Qualificação | 45000 | high | Exportador |
-| Roberto Santos | Porto Logística | Proposta | 82000 | urgent | Importador |
-| ... (7 mais) | ... | ... | ... | ... | ... |
+Atualizar `execute_stage_task_automations()`:
+- Para `trigger_type = 'stage_enter'`: verificar `OLD.stage_id IS DISTINCT FROM NEW.stage_id` e `stage_id = NEW.stage_id`
+- Para `trigger_type = 'status_change'`: verificar `OLD.status IS DISTINCT FROM NEW.status` e `trigger_status = NEW.status`
+- Ambos os gatilhos podem disparar qualquer `action_type`
 
-### Arquivos
-| Arquivo | Ação |
-|---------|------|
-| supabase/migrations/xxx.sql | Criar (INSERT de 10 leads + 10 custom_field_values) |
+### 4. Mudanças nos arquivos
 
-Nenhuma alteração de schema, apenas dados.
+| Arquivo | Mudança |
+|---------|---------|
+| Migration SQL | Coluna `trigger_type`, atualizar triggers de validação e execução |
+| `src/types/index.ts` | Adicionar `trigger_type` ao `StageTaskTemplate` |
+| `src/services/stageTaskTemplates.ts` | Incluir `trigger_type` nos campos |
+| `StageTaskTemplateDialog.tsx` | Reorganizar: trigger_type primeiro → config gatilho → action_type → config ação |
+| `AutomationCard.tsx` | Exibir gatilho baseado em `trigger_type` |
+| `AutomationsPage.tsx` | Ajustar `handleSubmit` para limpar campos conforme `trigger_type` |
 
+### 5. Validações
+- `trigger_type = stage_enter` → `stage_id` obrigatório
+- `trigger_type = status_change` → `trigger_status` obrigatório
+- `action_type = move_lead` → `target_funnel_id` obrigatório
+- `action_type = send_webhook` → `webhook_url` obrigatório
+- `action_type = create_task` → campos de tarefa obrigatórios
