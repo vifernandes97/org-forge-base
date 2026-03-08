@@ -1,4 +1,4 @@
-import { LayoutDashboard, Settings, GitBranch, Contact, CheckSquare } from 'lucide-react';
+import { LayoutDashboard, Settings, GitBranch, Contact, CheckSquare, Zap } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import {
   Sidebar,
