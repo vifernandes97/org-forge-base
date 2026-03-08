@@ -91,6 +91,7 @@ export default function AutomationsPage() {
         </div>
       ) : (
         <AutomationsList
+          organizationId={organization?.id || ''}
           templates={templates}
           funnels={funnels || []}
           onEdit={(t) => { setEditing(t); setDialogOpen(true); }}
