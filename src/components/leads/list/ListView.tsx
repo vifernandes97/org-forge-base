@@ -113,7 +113,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
           <TableBody>
             {leads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={13} className="text-center text-muted-foreground py-8">
                   Nenhum lead encontrado neste funil.
                 </TableCell>
               </TableRow>
