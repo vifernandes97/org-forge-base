@@ -42,6 +42,17 @@ export default function AutomationsPage() {
   const handleSubmit = async (values: any) => {
     if (!organization) return;
     const { funnel_id, ...rest } = values;
+    // Clean up fields based on action_type
+    if (rest.action_type === 'send_webhook') {
+      rest.task_type = 'other';
+      rest.priority = 'medium';
+      rest.due_hours = 24;
+      rest.assign_to_lead_owner = false;
+      rest.description = null;
+    } else {
+      rest.webhook_url = null;
+      rest.webhook_secret = null;
+    }
     if (editing) {
       await updateMut.mutateAsync({ id: editing.id, updates: rest });
     } else {
