@@ -1,35 +1,38 @@
 
 
-# Seed de 10 Leads com Dados Aleatórios
+# Ajuste do Menu Lateral — Consolidar Configurações
 
-## Contexto identificado
-- **User ID:** `a3376ca3-d7c9-4140-bd10-cee295a0f3e8`
-- **Organization:** `13a96fcb-faed-42f4-8a88-85c0a7103b98`
-- **Funil:** "Funil de Vendas" (`8473568a-aa3f-4303-b693-06627d5d2968`)
-- **Etapas:** Novo Lead, Qualificação, Proposta, Fechamento
-- **Campo personalizado:** "Tipo de negócio" (select: Importador / Exportador)
+## Objetivo
+Remover do sidebar os itens: Equipe, Campos Personalizados, Webhooks de Saída, Webhooks de Entrada e Motivos de Arquivamento. Esses itens passam a ser abas/seções dentro de uma única página "Configurações". No sidebar ficam apenas: Dashboard, Leads, Tarefas, Funis e Configurações (link único).
 
-## Plano
+## Mudanças
 
-Executar uma migration SQL que insere:
+### 1. Criar página `SettingsPage.tsx`
+Nova página com navegação por **Tabs** contendo:
+- **Organização** (conteúdo atual de OrganizationPage)
+- **Equipe** (conteúdo atual de TeamPage)
+- **Campos Personalizados** (conteúdo atual de CustomFieldsPage)
+- **Webhooks de Saída** (conteúdo atual de WebhooksPage)
+- **Webhooks de Entrada** (conteúdo atual de InboundWebhooksPage)
+- **Motivos de Arquivamento** (conteúdo atual de ArchiveReasonsPage)
 
-1. **10 leads** com dados fictícios variados (nomes, emails, telefones, empresas brasileiras, valores, tags, fontes, prioridades), distribuídos entre as 4 etapas do funil.
+A tab ativa será controlada via query param ou estado local.
 
-2. **10 custom_field_values** vinculando cada lead ao campo "Tipo de negócio" alternando entre "Importador" e "Exportador".
+### 2. Atualizar `AppSidebar.tsx`
+O grupo "Configurações" passa a ter apenas 2 itens:
+- **Funis** → `/settings/funnels`
+- **Configurações** → `/settings` (nova rota única)
 
-### Dados dos leads (exemplo):
+### 3. Atualizar `App.tsx`
+- Adicionar rota `/settings` → `SettingsPage`
+- Manter rotas de Funis (`/settings/funnels`, `/settings/funnels/:id`)
+- Manter sub-rotas de webhooks de entrada (`/settings/inbound-webhooks/logs`, `/settings/inbound-webhooks/:id`) pois são páginas de edição separadas
+- Remover rotas individuais: `/settings/team`, `/settings/custom-fields`, `/settings/webhooks`, `/settings/inbound-webhooks`, `/settings/organization`, `/settings/archive-reasons`
 
-| Nome | Empresa | Etapa | Valor | Prioridade | Tipo Negócio |
-|------|---------|-------|-------|------------|--------------|
-| Carlos Silva | TechBR Ltda | Novo Lead | 15000 | medium | Importador |
-| Ana Oliveira | Global Trade SA | Qualificação | 45000 | high | Exportador |
-| Roberto Santos | Porto Logística | Proposta | 82000 | urgent | Importador |
-| ... (7 mais) | ... | ... | ... | ... | ... |
-
-### Arquivos
+### Arquivos alterados
 | Arquivo | Ação |
 |---------|------|
-| supabase/migrations/xxx.sql | Criar (INSERT de 10 leads + 10 custom_field_values) |
-
-Nenhuma alteração de schema, apenas dados.
+| `src/pages/SettingsPage.tsx` | Criar — página com Tabs |
+| `src/components/layout/AppSidebar.tsx` | Editar — simplificar menu |
+| `src/App.tsx` | Editar — ajustar rotas |
 
