@@ -43,6 +43,8 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   const { data: customFields } = useCustomFields();
   const { data: archiveReasons } = useActiveArchiveReasons();
   const { data: teamMembers } = useTeamMembers();
+  const typedLeadForStages = lead as LeadWithRelations | undefined;
+  const { data: stages } = useStages(typedLeadForStages?.funnel_id);
   const deleteLead = useDeleteLead();
   const updateLeadMut = useUpdateLead();
   const archiveLeadMut = useArchiveLead();
