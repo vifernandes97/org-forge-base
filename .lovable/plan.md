@@ -1,29 +1,35 @@
 
 
-# Pipeline de Etapas Inline no Drawer — Estilo Bitrix
+# Seed de 10 Leads com Dados Aleatórios
 
-## Objetivo
-Exibir todas as etapas do funil como uma barra de progresso horizontal clicável no topo do drawer do lead, permitindo mudar de etapa com um clique (estilo Bitrix CRM).
+## Contexto identificado
+- **User ID:** `a3376ca3-d7c9-4140-bd10-cee295a0f3e8`
+- **Organization:** `13a96fcb-faed-42f4-8a88-85c0a7103b98`
+- **Funil:** "Funil de Vendas" (`8473568a-aa3f-4303-b693-06627d5d2968`)
+- **Etapas:** Novo Lead, Qualificação, Proposta, Fechamento
+- **Campo personalizado:** "Tipo de negócio" (select: Importador / Exportador)
 
-## Mudanças
+## Plano
 
-### 1. Novo componente `src/components/leads/StagePipeline.tsx`
-- Barra horizontal com todas as etapas do funil em sequência
-- Cada etapa é um segmento clicável com a cor da etapa
-- Etapa atual destacada (preenchida); etapas anteriores com cor mais suave; posteriores em cinza/outline
-- Ao clicar em uma etapa, chama `onStageChange(stageId)`
-- Visual: setas/chevrons entre etapas ou segmentos conectados (estilo pipeline Bitrix)
-- Responsivo: em telas pequenas usa scroll horizontal
+Executar uma migration SQL que insere:
 
-### 2. Atualizar `src/components/leads/LeadDetailSheet.tsx`
-- Importar `useStages` para carregar as etapas do funil do lead
-- Importar `useMoveLeadToStage` para mover o lead ao clicar
-- Adicionar `<StagePipeline>` logo abaixo do header, antes do grid de 2 colunas
-- Remover o badge de etapa atual do header (substituído pelo pipeline visual)
-- Registrar atividade de `stage_change` ao mover
+1. **10 leads** com dados fictícios variados (nomes, emails, telefones, empresas brasileiras, valores, tags, fontes, prioridades), distribuídos entre as 4 etapas do funil.
 
-| Arquivo | Mudança |
-|---------|---------|
-| `src/components/leads/StagePipeline.tsx` | Novo — barra de etapas clicável |
-| `src/components/leads/LeadDetailSheet.tsx` | Integrar pipeline + lógica de mudança de etapa |
+2. **10 custom_field_values** vinculando cada lead ao campo "Tipo de negócio" alternando entre "Importador" e "Exportador".
+
+### Dados dos leads (exemplo):
+
+| Nome | Empresa | Etapa | Valor | Prioridade | Tipo Negócio |
+|------|---------|-------|-------|------------|--------------|
+| Carlos Silva | TechBR Ltda | Novo Lead | 15000 | medium | Importador |
+| Ana Oliveira | Global Trade SA | Qualificação | 45000 | high | Exportador |
+| Roberto Santos | Porto Logística | Proposta | 82000 | urgent | Importador |
+| ... (7 mais) | ... | ... | ... | ... | ... |
+
+### Arquivos
+| Arquivo | Ação |
+|---------|------|
+| supabase/migrations/xxx.sql | Criar (INSERT de 10 leads + 10 custom_field_values) |
+
+Nenhuma alteração de schema, apenas dados.
 

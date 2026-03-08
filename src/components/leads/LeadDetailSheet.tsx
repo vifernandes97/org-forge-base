@@ -18,7 +18,9 @@ import { useLead, useDeleteLead, useArchiveLead, useUnarchiveLead, useUpdateLead
 import { useActiveArchiveReasons } from '@/hooks/useArchiveReasons';
 import { useCustomFields } from '@/hooks/useCustomFields';
 import { useTeamMembers } from '@/hooks/useTeam';
+import { useStages } from '@/hooks/useStages';
 import { InlineEditField } from './InlineEditField';
+import { StagePipeline } from './StagePipeline';
 
 import { LeadFormDialog } from './LeadFormDialog';
 import { Pencil, Trash2, Clock, AlertTriangle, Building2, Mail, Phone, Tag, User, DollarSign, FileText } from 'lucide-react';
@@ -41,6 +43,8 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   const { data: customFields } = useCustomFields();
   const { data: archiveReasons } = useActiveArchiveReasons();
   const { data: teamMembers } = useTeamMembers();
+  const typedLeadForStages = lead as LeadWithRelations | undefined;
+  const { data: stages } = useStages(typedLeadForStages?.funnel_id);
   const deleteLead = useDeleteLead();
   const updateLeadMut = useUpdateLead();
   const archiveLeadMut = useArchiveLead();
@@ -51,6 +55,26 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [selectedReasonId, setSelectedReasonId] = useState<string>('');
+
+  const handleStageChange = async (stageId: string) => {
+    if (!leadId || !user || !organization || !typedLead) return;
+    const oldStage = typedLead.stage?.name || '';
+    const newStage = stages?.find(s => s.id === stageId)?.name || '';
+    try {
+      await updateLeadMut.mutateAsync({ id: leadId, updates: { stage_id: stageId } as any });
+      await createActivity({
+        organization_id: organization.id,
+        lead_id: leadId,
+        user_id: user.id,
+        activity_type: 'stage_change',
+        title: `Etapa alterada: ${oldStage} → ${newStage}`,
+        metadata: { from_stage: oldStage, to_stage: newStage },
+      });
+      toast.success(`Movido para ${newStage}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao mover etapa');
+    }
+  };
 
   const handleInlineSave = async (field: string, value: string) => {
     if (!leadId) return;
@@ -247,11 +271,6 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                 <div className="flex flex-wrap gap-2">
                   <StatusBadge status={typedLead.status || 'open'} />
                   <PriorityBadge priority={typedLead.priority} />
-                  {typedLead.stage && (
-                    <Badge variant="outline" style={{ borderColor: typedLead.stage.color, color: typedLead.stage.color }}>
-                      {typedLead.stage.name}
-                    </Badge>
-                  )}
                   {isArchived && (
                     <Badge variant="secondary" className="gap-1">
                       <Archive className="h-3 w-3" /> Arquivado
@@ -265,6 +284,18 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                   )}
                 </div>
               </SheetHeader>
+
+              {/* Stage Pipeline - Bitrix style */}
+              {stages && stages.length > 0 && (
+                <div className="px-6 py-3 border-b shrink-0">
+                  <StagePipeline
+                    stages={stages}
+                    currentStageId={typedLead.stage_id}
+                    onStageChange={handleStageChange}
+                    disabled={isArchived || updateLeadMut.isPending}
+                  />
+                </div>
+              )}
 
               {/* Two-column Bitrix-style layout */}
               <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-3">
