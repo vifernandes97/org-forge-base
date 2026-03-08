@@ -56,6 +56,26 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [selectedReasonId, setSelectedReasonId] = useState<string>('');
 
+  const handleStageChange = async (stageId: string) => {
+    if (!leadId || !user || !organization || !typedLead) return;
+    const oldStage = typedLead.stage?.name || '';
+    const newStage = stages?.find(s => s.id === stageId)?.name || '';
+    try {
+      await updateLeadMut.mutateAsync({ id: leadId, updates: { stage_id: stageId } as any });
+      await createActivity({
+        organization_id: organization.id,
+        lead_id: leadId,
+        user_id: user.id,
+        activity_type: 'stage_change',
+        title: `Etapa alterada: ${oldStage} → ${newStage}`,
+        metadata: { from_stage: oldStage, to_stage: newStage },
+      });
+      toast.success(`Movido para ${newStage}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao mover etapa');
+    }
+  };
+
   const handleInlineSave = async (field: string, value: string) => {
     if (!leadId) return;
     const updates: Record<string, any> = {};
