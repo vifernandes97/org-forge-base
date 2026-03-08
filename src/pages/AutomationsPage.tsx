@@ -60,7 +60,7 @@ export default function AutomationsPage() {
             Automações
           </h1>
           <p className="text-muted-foreground text-sm">
-            Configure ações automáticas quando leads entram em etapas específicas.
+            Configure ações automáticas (tarefas ou webhooks) quando leads entram em etapas específicas.
           </p>
         </div>
         <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
