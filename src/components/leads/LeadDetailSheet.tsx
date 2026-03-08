@@ -180,6 +180,16 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                 <div className="flex items-start justify-between gap-2">
                   <SheetTitle className="text-xl leading-tight">{typedLead.name}</SheetTitle>
                   <div className="flex gap-1.5 shrink-0">
+                    {!isArchived && typedLead.status !== 'won' && (
+                      <Button variant="ghost" size="icon" onClick={handleToggleWon} aria-label="Marcar como ganho" className="text-green-600 hover:text-green-600">
+                        <Trophy className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {typedLead.status === 'won' && (
+                      <Button variant="ghost" size="sm" onClick={handleToggleWon} className="text-muted-foreground text-xs">
+                        Reabrir
+                      </Button>
+                    )}
                     {!isArchived && (
                       <Button variant="ghost" size="icon" onClick={() => setArchiveDialogOpen(true)} aria-label="Arquivar lead">
                         <Archive className="h-4 w-4" />
