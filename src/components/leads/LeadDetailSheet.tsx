@@ -100,6 +100,35 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
     }
   };
 
+  const handleToggleWon = async () => {
+    if (!leadId || !user || !organization) return;
+    const newStatus = typedLead?.status === 'won' ? 'open' : 'won';
+    try {
+      await updateLeadMut.mutateAsync({ id: leadId, updates: { status: newStatus } as any });
+      if (newStatus === 'won') {
+        await createActivity({
+          organization_id: organization.id,
+          lead_id: leadId,
+          user_id: user.id,
+          activity_type: 'note',
+          title: 'Lead marcado como Ganho',
+        });
+        toast.success('Lead marcado como Ganho!');
+      } else {
+        await createActivity({
+          organization_id: organization.id,
+          lead_id: leadId,
+          user_id: user.id,
+          activity_type: 'note',
+          title: 'Lead reaberto',
+        });
+        toast.success('Lead reaberto!');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao atualizar status');
+    }
+  };
+
   const typedLead = lead as LeadWithRelations | undefined;
 
   // SLA calculation
