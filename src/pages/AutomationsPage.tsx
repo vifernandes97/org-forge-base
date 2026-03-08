@@ -140,34 +140,33 @@ export default function AutomationsPage() {
 function AutomationsList({
   templates,
   funnels,
+  organizationId,
   onEdit,
   onDelete,
   onToggle,
 }: {
   templates: StageTaskTemplate[];
   funnels: any[];
+  organizationId: string;
   onEdit: (t: StageTaskTemplate) => void;
   onDelete: (id: string) => void;
   onToggle: (id: string, active: boolean) => void;
 }) {
-  // Load all stages at once (pass undefined to get all org stages)
-  const { data: allStages } = useStages(funnels[0]?.id);
-  // Actually we need all funnels' stages - let's query them all
-  const stageQueries = funnels.map(f => f.id);
-  const s0 = useStages(stageQueries[0]);
-  const s1 = useStages(stageQueries[1]);
-  const s2 = useStages(stageQueries[2]);
-  const s3 = useStages(stageQueries[3]);
-  const s4 = useStages(stageQueries[4]);
+  const { data: allStages } = useQuery({
+    queryKey: ['all_stages', organizationId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('stages')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .order('position');
+      if (error) throw error;
+      return data as unknown as Stage[];
+    },
+    enabled: !!organizationId,
+  });
 
-  const allStagesArr = [
-    ...(s0.data || []),
-    ...(s1.data || []),
-    ...(s2.data || []),
-    ...(s3.data || []),
-    ...(s4.data || []),
-  ];
-  const stageMap = Object.fromEntries(allStagesArr.map(s => [s.id, s]));
+  const stageMap = Object.fromEntries((allStages || []).map(s => [s.id, s]));
   const funnelMap = Object.fromEntries(funnels.map(f => [f.id, f]));
 
   return (
