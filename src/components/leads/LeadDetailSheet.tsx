@@ -218,6 +218,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <StatusBadge status={typedLead.status || 'open'} />
                   <PriorityBadge priority={typedLead.priority} />
                   {typedLead.stage && (
                     <Badge variant="outline" style={{ borderColor: typedLead.stage.color, color: typedLead.stage.color }}>
