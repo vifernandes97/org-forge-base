@@ -1,35 +1,49 @@
 
 
-# Seed de 10 Leads com Dados Aleatórios
+# Adicionar Status ao Lead (Em andamento / Ganho / Inativo)
 
-## Contexto identificado
-- **User ID:** `a3376ca3-d7c9-4140-bd10-cee295a0f3e8`
-- **Organization:** `13a96fcb-faed-42f4-8a88-85c0a7103b98`
-- **Funil:** "Funil de Vendas" (`8473568a-aa3f-4303-b693-06627d5d2968`)
-- **Etapas:** Novo Lead, Qualificação, Proposta, Fechamento
-- **Campo personalizado:** "Tipo de negócio" (select: Importador / Exportador)
+## Conceito
+Adicionar coluna `status` na tabela `leads` com 3 valores possíveis:
+- **`open`** — "Em andamento" (padrão para leads ativos no funil)
+- **`won`** — "Ganho" (marcado manualmente pelo usuário)
+- **`inactive`** — "Inativo" (definido automaticamente ao arquivar)
 
-## Plano
+## Mudanças
 
-Executar uma migration SQL que insere:
+### 1. Migração de banco de dados
+- Adicionar coluna `status text NOT NULL DEFAULT 'open'` na tabela `leads`
+- Criar trigger de validação (`status IN ('open', 'won', 'inactive')`)
+- Atualizar leads já arquivados (`UPDATE leads SET status = 'inactive' WHERE archived_at IS NOT NULL`)
 
-1. **10 leads** com dados fictícios variados (nomes, emails, telefones, empresas brasileiras, valores, tags, fontes, prioridades), distribuídos entre as 4 etapas do funil.
+### 2. Atualizar lógica de arquivar/desarquivar
+**`src/services/leads.ts`**: Na função `archiveLead`, incluir `status: 'inactive'`; na `unarchiveLead`, incluir `status: 'open'`.
 
-2. **10 custom_field_values** vinculando cada lead ao campo "Tipo de negócio" alternando entre "Importador" e "Exportador".
+### 3. Adicionar ação "Marcar como Ganho" / "Reabrir"
+**`src/components/leads/LeadDetailSheet.tsx`**: Adicionar botão no header do detalhe do lead para marcar como ganho (ou reabrir se já ganho). Ao marcar como ganho, chamar `updateLead(id, { status: 'won' })`.
 
-### Dados dos leads (exemplo):
+### 4. Criar componente de badge de status
+**`src/components/leads/StatusBadge.tsx`** (novo): Badge visual com cores distintas:
+- Em andamento → azul
+- Ganho → verde
+- Inativo → cinza
 
-| Nome | Empresa | Etapa | Valor | Prioridade | Tipo Negócio |
-|------|---------|-------|-------|------------|--------------|
-| Carlos Silva | TechBR Ltda | Novo Lead | 15000 | medium | Importador |
-| Ana Oliveira | Global Trade SA | Qualificação | 45000 | high | Exportador |
-| Roberto Santos | Porto Logística | Proposta | 82000 | urgent | Importador |
-| ... (7 mais) | ... | ... | ... | ... | ... |
+### 5. Exibir status nos cards e lista
+- **`src/components/leads/kanban/KanbanCard.tsx`**: Exibir `StatusBadge`
+- **`src/components/leads/LeadCard.tsx`**: Exibir `StatusBadge`
+- **`src/components/leads/list/ListView.tsx`**: Coluna de status na tabela
 
-### Arquivos
+### 6. Atualizar tipo TypeScript
+**`src/types/index.ts`**: Adicionar `status: LeadStatus` ao tipo `Lead` e criar `type LeadStatus = 'open' | 'won' | 'inactive'`.
+
+### Arquivos alterados
 | Arquivo | Ação |
 |---------|------|
-| supabase/migrations/xxx.sql | Criar (INSERT de 10 leads + 10 custom_field_values) |
-
-Nenhuma alteração de schema, apenas dados.
+| Migração SQL | Criar — adicionar coluna + trigger |
+| `src/types/index.ts` | Editar — adicionar `LeadStatus` |
+| `src/services/leads.ts` | Editar — atualizar archive/unarchive |
+| `src/components/leads/StatusBadge.tsx` | Criar |
+| `src/components/leads/LeadDetailSheet.tsx` | Editar — botão ganho/reabrir |
+| `src/components/leads/kanban/KanbanCard.tsx` | Editar — exibir status |
+| `src/components/leads/LeadCard.tsx` | Editar — exibir status |
+| `src/components/leads/list/ListView.tsx` | Editar — coluna status |
 
