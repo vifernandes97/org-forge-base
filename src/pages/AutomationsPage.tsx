@@ -192,12 +192,16 @@ function AutomationsList({
       {templates.map(t => {
         const stage = stageMap[t.stage_id];
         const funnel = stage ? funnelMap[stage.funnel_id] : undefined;
+        const targetFunnel = t.target_funnel_id ? funnelMap[t.target_funnel_id] : undefined;
+        const targetStage = t.target_stage_id ? stageMap[t.target_stage_id] : undefined;
         return (
           <AutomationCard
             key={t.id}
             template={t}
             stage={stage}
             funnel={funnel}
+            targetFunnel={targetFunnel}
+            targetStage={targetStage}
             onEdit={() => onEdit(t)}
             onDelete={() => onDelete(t.id)}
             onToggle={(active) => onToggle(t.id, active)}

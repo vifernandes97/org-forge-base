@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Zap, CheckSquare, Globe } from 'lucide-react';
+import { ArrowRight, Zap, CheckSquare, Globe, ArrowRightLeft } from 'lucide-react';
 import { useFunnels } from '@/hooks/useFunnels';
 import { useStages } from '@/hooks/useStages';
 import type { StageTaskTemplate } from '@/types';
@@ -17,7 +17,7 @@ import type { StageTaskTemplate } from '@/types';
 const schema = z.object({
   funnel_id: z.string().min(1, 'Selecione um funil'),
   stage_id: z.string().min(1, 'Selecione uma etapa'),
-  action_type: z.enum(['create_task', 'send_webhook']),
+  action_type: z.enum(['create_task', 'send_webhook', 'move_lead']),
   title: z.string().min(1, 'Título obrigatório'),
   description: z.string().optional(),
   task_type: z.string().min(1),
@@ -26,12 +26,20 @@ const schema = z.object({
   assign_to_lead_owner: z.boolean(),
   webhook_url: z.string().optional(),
   webhook_secret: z.string().optional(),
+  target_funnel_id: z.string().optional(),
+  target_stage_id: z.string().optional(),
 }).refine((data) => {
   if (data.action_type === 'send_webhook') {
     return !!data.webhook_url && data.webhook_url.startsWith('http');
   }
   return true;
-}, { message: 'URL do webhook é obrigatória', path: ['webhook_url'] });
+}, { message: 'URL do webhook é obrigatória', path: ['webhook_url'] })
+.refine((data) => {
+  if (data.action_type === 'move_lead') {
+    return !!data.target_funnel_id;
+  }
+  return true;
+}, { message: 'Selecione o funil destino', path: ['target_funnel_id'] });
 
 type FormValues = z.infer<typeof schema>;
 
@@ -61,12 +69,16 @@ export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template
       assign_to_lead_owner: true,
       webhook_url: '',
       webhook_secret: '',
+      target_funnel_id: '',
+      target_stage_id: '',
     },
   });
 
   const selectedFunnelId = form.watch('funnel_id');
   const actionType = form.watch('action_type');
+  const targetFunnelId = form.watch('target_funnel_id');
   const { data: stages } = useStages(selectedFunnelId || undefined);
+  const { data: targetStages } = useStages(targetFunnelId || undefined);
 
   useEffect(() => {
     if (template) {
@@ -83,6 +95,8 @@ export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template
         assign_to_lead_owner: template.assign_to_lead_owner,
         webhook_url: template.webhook_url || '',
         webhook_secret: template.webhook_secret || '',
+        target_funnel_id: template.target_funnel_id || '',
+        target_stage_id: template.target_stage_id || '',
       });
     } else {
       form.reset({
@@ -97,11 +111,23 @@ export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template
         assign_to_lead_owner: true,
         webhook_url: '',
         webhook_secret: '',
+        target_funnel_id: '',
+        target_stage_id: '',
       });
     }
   }, [template, open, defaultFunnelId]);
 
   const isWebhook = actionType === 'send_webhook';
+  const isMoveLead = actionType === 'move_lead';
+
+  const actionIcon = isWebhook
+    ? <Globe className="h-4 w-4 text-emerald-500" />
+    : isMoveLead
+    ? <ArrowRightLeft className="h-4 w-4 text-violet-500" />
+    : <CheckSquare className="h-4 w-4 text-primary" />;
+
+  const actionLabel = isWebhook ? 'Webhook' : isMoveLead ? 'Mover Lead' : 'Tarefa';
+  const actionBg = isWebhook ? 'bg-emerald-500/5' : isMoveLead ? 'bg-violet-500/5' : 'bg-primary/5';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -131,6 +157,11 @@ export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template
                     <SelectItem value="send_webhook">
                       <span className="flex items-center gap-2">
                         <Globe className="h-3.5 w-3.5" /> Disparar Webhook
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="move_lead">
+                      <span className="flex items-center gap-2">
+                        <ArrowRightLeft className="h-3.5 w-3.5" /> Mover Lead de Funil
                       </span>
                     </SelectItem>
                   </SelectContent>
@@ -178,18 +209,22 @@ export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template
               </div>
 
               {/* Action */}
-              <div className={`flex-1 p-3 space-y-3 ${isWebhook ? 'bg-emerald-500/5' : 'bg-primary/5'}`}>
+              <div className={`flex-1 p-3 space-y-3 ${actionBg}`}>
                 <div className="flex items-center gap-2">
-                  {isWebhook ? <Globe className="h-4 w-4 text-emerald-500" /> : <CheckSquare className="h-4 w-4 text-primary" />}
+                  {actionIcon}
                   <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {isWebhook ? 'Webhook' : 'Tarefa'}
+                    {actionLabel}
                   </span>
                 </div>
 
                 <FormField control={form.control} name="title" render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs">{isWebhook ? 'Nome da automação' : 'Título da tarefa'}</FormLabel>
-                    <FormControl><Input className="h-8 text-xs" placeholder={isWebhook ? 'Ex: Notificar ERP' : 'Ex: Ligar para o lead'} {...field} /></FormControl>
+                    <FormLabel className="text-xs">
+                      {isWebhook ? 'Nome da automação' : isMoveLead ? 'Nome da automação' : 'Título da tarefa'}
+                    </FormLabel>
+                    <FormControl>
+                      <Input className="h-8 text-xs" placeholder={isWebhook ? 'Ex: Notificar ERP' : isMoveLead ? 'Ex: Mover para Pós-venda' : 'Ex: Ligar para o lead'} {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -207,6 +242,32 @@ export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template
                       <FormItem>
                         <FormLabel className="text-xs">Secret (opcional)</FormLabel>
                         <FormControl><Input className="h-8 text-xs font-mono" placeholder="Para assinatura HMAC" {...field} /></FormControl>
+                      </FormItem>
+                    )} />
+                  </>
+                ) : isMoveLead ? (
+                  <>
+                    <FormField control={form.control} name="target_funnel_id" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Funil destino</FormLabel>
+                        <Select value={field.value} onValueChange={(v) => { field.onChange(v); form.setValue('target_stage_id', ''); }}>
+                          <FormControl><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {funnels?.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="target_stage_id" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Etapa destino (opcional)</FormLabel>
+                        <Select value={field.value || ''} onValueChange={field.onChange} disabled={!targetFunnelId}>
+                          <FormControl><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Primeira etapa" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {targetStages?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
                       </FormItem>
                     )} />
                   </>
@@ -246,8 +307,8 @@ export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template
               </div>
             </div>
 
-            {/* Additional fields */}
-            {!isWebhook && (
+            {/* Additional fields for create_task */}
+            {!isWebhook && !isMoveLead && (
               <>
                 <FormField control={form.control} name="description" render={({ field }) => (
                   <FormItem>
