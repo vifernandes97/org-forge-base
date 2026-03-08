@@ -38,11 +38,18 @@ export default function AutomationsPage() {
   const [editing, setEditing] = useState<StageTaskTemplate | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-
   const handleSubmit = async (values: any) => {
     if (!organization) return;
     const { funnel_id, ...rest } = values;
-    // Clean up fields based on action_type
+
+    // Clean trigger fields based on trigger_type
+    if (rest.trigger_type === 'stage_enter') {
+      rest.trigger_status = null;
+    } else {
+      rest.stage_id = null;
+    }
+
+    // Clean action fields based on action_type
     if (rest.action_type === 'send_webhook') {
       rest.task_type = 'other';
       rest.priority = 'medium';
@@ -51,7 +58,6 @@ export default function AutomationsPage() {
       rest.description = null;
       rest.target_funnel_id = null;
       rest.target_stage_id = null;
-      rest.trigger_status = null;
     } else if (rest.action_type === 'move_lead') {
       rest.task_type = 'other';
       rest.priority = 'medium';
@@ -62,15 +68,13 @@ export default function AutomationsPage() {
       rest.webhook_secret = null;
       rest.target_funnel_id = rest.target_funnel_id || null;
       rest.target_stage_id = rest.target_stage_id || null;
-      rest.trigger_status = rest.trigger_status || null;
-      rest.stage_id = null;
     } else {
       rest.webhook_url = null;
       rest.webhook_secret = null;
       rest.target_funnel_id = null;
       rest.target_stage_id = null;
-      rest.trigger_status = null;
     }
+
     if (editing) {
       await updateMut.mutateAsync({ id: editing.id, updates: rest });
     } else {
@@ -111,7 +115,7 @@ export default function AutomationsPage() {
           </div>
           <h3 className="font-semibold text-lg">Nenhuma automação configurada</h3>
           <p className="text-muted-foreground text-sm mt-1 max-w-sm">
-            Crie automações para gerar tarefas ou disparar webhooks automaticamente quando leads entrarem em determinadas etapas.
+            Crie automações para gerar tarefas, disparar webhooks ou mover leads automaticamente.
           </p>
           <Button className="mt-4" onClick={() => { setEditing(null); setDialogOpen(true); }}>
             <Plus className="h-4 w-4 mr-1.5" />
@@ -158,7 +162,6 @@ export default function AutomationsPage() {
   );
 }
 
-// Sub-component that loads stages per funnel for display
 function AutomationsList({
   templates,
   funnels,
@@ -194,7 +197,7 @@ function AutomationsList({
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {templates.map(t => {
-        const stage = stageMap[t.stage_id];
+        const stage = t.stage_id ? stageMap[t.stage_id] : undefined;
         const funnel = stage ? funnelMap[stage.funnel_id] : undefined;
         const targetFunnel = t.target_funnel_id ? funnelMap[t.target_funnel_id] : undefined;
         const targetStage = t.target_stage_id ? stageMap[t.target_stage_id] : undefined;

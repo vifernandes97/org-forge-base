@@ -13,6 +13,7 @@ export async function fetchStageTaskTemplates(organizationId: string) {
 
 export async function createStageTaskTemplate(template: {
   organization_id: string;
+  trigger_type: string;
   stage_id?: string | null;
   action_type: string;
   title: string;

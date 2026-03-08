@@ -152,11 +152,13 @@ export interface TaskWithRelations extends Task {
 }
 
 export type AutomationActionType = 'create_task' | 'send_webhook' | 'move_lead';
+export type AutomationTriggerType = 'stage_enter' | 'status_change';
 
 export interface StageTaskTemplate {
   id: string;
   organization_id: string;
   stage_id: string | null;
+  trigger_type: AutomationTriggerType;
   action_type: AutomationActionType;
   title: string;
   description: string | null;
