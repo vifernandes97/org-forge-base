@@ -1,35 +1,25 @@
 
+# Expandir Drawer do Lead — Estilo Bitrix
 
-# Seed de 10 Leads com Dados Aleatórios
+## Problema
+O `SheetContent` atual usa `sm:max-w-lg` (~512px), muito estreito para exibir informações do lead com conforto.
 
-## Contexto identificado
-- **User ID:** `a3376ca3-d7c9-4140-bd10-cee295a0f3e8`
-- **Organization:** `13a96fcb-faed-42f4-8a88-85c0a7103b98`
-- **Funil:** "Funil de Vendas" (`8473568a-aa3f-4303-b693-06627d5d2968`)
-- **Etapas:** Novo Lead, Qualificação, Proposta, Fechamento
-- **Campo personalizado:** "Tipo de negócio" (select: Importador / Exportador)
+## Solução
+Expandir o drawer para 90% do viewport e reorganizar o conteúdo em layout de 2 colunas (estilo Bitrix CRM): painel esquerdo com informações do lead e painel direito com atividades/tarefas.
 
-## Plano
+### Mudanças
 
-Executar uma migration SQL que insere:
+**`src/components/leads/LeadDetailSheet.tsx`**:
+- Alterar classe do `SheetContent` de `sm:max-w-lg` para `sm:max-w-[90vw]`
+- Reorganizar conteúdo interno: remover Tabs e usar layout de 2 colunas (`grid grid-cols-1 lg:grid-cols-3`)
+  - **Coluna esquerda (1/3)**: Header com nome, status, badges + dados de contato, responsável, funil, tags, campos personalizados, notas
+  - **Coluna direita (2/3)**: Tabs apenas de Atividades e Tarefas empilhadas, com timeline e formulário rápido visíveis
 
-1. **10 leads** com dados fictícios variados (nomes, emails, telefones, empresas brasileiras, valores, tags, fontes, prioridades), distribuídos entre as 4 etapas do funil.
+**`src/components/ui/sheet.tsx`**:
+- Atualizar o variant `right` para permitir larguras maiores que `sm:max-w-sm` (remover ou ampliar o max-width padrão, deixando o controle via className)
 
-2. **10 custom_field_values** vinculando cada lead ao campo "Tipo de negócio" alternando entre "Importador" e "Exportador".
-
-### Dados dos leads (exemplo):
-
-| Nome | Empresa | Etapa | Valor | Prioridade | Tipo Negócio |
-|------|---------|-------|-------|------------|--------------|
-| Carlos Silva | TechBR Ltda | Novo Lead | 15000 | medium | Importador |
-| Ana Oliveira | Global Trade SA | Qualificação | 45000 | high | Exportador |
-| Roberto Santos | Porto Logística | Proposta | 82000 | urgent | Importador |
-| ... (7 mais) | ... | ... | ... | ... | ... |
-
-### Arquivos
-| Arquivo | Ação |
-|---------|------|
-| supabase/migrations/xxx.sql | Criar (INSERT de 10 leads + 10 custom_field_values) |
-
-Nenhuma alteração de schema, apenas dados.
-
+### Arquivos alterados
+| Arquivo | Mudança |
+|---------|---------|
+| `src/components/ui/sheet.tsx` | Permitir larguras customizadas no variant right |
+| `src/components/leads/LeadDetailSheet.tsx` | Expandir para 90vw, layout 2 colunas estilo Bitrix |
