@@ -40,6 +40,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   const { data: lead, isLoading } = useLead(leadId || undefined);
   const { data: customFields } = useCustomFields();
   const { data: archiveReasons } = useActiveArchiveReasons();
+  const { data: teamMembers } = useTeamMembers();
   const deleteLead = useDeleteLead();
   const updateLeadMut = useUpdateLead();
   const archiveLeadMut = useArchiveLead();
@@ -50,6 +51,25 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [selectedReasonId, setSelectedReasonId] = useState<string>('');
+
+  const handleInlineSave = async (field: string, value: string) => {
+    if (!leadId) return;
+    const updates: Record<string, any> = {};
+    if (field === 'value') {
+      updates[field] = parseFloat(value) || 0;
+    } else if (field === 'assigned_to') {
+      updates[field] = value || null;
+    } else {
+      updates[field] = value || null;
+    }
+    try {
+      await updateLeadMut.mutateAsync({ id: leadId, updates: updates as any });
+      toast.success('Atualizado!');
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao atualizar');
+      throw err;
+    }
+  };
 
   const handleDelete = async () => {
     if (!leadId) return;
