@@ -19,6 +19,18 @@ const priorityLabels: Record<string, string> = {
   urgent: 'Urgente',
 };
 
+const statusLabels: Record<string, string> = {
+  open: 'Aberto',
+  won: 'Ganho',
+  inactive: 'Inativo',
+};
+
+const statusColors: Record<string, string> = {
+  open: 'bg-blue-500',
+  won: 'bg-green-500',
+  inactive: 'bg-gray-500',
+};
+
 interface AutomationCardProps {
   template: StageTaskTemplate;
   stage?: Stage;
@@ -60,20 +72,33 @@ export function AutomationCard({ template, stage, funnel, targetFunnel, targetSt
             </div>
             <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Quando</span>
           </div>
-          <p className="text-sm font-medium">Lead entra na etapa</p>
-          <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-            {funnel && (
-              <Badge variant="outline" className="text-[10px]">{funnel.name}</Badge>
-            )}
-            {stage && (
-              <Badge
-                className="text-[10px] text-white"
-                style={{ backgroundColor: stage.color }}
-              >
-                {stage.name}
-              </Badge>
-            )}
-          </div>
+          {isMoveLead && template.trigger_status ? (
+            <>
+              <p className="text-sm font-medium">Lead muda para status</p>
+              <div className="mt-1.5">
+                <Badge className={`text-[10px] text-white ${statusColors[template.trigger_status] || 'bg-gray-500'}`}>
+                  {statusLabels[template.trigger_status] || template.trigger_status}
+                </Badge>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-medium">Lead entra na etapa</p>
+              <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                {funnel && (
+                  <Badge variant="outline" className="text-[10px]">{funnel.name}</Badge>
+                )}
+                {stage && (
+                  <Badge
+                    className="text-[10px] text-white"
+                    style={{ backgroundColor: stage.color }}
+                  >
+                    {stage.name}
+                  </Badge>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Arrow connector */}

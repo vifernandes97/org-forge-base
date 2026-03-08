@@ -1,58 +1,35 @@
 
 
-# Automação "Mover Lead" baseada em Status (não Etapa)
+# Seed de 10 Leads com Dados Aleatórios
 
-## Objetivo
-Para a ação `move_lead`, o gatilho deve ser a mudança de **status** do lead (open, won, inactive) em vez da mudança de etapa. Assim, por exemplo: "Quando lead mudar para status Won → Mover para Funil Pós-venda".
+## Contexto identificado
+- **User ID:** `a3376ca3-d7c9-4140-bd10-cee295a0f3e8`
+- **Organization:** `13a96fcb-faed-42f4-8a88-85c0a7103b98`
+- **Funil:** "Funil de Vendas" (`8473568a-aa3f-4303-b693-06627d5d2968`)
+- **Etapas:** Novo Lead, Qualificação, Proposta, Fechamento
+- **Campo personalizado:** "Tipo de negócio" (select: Importador / Exportador)
 
-## Mudanças no Banco de Dados
+## Plano
 
-### Adicionar coluna `trigger_status` na tabela `stage_task_templates`
-```sql
-ALTER TABLE stage_task_templates
-  ADD COLUMN trigger_status text;
-```
-- Quando `action_type = 'move_lead'`, o gatilho usa `trigger_status` (e `stage_id` se torna opcional)
-- Valores válidos: `'open'`, `'won'`, `'inactive'`
+Executar uma migration SQL que insere:
 
-### Tornar `stage_id` nullable
-```sql
-ALTER TABLE stage_task_templates ALTER COLUMN stage_id DROP NOT NULL;
-```
-Isso permite que automações de `move_lead` sejam baseadas em status sem exigir uma etapa.
+1. **10 leads** com dados fictícios variados (nomes, emails, telefones, empresas brasileiras, valores, tags, fontes, prioridades), distribuídos entre as 4 etapas do funil.
 
-### Atualizar trigger `execute_stage_task_automations()`
-- Adicionar verificação de mudança de status (`OLD.status IS DISTINCT FROM NEW.status`)
-- Buscar templates `move_lead` onde `trigger_status = NEW.status` e disparar a movimentação
-- Manter a lógica atual de `stage_id` para `create_task` e `send_webhook`
+2. **10 custom_field_values** vinculando cada lead ao campo "Tipo de negócio" alternando entre "Importador" e "Exportador".
 
-## Mudanças no Frontend
+### Dados dos leads (exemplo):
 
-### `StageTaskTemplateDialog.tsx`
-- Quando `action_type = 'move_lead'`, trocar o bloco GATILHO:
-  - Em vez de Funil + Etapa, mostrar select de **Status** (Aberto, Ganho, Inativo)
-  - Remover obrigatoriedade de `funnel_id` e `stage_id` para `move_lead`
-  - Adicionar campo `trigger_status` ao schema
-- Manter funil+etapa como gatilho para `create_task` e `send_webhook`
+| Nome | Empresa | Etapa | Valor | Prioridade | Tipo Negócio |
+|------|---------|-------|-------|------------|--------------|
+| Carlos Silva | TechBR Ltda | Novo Lead | 15000 | medium | Importador |
+| Ana Oliveira | Global Trade SA | Qualificação | 45000 | high | Exportador |
+| Roberto Santos | Porto Logística | Proposta | 82000 | urgent | Importador |
+| ... (7 mais) | ... | ... | ... | ... | ... |
 
-### `AutomationCard.tsx`
-- Para `move_lead`: exibir o status como gatilho (ex: badge "Ganho") em vez de funil/etapa
-
-### `AutomationsPage.tsx`
-- No `handleSubmit`, limpar `stage_id`/`funnel_id` trigger quando `move_lead`, e setar `trigger_status`
-
-### `src/types/index.ts`
-- Adicionar `trigger_status?: string | null` ao `StageTaskTemplate`
-
-### `src/services/stageTaskTemplates.ts`
-- Incluir `trigger_status` nos campos de create/update
-
+### Arquivos
 | Arquivo | Ação |
 |---------|------|
-| Migration SQL | Coluna `trigger_status`, `stage_id` nullable, trigger atualizado |
-| `src/types/index.ts` | Adicionar `trigger_status` |
-| `src/services/stageTaskTemplates.ts` | Incluir novo campo |
-| `src/components/automations/StageTaskTemplateDialog.tsx` | Gatilho por status para move_lead |
-| `src/components/automations/AutomationCard.tsx` | Exibir status como gatilho |
-| `src/pages/AutomationsPage.tsx` | Ajustar handleSubmit |
+| supabase/migrations/xxx.sql | Criar (INSERT de 10 leads + 10 custom_field_values) |
+
+Nenhuma alteração de schema, apenas dados.
 

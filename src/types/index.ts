@@ -156,7 +156,7 @@ export type AutomationActionType = 'create_task' | 'send_webhook' | 'move_lead';
 export interface StageTaskTemplate {
   id: string;
   organization_id: string;
-  stage_id: string;
+  stage_id: string | null;
   action_type: AutomationActionType;
   title: string;
   description: string | null;
@@ -168,6 +168,7 @@ export interface StageTaskTemplate {
   webhook_secret: string | null;
   target_funnel_id: string | null;
   target_stage_id: string | null;
+  trigger_status: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

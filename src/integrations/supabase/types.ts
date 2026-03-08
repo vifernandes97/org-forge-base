@@ -715,11 +715,12 @@ export type Database = {
           is_active: boolean
           organization_id: string
           priority: string
-          stage_id: string
+          stage_id: string | null
           target_funnel_id: string | null
           target_stage_id: string | null
           task_type: string
           title: string
+          trigger_status: string | null
           updated_at: string
           webhook_secret: string | null
           webhook_url: string | null
@@ -734,11 +735,12 @@ export type Database = {
           is_active?: boolean
           organization_id: string
           priority?: string
-          stage_id: string
+          stage_id?: string | null
           target_funnel_id?: string | null
           target_stage_id?: string | null
           task_type?: string
           title: string
+          trigger_status?: string | null
           updated_at?: string
           webhook_secret?: string | null
           webhook_url?: string | null
@@ -753,11 +755,12 @@ export type Database = {
           is_active?: boolean
           organization_id?: string
           priority?: string
-          stage_id?: string
+          stage_id?: string | null
           target_funnel_id?: string | null
           target_stage_id?: string | null
           task_type?: string
           title?: string
+          trigger_status?: string | null
           updated_at?: string
           webhook_secret?: string | null
           webhook_url?: string | null
