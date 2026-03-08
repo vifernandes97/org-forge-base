@@ -176,6 +176,26 @@ export interface SavedFilter {
 
 export type StageTimeFilter = 'less_24h' | '1_3_days' | '3_7_days' | 'more_7_days' | 'above_sla';
 
+export interface Automation {
+  id: string;
+  organization_id: string;
+  name: string;
+  is_active: boolean;
+  trigger_funnel_id: string;
+  trigger_stage_id: string;
+  action_funnel_id: string;
+  action_stage_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AutomationWithRelations extends Automation {
+  trigger_funnel?: Funnel;
+  trigger_stage?: Stage;
+  action_funnel?: Funnel;
+  action_stage?: Stage;
+}
+
 export interface LeadFilters {
   search?: string;
   stage_ids?: string[];

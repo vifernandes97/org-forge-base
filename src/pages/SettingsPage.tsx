@@ -55,6 +55,7 @@ export default function SettingsPage() {
         <TabsContent value="webhooks"><WebhooksPage /></TabsContent>
         <TabsContent value="inbound-webhooks"><InboundWebhooksPage /></TabsContent>
         <TabsContent value="archive-reasons"><ArchiveReasonsPage /></TabsContent>
+        <TabsContent value="automations"><AutomationsPage /></TabsContent>
       </Tabs>
     </div>
   );
