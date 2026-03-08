@@ -15,8 +15,8 @@ import { useStages } from '@/hooks/useStages';
 import type { StageTaskTemplate } from '@/types';
 
 const schema = z.object({
-  funnel_id: z.string().min(1, 'Selecione um funil'),
-  stage_id: z.string().min(1, 'Selecione uma etapa'),
+  funnel_id: z.string().optional(),
+  stage_id: z.string().optional(),
   action_type: z.enum(['create_task', 'send_webhook', 'move_lead']),
   title: z.string().min(1, 'Título obrigatório'),
   description: z.string().optional(),
@@ -28,6 +28,7 @@ const schema = z.object({
   webhook_secret: z.string().optional(),
   target_funnel_id: z.string().optional(),
   target_stage_id: z.string().optional(),
+  trigger_status: z.string().optional(),
 }).refine((data) => {
   if (data.action_type === 'send_webhook') {
     return !!data.webhook_url && data.webhook_url.startsWith('http');
@@ -39,7 +40,19 @@ const schema = z.object({
     return !!data.target_funnel_id;
   }
   return true;
-}, { message: 'Selecione o funil destino', path: ['target_funnel_id'] });
+}, { message: 'Selecione o funil destino', path: ['target_funnel_id'] })
+.refine((data) => {
+  if (data.action_type === 'move_lead') {
+    return !!data.trigger_status;
+  }
+  return true;
+}, { message: 'Selecione o status gatilho', path: ['trigger_status'] })
+.refine((data) => {
+  if (data.action_type !== 'move_lead') {
+    return !!data.funnel_id && !!data.stage_id;
+  }
+  return true;
+}, { message: 'Selecione um funil e etapa', path: ['funnel_id'] });
 
 type FormValues = z.infer<typeof schema>;
 
@@ -51,6 +64,12 @@ interface Props {
   loading?: boolean;
   defaultFunnelId?: string;
 }
+
+const statusLabels: Record<string, string> = {
+  open: 'Aberto',
+  won: 'Ganho',
+  inactive: 'Inativo',
+};
 
 export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template, loading, defaultFunnelId }: Props) {
   const { data: funnels } = useFunnels();
@@ -71,6 +90,7 @@ export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template
       webhook_secret: '',
       target_funnel_id: '',
       target_stage_id: '',
+      trigger_status: '',
     },
   });
 
@@ -85,7 +105,7 @@ export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template
       const stageObj = stages?.find(s => s.id === template.stage_id);
       form.reset({
         funnel_id: stageObj?.funnel_id || defaultFunnelId || '',
-        stage_id: template.stage_id,
+        stage_id: template.stage_id || '',
         action_type: template.action_type || 'create_task',
         title: template.title,
         description: template.description || '',
@@ -97,6 +117,7 @@ export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template
         webhook_secret: template.webhook_secret || '',
         target_funnel_id: template.target_funnel_id || '',
         target_stage_id: template.target_stage_id || '',
+        trigger_status: template.trigger_status || '',
       });
     } else {
       form.reset({
@@ -113,6 +134,7 @@ export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template
         webhook_secret: '',
         target_funnel_id: '',
         target_stage_id: '',
+        trigger_status: '',
       });
     }
   }, [template, open, defaultFunnelId]);
@@ -177,30 +199,49 @@ export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template
                   <Zap className="h-4 w-4 text-amber-500" />
                   <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Gatilho</span>
                 </div>
-                <FormField control={form.control} name="funnel_id" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">Funil</FormLabel>
-                    <Select value={field.value} onValueChange={(v) => { field.onChange(v); form.setValue('stage_id', ''); }}>
-                      <FormControl><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        {funnels?.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="stage_id" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">Etapa</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange} disabled={!selectedFunnelId}>
-                      <FormControl><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        {stages?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                {isMoveLead ? (
+                  <FormField control={form.control} name="trigger_status" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Status do lead</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="open">Aberto</SelectItem>
+                          <SelectItem value="won">Ganho</SelectItem>
+                          <SelectItem value="inactive">Inativo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                ) : (
+                  <>
+                    <FormField control={form.control} name="funnel_id" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Funil</FormLabel>
+                        <Select value={field.value} onValueChange={(v) => { field.onChange(v); form.setValue('stage_id', ''); }}>
+                          <FormControl><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {funnels?.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="stage_id" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Etapa</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange} disabled={!selectedFunnelId}>
+                          <FormControl><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {stages?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </>
+                )}
               </div>
 
               {/* Arrow */}

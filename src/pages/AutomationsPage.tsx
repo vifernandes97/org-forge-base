@@ -51,6 +51,7 @@ export default function AutomationsPage() {
       rest.description = null;
       rest.target_funnel_id = null;
       rest.target_stage_id = null;
+      rest.trigger_status = null;
     } else if (rest.action_type === 'move_lead') {
       rest.task_type = 'other';
       rest.priority = 'medium';
@@ -61,11 +62,14 @@ export default function AutomationsPage() {
       rest.webhook_secret = null;
       rest.target_funnel_id = rest.target_funnel_id || null;
       rest.target_stage_id = rest.target_stage_id || null;
+      rest.trigger_status = rest.trigger_status || null;
+      rest.stage_id = null;
     } else {
       rest.webhook_url = null;
       rest.webhook_secret = null;
       rest.target_funnel_id = null;
       rest.target_stage_id = null;
+      rest.trigger_status = null;
     }
     if (editing) {
       await updateMut.mutateAsync({ id: editing.id, updates: rest });
