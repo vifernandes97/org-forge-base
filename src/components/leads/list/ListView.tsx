@@ -104,6 +104,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
               <TableHead>Responsável</TableHead>
               <SortHeader col="value">Valor</SortHeader>
               <SortHeader col="priority">Prioridade</SortHeader>
+              <TableHead>Status</TableHead>
               <TableHead className="hidden lg:table-cell">Tags</TableHead>
               <SortHeader col="last_activity_at">Última atividade</SortHeader>
               <TableHead className="hidden lg:table-cell">Criado em</TableHead>
