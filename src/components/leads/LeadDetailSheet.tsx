@@ -196,7 +196,16 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
               {/* Header */}
               <SheetHeader className="px-6 pt-6 pb-4 border-b space-y-3 shrink-0">
                 <div className="flex items-start justify-between gap-2">
-                  <SheetTitle className="text-xl leading-tight">{typedLead.name}</SheetTitle>
+                  <div className="flex-1 min-w-0">
+                    <InlineEditField
+                      type="text"
+                      value={typedLead.name}
+                      icon={undefined}
+                      placeholder="Nome do lead"
+                      onSave={(v) => handleInlineSave('name', v)}
+                      className="text-xl font-semibold leading-tight"
+                    />
+                  </div>
                   <div className="flex gap-1.5 shrink-0">
                     {!isArchived && typedLead.status !== 'won' && (
                       <Button variant="ghost" size="icon" onClick={handleToggleWon} aria-label="Marcar como ganho" className="text-green-600 hover:text-green-600">
