@@ -49,9 +49,23 @@ export default function AutomationsPage() {
       rest.due_hours = 24;
       rest.assign_to_lead_owner = false;
       rest.description = null;
+      rest.target_funnel_id = null;
+      rest.target_stage_id = null;
+    } else if (rest.action_type === 'move_lead') {
+      rest.task_type = 'other';
+      rest.priority = 'medium';
+      rest.due_hours = 24;
+      rest.assign_to_lead_owner = false;
+      rest.description = null;
+      rest.webhook_url = null;
+      rest.webhook_secret = null;
+      rest.target_funnel_id = rest.target_funnel_id || null;
+      rest.target_stage_id = rest.target_stage_id || null;
     } else {
       rest.webhook_url = null;
       rest.webhook_secret = null;
+      rest.target_funnel_id = null;
+      rest.target_stage_id = null;
     }
     if (editing) {
       await updateMut.mutateAsync({ id: editing.id, updates: rest });
