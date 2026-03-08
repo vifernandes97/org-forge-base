@@ -704,6 +704,66 @@ export type Database = {
           },
         ]
       }
+      stage_task_templates: {
+        Row: {
+          assign_to_lead_owner: boolean
+          created_at: string
+          description: string | null
+          due_hours: number
+          id: string
+          is_active: boolean
+          organization_id: string
+          priority: string
+          stage_id: string
+          task_type: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assign_to_lead_owner?: boolean
+          created_at?: string
+          description?: string | null
+          due_hours?: number
+          id?: string
+          is_active?: boolean
+          organization_id: string
+          priority?: string
+          stage_id: string
+          task_type?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assign_to_lead_owner?: boolean
+          created_at?: string
+          description?: string | null
+          due_hours?: number
+          id?: string
+          is_active?: boolean
+          organization_id?: string
+          priority?: string
+          stage_id?: string
+          task_type?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_task_templates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_task_templates_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stages: {
         Row: {
           color: string
