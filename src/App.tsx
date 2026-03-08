@@ -19,6 +19,7 @@ import TasksPage from "@/pages/TasksPage";
 import InboundWebhookEditPage from "@/pages/InboundWebhookEditPage";
 import InboundWebhookLogsPage from "@/pages/InboundWebhookLogsPage";
 import SettingsPage from "@/pages/SettingsPage";
+import AutomationsPage from "@/pages/AutomationsPage";
 import NotFound from "@/pages/NotFound";
 
 
@@ -58,6 +59,9 @@ const App = () => (
               } />
               <Route path="/settings" element={
                 <PrivateRoute><MainLayout><SettingsPage /></MainLayout></PrivateRoute>
+              } />
+              <Route path="/settings/automations" element={
+                <PrivateRoute><MainLayout><AutomationsPage /></MainLayout></PrivateRoute>
               } />
               <Route path="/settings/inbound-webhooks/logs" element={
                 <PrivateRoute><MainLayout><InboundWebhookLogsPage /></MainLayout></PrivateRoute>

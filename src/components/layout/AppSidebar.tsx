@@ -1,4 +1,4 @@
-import { LayoutDashboard, Settings, GitBranch, Contact, CheckSquare } from 'lucide-react';
+import { LayoutDashboard, Settings, GitBranch, Contact, CheckSquare, Zap } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import {
   Sidebar,
@@ -22,6 +22,7 @@ const mainNav = [
 
 const settingsNav = [
   { title: 'Funis', url: '/settings/funnels', icon: GitBranch },
+  { title: 'Automações', url: '/settings/automations', icon: Zap },
   { title: 'Configurações', url: '/settings', icon: Settings },
 ];
 
