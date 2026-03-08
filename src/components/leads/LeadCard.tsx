@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { PriorityBadge } from './PriorityBadge';
+import { StatusBadge } from './StatusBadge';
 import type { LeadWithRelations } from '@/types';
 
 interface LeadCardProps {
