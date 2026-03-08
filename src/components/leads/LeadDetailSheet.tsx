@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { TaskList } from '@/components/tasks/TaskList';
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
-import { Plus, Archive, ArchiveRestore } from 'lucide-react';
+import { Plus, Archive, ArchiveRestore, Trophy } from 'lucide-react';
 import { QuickActivityForm } from './activities/QuickActivityForm';
 import { ActivityTimeline } from './activities/ActivityTimeline';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
