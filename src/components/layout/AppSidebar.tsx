@@ -21,13 +21,8 @@ const mainNav = [
 ];
 
 const settingsNav = [
-  { title: 'Organização', url: '/settings/organization', icon: Building2 },
-  { title: 'Equipe', url: '/settings/team', icon: Users },
   { title: 'Funis', url: '/settings/funnels', icon: GitBranch },
-  { title: 'Campos Personalizados', url: '/settings/custom-fields', icon: ListChecks },
-  { title: 'Webhooks de Saída', url: '/settings/webhooks', icon: ArrowUpFromLine },
-  { title: 'Webhooks de Entrada', url: '/settings/inbound-webhooks', icon: ArrowDownToLine },
-  { title: 'Motivos de Arquivamento', url: '/settings/archive-reasons', icon: Archive },
+  { title: 'Configurações', url: '/settings', icon: Settings },
 ];
 
 export function AppSidebar() {
