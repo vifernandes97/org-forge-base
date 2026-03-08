@@ -1,9 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Plus, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useQuery } from '@tanstack/react-query';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useFunnels } from '@/hooks/useFunnels';
-import { useStages } from '@/hooks/useStages';
+import { supabase } from '@/integrations/supabase/client';
+import type { Stage } from '@/types';
 import {
   useStageTaskTemplates,
   useCreateStageTaskTemplate,
