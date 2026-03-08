@@ -706,6 +706,7 @@ export type Database = {
       }
       stage_task_templates: {
         Row: {
+          action_type: string
           assign_to_lead_owner: boolean
           created_at: string
           description: string | null
@@ -718,8 +719,11 @@ export type Database = {
           task_type: string
           title: string
           updated_at: string
+          webhook_secret: string | null
+          webhook_url: string | null
         }
         Insert: {
+          action_type?: string
           assign_to_lead_owner?: boolean
           created_at?: string
           description?: string | null
@@ -732,8 +736,11 @@ export type Database = {
           task_type?: string
           title: string
           updated_at?: string
+          webhook_secret?: string | null
+          webhook_url?: string | null
         }
         Update: {
+          action_type?: string
           assign_to_lead_owner?: boolean
           created_at?: string
           description?: string | null
@@ -746,6 +753,8 @@ export type Database = {
           task_type?: string
           title?: string
           updated_at?: string
+          webhook_secret?: string | null
+          webhook_url?: string | null
         }
         Relationships: [
           {

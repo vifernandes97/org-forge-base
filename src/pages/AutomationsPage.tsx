@@ -42,6 +42,17 @@ export default function AutomationsPage() {
   const handleSubmit = async (values: any) => {
     if (!organization) return;
     const { funnel_id, ...rest } = values;
+    // Clean up fields based on action_type
+    if (rest.action_type === 'send_webhook') {
+      rest.task_type = 'other';
+      rest.priority = 'medium';
+      rest.due_hours = 24;
+      rest.assign_to_lead_owner = false;
+      rest.description = null;
+    } else {
+      rest.webhook_url = null;
+      rest.webhook_secret = null;
+    }
     if (editing) {
       await updateMut.mutateAsync({ id: editing.id, updates: rest });
     } else {
@@ -60,7 +71,7 @@ export default function AutomationsPage() {
             Automações
           </h1>
           <p className="text-muted-foreground text-sm">
-            Configure ações automáticas quando leads entram em etapas específicas.
+            Configure ações automáticas (tarefas ou webhooks) quando leads entram em etapas específicas.
           </p>
         </div>
         <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
@@ -82,7 +93,7 @@ export default function AutomationsPage() {
           </div>
           <h3 className="font-semibold text-lg">Nenhuma automação configurada</h3>
           <p className="text-muted-foreground text-sm mt-1 max-w-sm">
-            Crie automações para gerar tarefas automaticamente quando leads entrarem em determinadas etapas.
+            Crie automações para gerar tarefas ou disparar webhooks automaticamente quando leads entrarem em determinadas etapas.
           </p>
           <Button className="mt-4" onClick={() => { setEditing(null); setDialogOpen(true); }}>
             <Plus className="h-4 w-4 mr-1.5" />
