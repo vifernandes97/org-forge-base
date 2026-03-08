@@ -17,6 +17,8 @@ import { StatusBadge } from './StatusBadge';
 import { useLead, useDeleteLead, useArchiveLead, useUnarchiveLead, useUpdateLead } from '@/hooks/useLeads';
 import { useActiveArchiveReasons } from '@/hooks/useArchiveReasons';
 import { useCustomFields } from '@/hooks/useCustomFields';
+import { useTeamMembers } from '@/hooks/useTeam';
+import { InlineEditField } from './InlineEditField';
 
 import { LeadFormDialog } from './LeadFormDialog';
 import { Pencil, Trash2, Clock, AlertTriangle, Building2, Mail, Phone, Tag, User, DollarSign, FileText } from 'lucide-react';
