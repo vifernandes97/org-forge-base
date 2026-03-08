@@ -19,6 +19,7 @@ import TasksPage from "@/pages/TasksPage";
 import InboundWebhookEditPage from "@/pages/InboundWebhookEditPage";
 import InboundWebhookLogsPage from "@/pages/InboundWebhookLogsPage";
 import SettingsPage from "@/pages/SettingsPage";
+import AutomationsPage from "@/pages/AutomationsPage";
 import NotFound from "@/pages/NotFound";
 
 
