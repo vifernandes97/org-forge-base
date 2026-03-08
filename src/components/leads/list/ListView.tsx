@@ -159,6 +159,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
                       : '—'}
                   </TableCell>
                   <TableCell><PriorityBadge priority={lead.priority} /></TableCell>
+                  <TableCell><StatusBadge status={lead.status || 'open'} /></TableCell>
                   <TableCell className="hidden lg:table-cell">
                     <div className="flex gap-1">
                       {(lead.tags || []).slice(0, 2).map((t: string) => (
