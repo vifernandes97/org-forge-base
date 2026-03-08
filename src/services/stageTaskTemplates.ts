@@ -13,7 +13,7 @@ export async function fetchStageTaskTemplates(organizationId: string) {
 
 export async function createStageTaskTemplate(template: {
   organization_id: string;
-  stage_id: string;
+  stage_id?: string | null;
   action_type: string;
   title: string;
   description?: string | null;
@@ -25,6 +25,7 @@ export async function createStageTaskTemplate(template: {
   webhook_secret?: string | null;
   target_funnel_id?: string | null;
   target_stage_id?: string | null;
+  trigger_status?: string | null;
 }) {
   const { data, error } = await supabase
     .from('stage_task_templates')
