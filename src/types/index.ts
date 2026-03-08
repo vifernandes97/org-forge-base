@@ -93,7 +93,7 @@ export interface Lead {
   value: number;
   tags: string[];
   source: string | null;
-  priority: LeadPriority;
+  status: LeadStatus;
   notes: string | null;
   created_at: string;
   updated_at: string;

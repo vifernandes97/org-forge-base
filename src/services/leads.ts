@@ -220,7 +220,7 @@ export async function archiveLead(id: string, archiveReasonId: string) {
 export async function unarchiveLead(id: string) {
   const { data, error } = await supabase
     .from('leads')
-    .update({ archived_at: null, archive_reason_id: null } as any)
+    .update({ archived_at: null, archive_reason_id: null, status: 'open' } as any)
     .eq('id', id)
     .select()
     .single();

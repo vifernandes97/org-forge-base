@@ -19,6 +19,7 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
         <div className="flex items-center gap-2">
           <span className="font-medium truncate">{lead.name}</span>
           <PriorityBadge priority={lead.priority} />
+          {lead.status && lead.status !== 'open' && <StatusBadge status={lead.status} />}
         </div>
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           {lead.company && <span className="truncate">{lead.company}</span>}
