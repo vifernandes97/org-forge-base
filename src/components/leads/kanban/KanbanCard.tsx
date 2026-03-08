@@ -1,6 +1,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/leads/StatusBadge';
 import { formatStageTime } from '@/lib/formatStageTime';
 import type { LeadWithRelations, LeadPriority } from '@/types';
 
@@ -61,9 +62,12 @@ export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
         )}
       </div>
 
-      {/* Row 3: tags + stage time */}
+      {/* Row 3: status + tags + stage time */}
       <div className="flex items-center justify-between gap-1">
-        <div className="flex gap-1 overflow-hidden">
+        <div className="flex gap-1 overflow-hidden items-center">
+          {lead.status && lead.status !== 'open' && (
+            <StatusBadge status={lead.status} size="sm" />
+          )}
           {visibleTags.map(t => (
             <Badge key={t} variant="secondary" className="text-[10px] px-1.5 py-0">{t}</Badge>
           ))}

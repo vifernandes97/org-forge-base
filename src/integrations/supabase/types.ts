@@ -468,6 +468,7 @@ export type Database = {
           source: string | null
           stage_entered_at: string
           stage_id: string
+          status: string
           tags: string[]
           updated_at: string
           value: number
@@ -490,6 +491,7 @@ export type Database = {
           source?: string | null
           stage_entered_at?: string
           stage_id: string
+          status?: string
           tags?: string[]
           updated_at?: string
           value?: number
@@ -512,6 +514,7 @@ export type Database = {
           source?: string | null
           stage_entered_at?: string
           stage_id?: string
+          status?: string
           tags?: string[]
           updated_at?: string
           value?: number

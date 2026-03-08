@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { TaskList } from '@/components/tasks/TaskList';
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
-import { Plus, Archive, ArchiveRestore } from 'lucide-react';
+import { Plus, Archive, ArchiveRestore, Trophy } from 'lucide-react';
 import { QuickActivityForm } from './activities/QuickActivityForm';
 import { ActivityTimeline } from './activities/ActivityTimeline';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -13,7 +13,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { PriorityBadge } from './PriorityBadge';
-import { useLead, useDeleteLead, useArchiveLead, useUnarchiveLead } from '@/hooks/useLeads';
+import { StatusBadge } from './StatusBadge';
+import { useLead, useDeleteLead, useArchiveLead, useUnarchiveLead, useUpdateLead } from '@/hooks/useLeads';
 import { useActiveArchiveReasons } from '@/hooks/useArchiveReasons';
 import { useCustomFields } from '@/hooks/useCustomFields';
 
@@ -38,6 +39,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   const { data: customFields } = useCustomFields();
   const { data: archiveReasons } = useActiveArchiveReasons();
   const deleteLead = useDeleteLead();
+  const updateLeadMut = useUpdateLead();
   const archiveLeadMut = useArchiveLead();
   const unarchiveLeadMut = useUnarchiveLead();
   const { user } = useAuth();
@@ -98,6 +100,35 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
     }
   };
 
+  const handleToggleWon = async () => {
+    if (!leadId || !user || !organization) return;
+    const newStatus = typedLead?.status === 'won' ? 'open' : 'won';
+    try {
+      await updateLeadMut.mutateAsync({ id: leadId, updates: { status: newStatus } as any });
+      if (newStatus === 'won') {
+        await createActivity({
+          organization_id: organization.id,
+          lead_id: leadId,
+          user_id: user.id,
+          activity_type: 'note',
+          title: 'Lead marcado como Ganho',
+        });
+        toast.success('Lead marcado como Ganho!');
+      } else {
+        await createActivity({
+          organization_id: organization.id,
+          lead_id: leadId,
+          user_id: user.id,
+          activity_type: 'note',
+          title: 'Lead reaberto',
+        });
+        toast.success('Lead reaberto!');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao atualizar status');
+    }
+  };
+
   const typedLead = lead as LeadWithRelations | undefined;
 
   // SLA calculation
@@ -149,6 +180,16 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                 <div className="flex items-start justify-between gap-2">
                   <SheetTitle className="text-xl leading-tight">{typedLead.name}</SheetTitle>
                   <div className="flex gap-1.5 shrink-0">
+                    {!isArchived && typedLead.status !== 'won' && (
+                      <Button variant="ghost" size="icon" onClick={handleToggleWon} aria-label="Marcar como ganho" className="text-green-600 hover:text-green-600">
+                        <Trophy className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {typedLead.status === 'won' && (
+                      <Button variant="ghost" size="sm" onClick={handleToggleWon} className="text-muted-foreground text-xs">
+                        Reabrir
+                      </Button>
+                    )}
                     {!isArchived && (
                       <Button variant="ghost" size="icon" onClick={() => setArchiveDialogOpen(true)} aria-label="Arquivar lead">
                         <Archive className="h-4 w-4" />
@@ -177,6 +218,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <StatusBadge status={typedLead.status || 'open'} />
                   <PriorityBadge priority={typedLead.priority} />
                   {typedLead.stage && (
                     <Badge variant="outline" style={{ borderColor: typedLead.stage.color, color: typedLead.stage.color }}>

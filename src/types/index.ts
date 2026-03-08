@@ -78,6 +78,7 @@ export interface CustomFieldValue {
 }
 
 export type LeadPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type LeadStatus = 'open' | 'won' | 'inactive';
 
 export interface Lead {
   id: string;
@@ -93,6 +94,7 @@ export interface Lead {
   tags: string[];
   source: string | null;
   priority: LeadPriority;
+  status: LeadStatus;
   notes: string | null;
   created_at: string;
   updated_at: string;

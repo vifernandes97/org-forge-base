@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { PriorityBadge } from '@/components/leads/PriorityBadge';
+import { StatusBadge } from '@/components/leads/StatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -103,6 +104,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
               <TableHead>Responsável</TableHead>
               <SortHeader col="value">Valor</SortHeader>
               <SortHeader col="priority">Prioridade</SortHeader>
+              <TableHead>Status</TableHead>
               <TableHead className="hidden lg:table-cell">Tags</TableHead>
               <SortHeader col="last_activity_at">Última atividade</SortHeader>
               <TableHead className="hidden lg:table-cell">Criado em</TableHead>
@@ -111,7 +113,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
           <TableBody>
             {leads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={13} className="text-center text-muted-foreground py-8">
                   Nenhum lead encontrado neste funil.
                 </TableCell>
               </TableRow>
@@ -157,6 +159,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
                       : '—'}
                   </TableCell>
                   <TableCell><PriorityBadge priority={lead.priority} /></TableCell>
+                  <TableCell><StatusBadge status={lead.status || 'open'} /></TableCell>
                   <TableCell className="hidden lg:table-cell">
                     <div className="flex gap-1">
                       {(lead.tags || []).slice(0, 2).map((t: string) => (
