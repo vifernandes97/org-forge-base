@@ -60,6 +60,9 @@ const App = () => (
               <Route path="/settings" element={
                 <PrivateRoute><MainLayout><SettingsPage /></MainLayout></PrivateRoute>
               } />
+              <Route path="/settings/automations" element={
+                <PrivateRoute><MainLayout><AutomationsPage /></MainLayout></PrivateRoute>
+              } />
               <Route path="/settings/inbound-webhooks/logs" element={
                 <PrivateRoute><MainLayout><InboundWebhookLogsPage /></MainLayout></PrivateRoute>
               } />

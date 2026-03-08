@@ -22,6 +22,7 @@ const mainNav = [
 
 const settingsNav = [
   { title: 'Funis', url: '/settings/funnels', icon: GitBranch },
+  { title: 'Automações', url: '/settings/automations', icon: Zap },
   { title: 'Configurações', url: '/settings', icon: Settings },
 ];
 

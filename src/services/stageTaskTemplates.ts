@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { StageTaskTemplate } from '@/types';
 
 export async function fetchStageTaskTemplates(organizationId: string) {
   const { data, error } = await supabase
@@ -7,7 +8,7 @@ export async function fetchStageTaskTemplates(organizationId: string) {
     .eq('organization_id', organizationId)
     .order('created_at', { ascending: false });
   if (error) throw error;
-  return data;
+  return data as unknown as StageTaskTemplate[];
 }
 
 export async function createStageTaskTemplate(template: {

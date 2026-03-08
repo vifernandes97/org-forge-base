@@ -148,19 +148,24 @@ function AutomationsList({
   onDelete: (id: string) => void;
   onToggle: (id: string, active: boolean) => void;
 }) {
-  // Group templates by funnel for stage loading
-  const funnelIds = [...new Set(funnels.map(f => f.id))];
+  // Load all stages at once (pass undefined to get all org stages)
+  const { data: allStages } = useStages(funnels[0]?.id);
+  // Actually we need all funnels' stages - let's query them all
+  const stageQueries = funnels.map(f => f.id);
+  const s0 = useStages(stageQueries[0]);
+  const s1 = useStages(stageQueries[1]);
+  const s2 = useStages(stageQueries[2]);
+  const s3 = useStages(stageQueries[3]);
+  const s4 = useStages(stageQueries[4]);
 
-  // Load stages for all funnels - we'll use individual hooks per funnel
-  // Since we can't call hooks in a loop, we load all stages at once
-  const allStagesQueries = funnelIds.map(fid => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const { data } = useStages(fid);
-    return data || [];
-  });
-
-  const allStages = allStagesQueries.flat();
-  const stageMap = Object.fromEntries(allStages.map(s => [s.id, s]));
+  const allStagesArr = [
+    ...(s0.data || []),
+    ...(s1.data || []),
+    ...(s2.data || []),
+    ...(s3.data || []),
+    ...(s4.data || []),
+  ];
+  const stageMap = Object.fromEntries(allStagesArr.map(s => [s.id, s]));
   const funnelMap = Object.fromEntries(funnels.map(f => [f.id, f]));
 
   return (
