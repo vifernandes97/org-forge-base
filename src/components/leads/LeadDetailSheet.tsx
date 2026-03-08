@@ -17,6 +17,8 @@ import { StatusBadge } from './StatusBadge';
 import { useLead, useDeleteLead, useArchiveLead, useUnarchiveLead, useUpdateLead } from '@/hooks/useLeads';
 import { useActiveArchiveReasons } from '@/hooks/useArchiveReasons';
 import { useCustomFields } from '@/hooks/useCustomFields';
+import { useTeamMembers } from '@/hooks/useTeam';
+import { InlineEditField } from './InlineEditField';
 
 import { LeadFormDialog } from './LeadFormDialog';
 import { Pencil, Trash2, Clock, AlertTriangle, Building2, Mail, Phone, Tag, User, DollarSign, FileText } from 'lucide-react';
@@ -38,6 +40,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   const { data: lead, isLoading } = useLead(leadId || undefined);
   const { data: customFields } = useCustomFields();
   const { data: archiveReasons } = useActiveArchiveReasons();
+  const { data: teamMembers } = useTeamMembers();
   const deleteLead = useDeleteLead();
   const updateLeadMut = useUpdateLead();
   const archiveLeadMut = useArchiveLead();
@@ -48,6 +51,25 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [selectedReasonId, setSelectedReasonId] = useState<string>('');
+
+  const handleInlineSave = async (field: string, value: string) => {
+    if (!leadId) return;
+    const updates: Record<string, any> = {};
+    if (field === 'value') {
+      updates[field] = parseFloat(value) || 0;
+    } else if (field === 'assigned_to') {
+      updates[field] = value || null;
+    } else {
+      updates[field] = value || null;
+    }
+    try {
+      await updateLeadMut.mutateAsync({ id: leadId, updates: updates as any });
+      toast.success('Atualizado!');
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao atualizar');
+      throw err;
+    }
+  };
 
   const handleDelete = async () => {
     if (!leadId) return;
@@ -174,7 +196,16 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
               {/* Header */}
               <SheetHeader className="px-6 pt-6 pb-4 border-b space-y-3 shrink-0">
                 <div className="flex items-start justify-between gap-2">
-                  <SheetTitle className="text-xl leading-tight">{typedLead.name}</SheetTitle>
+                  <div className="flex-1 min-w-0">
+                    <InlineEditField
+                      type="text"
+                      value={typedLead.name}
+                      icon={undefined}
+                      placeholder="Nome do lead"
+                      onSave={(v) => handleInlineSave('name', v)}
+                      className="text-xl font-semibold leading-tight"
+                    />
+                  </div>
                   <div className="flex gap-1.5 shrink-0">
                     {!isArchived && typedLead.status !== 'won' && (
                       <Button variant="ghost" size="icon" onClick={handleToggleWon} aria-label="Marcar como ganho" className="text-green-600 hover:text-green-600">
@@ -240,62 +271,80 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                 {/* Left panel - Lead info */}
                 <div className="lg:col-span-1 border-r overflow-auto p-6 space-y-4">
                   {/* Contact info */}
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Contato</p>
-                    {typedLead.email && (
-                      <div className="flex items-center gap-3 text-sm">
-                        <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <a href={`mailto:${typedLead.email}`} className="text-primary hover:underline truncate">{typedLead.email}</a>
-                      </div>
-                    )}
-                    {typedLead.phone && (
-                      <div className="flex items-center gap-3 text-sm">
-                        <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span>{typedLead.phone}</span>
-                      </div>
-                    )}
-                    {typedLead.company && (
-                      <div className="flex items-center gap-3 text-sm">
-                        <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span>{typedLead.company}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-3 text-sm">
-                      <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="font-medium">R$ {Number(typedLead.value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                    </div>
+                    <InlineEditField
+                      type="text"
+                      value={typedLead.email || ''}
+                      icon={<Mail className="h-4 w-4" />}
+                      placeholder="Adicionar email..."
+                      onSave={(v) => handleInlineSave('email', v)}
+                    />
+                    <InlineEditField
+                      type="text"
+                      value={typedLead.phone || ''}
+                      icon={<Phone className="h-4 w-4" />}
+                      placeholder="Adicionar telefone..."
+                      onSave={(v) => handleInlineSave('phone', v)}
+                    />
+                    <InlineEditField
+                      type="text"
+                      value={typedLead.company || ''}
+                      icon={<Building2 className="h-4 w-4" />}
+                      placeholder="Adicionar empresa..."
+                      onSave={(v) => handleInlineSave('company', v)}
+                    />
+                    <InlineEditField
+                      type="currency"
+                      value={Number(typedLead.value || 0)}
+                      icon={<DollarSign className="h-4 w-4" />}
+                      placeholder="Valor"
+                      onSave={(v) => handleInlineSave('value', v)}
+                    />
                   </div>
 
                   <Separator />
 
-                  {/* Assignment & funnel */}
-                  <div className="space-y-3">
+                  {/* Assignment & details */}
+                  <div className="space-y-2">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Detalhes</p>
-                    <div className="flex items-center gap-3 text-sm">
-                      <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                      {typedLead.assigned_profile ? (
-                        <span className="flex items-center gap-2">
-                          <Avatar className="h-5 w-5">
-                            <AvatarFallback className="text-[10px]">{typedLead.assigned_profile.full_name?.[0]}</AvatarFallback>
-                          </Avatar>
-                          {typedLead.assigned_profile.full_name}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">Sem responsável</span>
-                      )}
-                    </div>
+                    <InlineEditField
+                      type="select"
+                      value={typedLead.assigned_to || ''}
+                      icon={<User className="h-4 w-4" />}
+                      placeholder="Sem responsável"
+                      options={(teamMembers || []).map((m: any) => ({
+                        value: m.user_id,
+                        label: m.profile?.full_name || m.profile?.email || 'Membro',
+                      }))}
+                      onSave={(v) => handleInlineSave('assigned_to', v)}
+                    />
                     {typedLead.funnel && (
                       <div className="flex items-center gap-3 text-sm">
                         <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span>{typedLead.funnel.name}</span>
                       </div>
                     )}
-                    {typedLead.source && (
-                      <div className="flex items-center gap-3 text-sm">
-                        <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span>Fonte: {typedLead.source}</span>
-                      </div>
-                    )}
+                    <InlineEditField
+                      type="text"
+                      value={typedLead.source || ''}
+                      icon={<Tag className="h-4 w-4" />}
+                      placeholder="Adicionar fonte..."
+                      onSave={(v) => handleInlineSave('source', v)}
+                    />
+                    <InlineEditField
+                      type="select"
+                      value={typedLead.priority || 'medium'}
+                      icon={<AlertTriangle className="h-4 w-4" />}
+                      placeholder="Prioridade"
+                      options={[
+                        { value: 'low', label: 'Baixa' },
+                        { value: 'medium', label: 'Média' },
+                        { value: 'high', label: 'Alta' },
+                        { value: 'urgent', label: 'Urgente' },
+                      ]}
+                      onSave={(v) => handleInlineSave('priority', v)}
+                    />
                   </div>
 
                   {/* Tags */}
@@ -322,15 +371,16 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                   </div>
 
                   {/* Notes */}
-                  {typedLead.notes && (
-                    <>
-                      <Separator />
-                      <div className="space-y-1">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Notas</p>
-                        <p className="text-sm whitespace-pre-wrap">{typedLead.notes}</p>
-                      </div>
-                    </>
-                  )}
+                  <Separator />
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Notas</p>
+                    <InlineEditField
+                      type="textarea"
+                      value={typedLead.notes || ''}
+                      placeholder="Adicionar notas..."
+                      onSave={(v) => handleInlineSave('notes', v)}
+                    />
+                  </div>
 
                   {/* Custom fields */}
                   {typedLead.custom_field_values && typedLead.custom_field_values.length > 0 && customFields && (

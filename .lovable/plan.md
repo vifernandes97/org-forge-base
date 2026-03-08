@@ -1,44 +1,35 @@
 
 
-# Edição Inline no Drawer do Lead
+# Seed de 10 Leads com Dados Aleatórios
 
-## Objetivo
-Transformar os campos do painel esquerdo do drawer em campos editáveis inline (click-to-edit), sem precisar abrir o formulário de edição separado.
+## Contexto identificado
+- **User ID:** `a3376ca3-d7c9-4140-bd10-cee295a0f3e8`
+- **Organization:** `13a96fcb-faed-42f4-8a88-85c0a7103b98`
+- **Funil:** "Funil de Vendas" (`8473568a-aa3f-4303-b693-06627d5d2968`)
+- **Etapas:** Novo Lead, Qualificação, Proposta, Fechamento
+- **Campo personalizado:** "Tipo de negócio" (select: Importador / Exportador)
 
-## Abordagem
-Criar um componente `InlineEditField` reutilizável que alterna entre modo exibição e edição ao clicar. Cada campo no painel esquerdo usará esse componente para permitir edição direta.
+## Plano
 
-## Mudanças
+Executar uma migration SQL que insere:
 
-### 1. Novo componente `src/components/leads/InlineEditField.tsx`
-- Componente genérico click-to-edit com variantes: `text`, `textarea`, `currency`, `select`
-- Ao clicar no valor, transforma em input; ao fazer blur ou Enter, salva; Escape cancela
-- Indicador visual sutil (ícone de lápis ou borda pontilhada) no hover
+1. **10 leads** com dados fictícios variados (nomes, emails, telefones, empresas brasileiras, valores, tags, fontes, prioridades), distribuídos entre as 4 etapas do funil.
 
-### 2. Atualizar `src/components/leads/LeadDetailSheet.tsx`
-- Substituir os campos estáticos do painel esquerdo por `InlineEditField`:
-  - **Nome** (header) → input text inline
-  - **Email** → input text
-  - **Telefone** → input text
-  - **Empresa** → input text
-  - **Valor** → input currency (formata como R$)
-  - **Responsável** → select com membros do time
-  - **Prioridade** → select com opções
-  - **Fonte** → input text
-  - **Notas** → textarea inline
-- Cada campo chama `useUpdateLead` ao salvar
-- Importar `useTeamMembers` para popular o select de responsável
-- Campos que não têm valor mostram placeholder clicável "Adicionar..."
+2. **10 custom_field_values** vinculando cada lead ao campo "Tipo de negócio" alternando entre "Importador" e "Exportador".
 
-### Comportamento
-- Hover: borda pontilhada + ícone de lápis discreto
-- Click: transforma em input com foco automático
-- Enter/blur: salva via `updateLeadMut.mutateAsync`
-- Escape: cancela edição
-- Toast de sucesso/erro ao salvar
+### Dados dos leads (exemplo):
 
-| Arquivo | Mudança |
-|---------|---------|
-| `src/components/leads/InlineEditField.tsx` | Novo componente click-to-edit |
-| `src/components/leads/LeadDetailSheet.tsx` | Substituir campos estáticos por inline edit |
+| Nome | Empresa | Etapa | Valor | Prioridade | Tipo Negócio |
+|------|---------|-------|-------|------------|--------------|
+| Carlos Silva | TechBR Ltda | Novo Lead | 15000 | medium | Importador |
+| Ana Oliveira | Global Trade SA | Qualificação | 45000 | high | Exportador |
+| Roberto Santos | Porto Logística | Proposta | 82000 | urgent | Importador |
+| ... (7 mais) | ... | ... | ... | ... | ... |
+
+### Arquivos
+| Arquivo | Ação |
+|---------|------|
+| supabase/migrations/xxx.sql | Criar (INSERT de 10 leads + 10 custom_field_values) |
+
+Nenhuma alteração de schema, apenas dados.
 
