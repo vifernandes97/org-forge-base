@@ -14,16 +14,11 @@ import OnboardingPage from "@/pages/OnboardingPage";
 import DashboardPage from "@/pages/DashboardPage";
 import FunnelsPage from "@/pages/FunnelsPage";
 import FunnelEditPage from "@/pages/FunnelEditPage";
-import CustomFieldsPage from "@/pages/CustomFieldsPage";
 import LeadsPage from "@/pages/LeadsPage";
 import TasksPage from "@/pages/TasksPage";
-import WebhooksPage from "@/pages/WebhooksPage";
-import InboundWebhooksPage from "@/pages/InboundWebhooksPage";
 import InboundWebhookEditPage from "@/pages/InboundWebhookEditPage";
 import InboundWebhookLogsPage from "@/pages/InboundWebhookLogsPage";
-import TeamPage from "@/pages/TeamPage";
-import OrganizationPage from "@/pages/OrganizationPage";
-import ArchiveReasonsPage from "@/pages/ArchiveReasonsPage";
+import SettingsPage from "@/pages/SettingsPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
