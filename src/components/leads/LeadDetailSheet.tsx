@@ -18,7 +18,9 @@ import { useLead, useDeleteLead, useArchiveLead, useUnarchiveLead, useUpdateLead
 import { useActiveArchiveReasons } from '@/hooks/useArchiveReasons';
 import { useCustomFields } from '@/hooks/useCustomFields';
 import { useTeamMembers } from '@/hooks/useTeam';
+import { useStages } from '@/hooks/useStages';
 import { InlineEditField } from './InlineEditField';
+import { StagePipeline } from './StagePipeline';
 
 import { LeadFormDialog } from './LeadFormDialog';
 import { Pencil, Trash2, Clock, AlertTriangle, Building2, Mail, Phone, Tag, User, DollarSign, FileText } from 'lucide-react';
