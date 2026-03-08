@@ -1,4 +1,4 @@
-import { ArrowRight, Pencil, Trash2, Zap, CheckSquare } from 'lucide-react';
+import { ArrowRight, Pencil, Trash2, Zap, CheckSquare, Globe } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +29,8 @@ interface AutomationCardProps {
 }
 
 export function AutomationCard({ template, stage, funnel, onEdit, onDelete, onToggle }: AutomationCardProps) {
+  const isWebhook = template.action_type === 'send_webhook';
+
   return (
     <div className="group relative rounded-xl border bg-card p-0 overflow-hidden transition-shadow hover:shadow-md">
       {/* Flow visualization */}
@@ -65,17 +67,32 @@ export function AutomationCard({ template, stage, funnel, onEdit, onDelete, onTo
         {/* Action block */}
         <div className="flex-1 p-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <CheckSquare className="h-4 w-4" />
+            <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${isWebhook ? 'bg-emerald-500/10 text-emerald-500' : 'bg-primary/10 text-primary'}`}>
+              {isWebhook ? <Globe className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />}
             </div>
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Criar Tarefa</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+              {isWebhook ? 'Webhook' : 'Criar Tarefa'}
+            </span>
           </div>
-          <p className="text-sm font-medium truncate">{template.title}</p>
-          <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-            <Badge variant="secondary" className="text-[10px]">{taskTypeLabels[template.task_type] || template.task_type}</Badge>
-            <Badge variant="secondary" className="text-[10px]">{priorityLabels[template.priority] || template.priority}</Badge>
-            <Badge variant="outline" className="text-[10px]">{template.due_hours}h prazo</Badge>
-          </div>
+          {isWebhook ? (
+            <>
+              <p className="text-sm font-medium truncate">{template.title}</p>
+              <div className="mt-1.5">
+                <Badge variant="secondary" className="text-[10px] font-mono truncate max-w-[200px]">
+                  {template.webhook_url}
+                </Badge>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-medium truncate">{template.title}</p>
+              <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                <Badge variant="secondary" className="text-[10px]">{taskTypeLabels[template.task_type] || template.task_type}</Badge>
+                <Badge variant="secondary" className="text-[10px]">{priorityLabels[template.priority] || template.priority}</Badge>
+                <Badge variant="outline" className="text-[10px]">{template.due_hours}h prazo</Badge>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

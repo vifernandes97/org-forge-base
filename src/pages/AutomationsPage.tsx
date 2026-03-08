@@ -82,7 +82,7 @@ export default function AutomationsPage() {
           </div>
           <h3 className="font-semibold text-lg">Nenhuma automação configurada</h3>
           <p className="text-muted-foreground text-sm mt-1 max-w-sm">
-            Crie automações para gerar tarefas automaticamente quando leads entrarem em determinadas etapas.
+            Crie automações para gerar tarefas ou disparar webhooks automaticamente quando leads entrarem em determinadas etapas.
           </p>
           <Button className="mt-4" onClick={() => { setEditing(null); setDialogOpen(true); }}>
             <Plus className="h-4 w-4 mr-1.5" />
