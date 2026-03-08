@@ -271,11 +271,6 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                 <div className="flex flex-wrap gap-2">
                   <StatusBadge status={typedLead.status || 'open'} />
                   <PriorityBadge priority={typedLead.priority} />
-                  {typedLead.stage && (
-                    <Badge variant="outline" style={{ borderColor: typedLead.stage.color, color: typedLead.stage.color }}>
-                      {typedLead.stage.name}
-                    </Badge>
-                  )}
                   {isArchived && (
                     <Badge variant="secondary" className="gap-1">
                       <Archive className="h-3 w-3" /> Arquivado
@@ -289,6 +284,18 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                   )}
                 </div>
               </SheetHeader>
+
+              {/* Stage Pipeline - Bitrix style */}
+              {stages && stages.length > 0 && (
+                <div className="px-6 py-3 border-b shrink-0">
+                  <StagePipeline
+                    stages={stages}
+                    currentStageId={typedLead.stage_id}
+                    onStageChange={handleStageChange}
+                    disabled={isArchived || updateLeadMut.isPending}
+                  />
+                </div>
+              )}
 
               {/* Two-column Bitrix-style layout */}
               <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-3">
