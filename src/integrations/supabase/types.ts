@@ -721,6 +721,7 @@ export type Database = {
           task_type: string
           title: string
           trigger_status: string | null
+          trigger_type: string
           updated_at: string
           webhook_secret: string | null
           webhook_url: string | null
@@ -741,6 +742,7 @@ export type Database = {
           task_type?: string
           title: string
           trigger_status?: string | null
+          trigger_type?: string
           updated_at?: string
           webhook_secret?: string | null
           webhook_url?: string | null
@@ -761,6 +763,7 @@ export type Database = {
           task_type?: string
           title?: string
           trigger_status?: string | null
+          trigger_type?: string
           updated_at?: string
           webhook_secret?: string | null
           webhook_url?: string | null

@@ -45,6 +45,7 @@ interface AutomationCardProps {
 export function AutomationCard({ template, stage, funnel, targetFunnel, targetStage, onEdit, onDelete, onToggle }: AutomationCardProps) {
   const isWebhook = template.action_type === 'send_webhook';
   const isMoveLead = template.action_type === 'move_lead';
+  const isStatusChange = template.trigger_type === 'status_change';
 
   const actionIcon = isWebhook
     ? <Globe className="h-4 w-4" />
@@ -62,7 +63,6 @@ export function AutomationCard({ template, stage, funnel, targetFunnel, targetSt
 
   return (
     <div className="group relative rounded-xl border bg-card p-0 overflow-hidden transition-shadow hover:shadow-md">
-      {/* Flow visualization */}
       <div className="flex items-stretch">
         {/* Trigger block */}
         <div className="flex-1 p-4 border-r border-dashed">
@@ -72,12 +72,12 @@ export function AutomationCard({ template, stage, funnel, targetFunnel, targetSt
             </div>
             <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Quando</span>
           </div>
-          {isMoveLead && template.trigger_status ? (
+          {isStatusChange ? (
             <>
               <p className="text-sm font-medium">Lead muda para status</p>
               <div className="mt-1.5">
-                <Badge className={`text-[10px] text-white ${statusColors[template.trigger_status] || 'bg-gray-500'}`}>
-                  {statusLabels[template.trigger_status] || template.trigger_status}
+                <Badge className={`text-[10px] text-white ${statusColors[template.trigger_status || ''] || 'bg-gray-500'}`}>
+                  {statusLabels[template.trigger_status || ''] || template.trigger_status}
                 </Badge>
               </div>
             </>
