@@ -1,6 +1,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/leads/StatusBadge';
 import { formatStageTime } from '@/lib/formatStageTime';
 import type { LeadWithRelations, LeadPriority } from '@/types';
 
