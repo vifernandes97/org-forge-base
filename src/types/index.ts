@@ -151,6 +151,26 @@ export interface TaskWithRelations extends Task {
   assigned_profile?: Profile;
 }
 
+export interface StageTaskTemplate {
+  id: string;
+  organization_id: string;
+  stage_id: string;
+  title: string;
+  description: string | null;
+  task_type: TaskType;
+  priority: LeadPriority;
+  due_hours: number;
+  assign_to_lead_owner: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StageTaskTemplateWithRelations extends StageTaskTemplate {
+  stage?: Stage;
+  funnel?: Funnel;
+}
+
 export interface WebhookLog {
   id: string;
   organization_id: string;
