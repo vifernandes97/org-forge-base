@@ -143,7 +143,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   return (
     <>
       <Sheet open={!!leadId} onOpenChange={open => { if (!open) onClose(); }}>
-        <SheetContent className="w-full sm:max-w-lg p-0 flex flex-col">
+        <SheetContent className="w-full sm:max-w-[90vw] p-0 flex flex-col overflow-hidden">
           {isLoading || !typedLead ? (
             <div className="px-6 pt-6 pb-4 space-y-4">
               <div className="flex items-start justify-between">
@@ -154,10 +154,6 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
               <Separator />
               <div className="space-y-3">
                 {[1,2,3,4].map(i => <Skeleton key={i} className="h-5 w-3/4" />)}
-              </div>
-              <Separator />
-              <div className="space-y-3">
-                {[1,2,3].map(i => <Skeleton key={i} className="h-5 w-2/3" />)}
               </div>
             </div>
           ) : (
@@ -176,7 +172,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
               )}
 
               {/* Header */}
-              <SheetHeader className="px-6 pt-6 pb-4 border-b space-y-3">
+              <SheetHeader className="px-6 pt-6 pb-4 border-b space-y-3 shrink-0">
                 <div className="flex items-start justify-between gap-2">
                   <SheetTitle className="text-xl leading-tight">{typedLead.name}</SheetTitle>
                   <div className="flex gap-1.5 shrink-0">
@@ -239,21 +235,17 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                 </div>
               </SheetHeader>
 
-              {/* Tabs */}
-              <Tabs defaultValue="info" className="flex-1 flex flex-col overflow-hidden">
-                <TabsList className="mx-6 mt-3 justify-start">
-                  <TabsTrigger value="info">Informações</TabsTrigger>
-                  <TabsTrigger value="activities">Atividades</TabsTrigger>
-                  <TabsTrigger value="tasks">Tarefas</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="info" className="flex-1 overflow-auto px-6 py-4 space-y-4 m-0">
+              {/* Two-column Bitrix-style layout */}
+              <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-3">
+                {/* Left panel - Lead info */}
+                <div className="lg:col-span-1 border-r overflow-auto p-6 space-y-4">
                   {/* Contact info */}
                   <div className="space-y-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Contato</p>
                     {typedLead.email && (
                       <div className="flex items-center gap-3 text-sm">
                         <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <a href={`mailto:${typedLead.email}`} className="text-primary hover:underline">{typedLead.email}</a>
+                        <a href={`mailto:${typedLead.email}`} className="text-primary hover:underline truncate">{typedLead.email}</a>
                       </div>
                     )}
                     {typedLead.phone && (
@@ -270,7 +262,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                     )}
                     <div className="flex items-center gap-3 text-sm">
                       <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span>R$ {Number(typedLead.value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                      <span className="font-medium">R$ {Number(typedLead.value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                     </div>
                   </div>
 
@@ -278,6 +270,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
 
                   {/* Assignment & funnel */}
                   <div className="space-y-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Detalhes</p>
                     <div className="flex items-center gap-3 text-sm">
                       <User className="h-4 w-4 text-muted-foreground shrink-0" />
                       {typedLead.assigned_profile ? (
@@ -309,8 +302,11 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                   {typedLead.tags?.length > 0 && (
                     <>
                       <Separator />
-                      <div className="flex flex-wrap gap-1.5">
-                        {typedLead.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Tags</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {typedLead.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                        </div>
                       </div>
                     </>
                   )}
@@ -330,7 +326,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                     <>
                       <Separator />
                       <div className="space-y-1">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase">Notas</p>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Notas</p>
                         <p className="text-sm whitespace-pre-wrap">{typedLead.notes}</p>
                       </div>
                     </>
@@ -341,7 +337,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                     <>
                       <Separator />
                       <div className="space-y-2">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase">Campos Personalizados</p>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Campos Personalizados</p>
                         {typedLead.custom_field_values.map((cfv: any) => {
                           const def = customFields.find(d => d.id === cfv.field_definition_id);
                           if (!def || !cfv.value) return null;
@@ -355,23 +351,33 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                       </div>
                     </>
                   )}
-                </TabsContent>
+                </div>
 
-                <TabsContent value="activities" className="flex-1 overflow-auto px-6 py-4 space-y-4 m-0">
-                  <QuickActivityForm leadId={typedLead.id} />
-                  <ActivityTimeline leadId={typedLead.id} />
-                </TabsContent>
+                {/* Right panel - Activities & Tasks */}
+                <div className="lg:col-span-2 overflow-hidden flex flex-col">
+                  <Tabs defaultValue="activities" className="flex-1 flex flex-col overflow-hidden">
+                    <TabsList className="mx-6 mt-4 mb-2 justify-start shrink-0">
+                      <TabsTrigger value="activities">Atividades</TabsTrigger>
+                      <TabsTrigger value="tasks">Tarefas</TabsTrigger>
+                    </TabsList>
 
-                <TabsContent value="tasks" className="flex-1 overflow-auto px-6 py-4 space-y-4 m-0">
-                  <div className="flex justify-end">
-                    <Button size="sm" onClick={() => setTaskFormOpen(true)}>
-                      <Plus className="h-4 w-4 mr-1" />Nova Tarefa
-                    </Button>
-                  </div>
-                  <TaskList leadId={typedLead.id} />
-                  <TaskFormDialog open={taskFormOpen} onOpenChange={setTaskFormOpen} leadId={typedLead.id} />
-                </TabsContent>
-              </Tabs>
+                    <TabsContent value="activities" className="flex-1 overflow-auto px-6 py-4 space-y-4 m-0">
+                      <QuickActivityForm leadId={typedLead.id} />
+                      <ActivityTimeline leadId={typedLead.id} />
+                    </TabsContent>
+
+                    <TabsContent value="tasks" className="flex-1 overflow-auto px-6 py-4 space-y-4 m-0">
+                      <div className="flex justify-end">
+                        <Button size="sm" onClick={() => setTaskFormOpen(true)}>
+                          <Plus className="h-4 w-4 mr-1" />Nova Tarefa
+                        </Button>
+                      </div>
+                      <TaskList leadId={typedLead.id} />
+                      <TaskFormDialog open={taskFormOpen} onOpenChange={setTaskFormOpen} leadId={typedLead.id} />
+                    </TabsContent>
+                  </Tabs>
+                </div>
+              </div>
             </>
           )}
         </SheetContent>
