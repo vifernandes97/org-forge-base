@@ -39,6 +39,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   const { data: customFields } = useCustomFields();
   const { data: archiveReasons } = useActiveArchiveReasons();
   const deleteLead = useDeleteLead();
+  const updateLeadMut = useUpdateLead();
   const archiveLeadMut = useArchiveLead();
   const unarchiveLeadMut = useUnarchiveLead();
   const { user } = useAuth();
