@@ -21,6 +21,7 @@ import InboundWebhookLogsPage from "@/pages/InboundWebhookLogsPage";
 import SettingsPage from "@/pages/SettingsPage";
 import NotFound from "@/pages/NotFound";
 
+
 const queryClient = new QueryClient();
 
 const App = () => (
