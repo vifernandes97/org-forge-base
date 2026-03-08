@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, BarChart3, Settings, GitBranch, ListChecks, Contact, CheckSquare, Webhook, Building2, ArrowUpFromLine, ArrowDownToLine, Archive } from 'lucide-react';
+import { LayoutDashboard, Settings, GitBranch, Contact, CheckSquare } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import {
   Sidebar,

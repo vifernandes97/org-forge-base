@@ -55,29 +55,14 @@ const App = () => (
               <Route path="/settings/funnels/:id" element={
                 <PrivateRoute><MainLayout><FunnelEditPage /></MainLayout></PrivateRoute>
               } />
-              <Route path="/settings/custom-fields" element={
-                <PrivateRoute><MainLayout><CustomFieldsPage /></MainLayout></PrivateRoute>
-              } />
-              <Route path="/settings/webhooks" element={
-                <PrivateRoute><MainLayout><WebhooksPage /></MainLayout></PrivateRoute>
-              } />
-              <Route path="/settings/inbound-webhooks" element={
-                <PrivateRoute><MainLayout><InboundWebhooksPage /></MainLayout></PrivateRoute>
+              <Route path="/settings" element={
+                <PrivateRoute><MainLayout><SettingsPage /></MainLayout></PrivateRoute>
               } />
               <Route path="/settings/inbound-webhooks/logs" element={
                 <PrivateRoute><MainLayout><InboundWebhookLogsPage /></MainLayout></PrivateRoute>
               } />
               <Route path="/settings/inbound-webhooks/:id" element={
                 <PrivateRoute><MainLayout><InboundWebhookEditPage /></MainLayout></PrivateRoute>
-              } />
-              <Route path="/settings/team" element={
-                <PrivateRoute><MainLayout><TeamPage /></MainLayout></PrivateRoute>
-              } />
-              <Route path="/settings/organization" element={
-                <PrivateRoute><MainLayout><OrganizationPage /></MainLayout></PrivateRoute>
-              } />
-              <Route path="/settings/archive-reasons" element={
-                <PrivateRoute><MainLayout><ArchiveReasonsPage /></MainLayout></PrivateRoute>
               } />
 
               {/* Redirect root */}
