@@ -38,14 +38,6 @@ export default function AutomationsPage() {
   const [editing, setEditing] = useState<StageTaskTemplate | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  // Load all stages for all funnels
-  const allFunnelIds = funnels?.map(f => f.id) || [];
-  // We'll use a simple approach: fetch stages per funnel in the cards
-  // Build a map of stage_id → stage and funnel
-  const stageMap = useMemo(() => {
-    const map: Record<string, { stage: any; funnel: any }> = {};
-    return map;
-  }, []);
 
   const handleSubmit = async (values: any) => {
     if (!organization) return;
