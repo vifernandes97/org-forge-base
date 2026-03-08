@@ -1,20 +1,18 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Users, ListChecks, ArrowUpFromLine, ArrowDownToLine, Archive, Settings, Zap } from 'lucide-react';
+import { Building2, Users, ListChecks, ArrowUpFromLine, ArrowDownToLine, Archive, Settings } from 'lucide-react';
 import OrganizationPage from '@/pages/OrganizationPage';
 import TeamPage from '@/pages/TeamPage';
 import CustomFieldsPage from '@/pages/CustomFieldsPage';
 import WebhooksPage from '@/pages/WebhooksPage';
 import InboundWebhooksPage from '@/pages/InboundWebhooksPage';
 import ArchiveReasonsPage from '@/pages/ArchiveReasonsPage';
-import AutomationsPage from '@/pages/AutomationsPage';
 
 const tabs = [
   { value: 'organization', label: 'Organização', icon: Building2 },
   { value: 'team', label: 'Equipe', icon: Users },
   { value: 'custom-fields', label: 'Campos Personalizados', icon: ListChecks },
-  { value: 'automations', label: 'Automações', icon: Zap },
   { value: 'webhooks', label: 'Webhooks de Saída', icon: ArrowUpFromLine },
   { value: 'inbound-webhooks', label: 'Webhooks de Entrada', icon: ArrowDownToLine },
   { value: 'archive-reasons', label: 'Motivos de Arquivamento', icon: Archive },
@@ -55,7 +53,6 @@ export default function SettingsPage() {
         <TabsContent value="webhooks"><WebhooksPage /></TabsContent>
         <TabsContent value="inbound-webhooks"><InboundWebhooksPage /></TabsContent>
         <TabsContent value="archive-reasons"><ArchiveReasonsPage /></TabsContent>
-        <TabsContent value="automations"><AutomationsPage /></TabsContent>
       </Tabs>
     </div>
   );
