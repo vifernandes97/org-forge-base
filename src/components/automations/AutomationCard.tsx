@@ -1,4 +1,4 @@
-import { ArrowRight, Pencil, Trash2, Zap, CheckSquare, Globe } from 'lucide-react';
+import { ArrowRight, Pencil, Trash2, Zap, CheckSquare, Globe, ArrowRightLeft } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,13 +23,30 @@ interface AutomationCardProps {
   template: StageTaskTemplate;
   stage?: Stage;
   funnel?: Funnel;
+  targetFunnel?: Funnel;
+  targetStage?: Stage;
   onEdit: () => void;
   onDelete: () => void;
   onToggle: (active: boolean) => void;
 }
 
-export function AutomationCard({ template, stage, funnel, onEdit, onDelete, onToggle }: AutomationCardProps) {
+export function AutomationCard({ template, stage, funnel, targetFunnel, targetStage, onEdit, onDelete, onToggle }: AutomationCardProps) {
   const isWebhook = template.action_type === 'send_webhook';
+  const isMoveLead = template.action_type === 'move_lead';
+
+  const actionIcon = isWebhook
+    ? <Globe className="h-4 w-4" />
+    : isMoveLead
+    ? <ArrowRightLeft className="h-4 w-4" />
+    : <CheckSquare className="h-4 w-4" />;
+
+  const actionIconBg = isWebhook
+    ? 'bg-emerald-500/10 text-emerald-500'
+    : isMoveLead
+    ? 'bg-violet-500/10 text-violet-500'
+    : 'bg-primary/10 text-primary';
+
+  const actionLabel = isWebhook ? 'Webhook' : isMoveLead ? 'Mover Lead' : 'Criar Tarefa';
 
   return (
     <div className="group relative rounded-xl border bg-card p-0 overflow-hidden transition-shadow hover:shadow-md">
@@ -67,11 +84,11 @@ export function AutomationCard({ template, stage, funnel, onEdit, onDelete, onTo
         {/* Action block */}
         <div className="flex-1 p-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${isWebhook ? 'bg-emerald-500/10 text-emerald-500' : 'bg-primary/10 text-primary'}`}>
-              {isWebhook ? <Globe className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />}
+            <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${actionIconBg}`}>
+              {actionIcon}
             </div>
             <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
-              {isWebhook ? 'Webhook' : 'Criar Tarefa'}
+              {actionLabel}
             </span>
           </div>
           {isWebhook ? (
@@ -81,6 +98,26 @@ export function AutomationCard({ template, stage, funnel, onEdit, onDelete, onTo
                 <Badge variant="secondary" className="text-[10px] font-mono truncate max-w-[200px]">
                   {template.webhook_url}
                 </Badge>
+              </div>
+            </>
+          ) : isMoveLead ? (
+            <>
+              <p className="text-sm font-medium truncate">{template.title}</p>
+              <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                {targetFunnel && (
+                  <Badge variant="outline" className="text-[10px]">{targetFunnel.name}</Badge>
+                )}
+                {targetStage && (
+                  <Badge
+                    className="text-[10px] text-white"
+                    style={{ backgroundColor: targetStage.color }}
+                  >
+                    {targetStage.name}
+                  </Badge>
+                )}
+                {!targetStage && (
+                  <Badge variant="secondary" className="text-[10px]">Primeira etapa</Badge>
+                )}
               </div>
             </>
           ) : (

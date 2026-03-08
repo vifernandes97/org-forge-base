@@ -716,6 +716,8 @@ export type Database = {
           organization_id: string
           priority: string
           stage_id: string
+          target_funnel_id: string | null
+          target_stage_id: string | null
           task_type: string
           title: string
           updated_at: string
@@ -733,6 +735,8 @@ export type Database = {
           organization_id: string
           priority?: string
           stage_id: string
+          target_funnel_id?: string | null
+          target_stage_id?: string | null
           task_type?: string
           title: string
           updated_at?: string
@@ -750,6 +754,8 @@ export type Database = {
           organization_id?: string
           priority?: string
           stage_id?: string
+          target_funnel_id?: string | null
+          target_stage_id?: string | null
           task_type?: string
           title?: string
           updated_at?: string
@@ -767,6 +773,20 @@ export type Database = {
           {
             foreignKeyName: "stage_task_templates_stage_id_fkey"
             columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_task_templates_target_funnel_id_fkey"
+            columns: ["target_funnel_id"]
+            isOneToOne: false
+            referencedRelation: "funnels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_task_templates_target_stage_id_fkey"
+            columns: ["target_stage_id"]
             isOneToOne: false
             referencedRelation: "stages"
             referencedColumns: ["id"]

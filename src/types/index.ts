@@ -151,7 +151,7 @@ export interface TaskWithRelations extends Task {
   assigned_profile?: Profile;
 }
 
-export type AutomationActionType = 'create_task' | 'send_webhook';
+export type AutomationActionType = 'create_task' | 'send_webhook' | 'move_lead';
 
 export interface StageTaskTemplate {
   id: string;
@@ -166,6 +166,8 @@ export interface StageTaskTemplate {
   assign_to_lead_owner: boolean;
   webhook_url: string | null;
   webhook_secret: string | null;
+  target_funnel_id: string | null;
+  target_stage_id: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

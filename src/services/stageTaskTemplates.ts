@@ -23,6 +23,8 @@ export async function createStageTaskTemplate(template: {
   assign_to_lead_owner: boolean;
   webhook_url?: string | null;
   webhook_secret?: string | null;
+  target_funnel_id?: string | null;
+  target_stage_id?: string | null;
 }) {
   const { data, error } = await supabase
     .from('stage_task_templates')
