@@ -1,35 +1,17 @@
 
 
-# Seed de 10 Leads com Dados Aleatórios
+# Adicionar padding interno nas páginas
 
-## Contexto identificado
-- **User ID:** `a3376ca3-d7c9-4140-bd10-cee295a0f3e8`
-- **Organization:** `13a96fcb-faed-42f4-8a88-85c0a7103b98`
-- **Funil:** "Funil de Vendas" (`8473568a-aa3f-4303-b693-06627d5d2968`)
-- **Etapas:** Novo Lead, Qualificação, Proposta, Fechamento
-- **Campo personalizado:** "Tipo de negócio" (select: Importador / Exportador)
+## Problema
+O `<main>` no `MainLayout` não tem padding, então o conteúdo das páginas fica colado nas bordas.
 
-## Plano
+## Solução
+Adicionar `p-4 sm:p-6` no `<main>` do `MainLayout.tsx`. Isso aplica padding consistente em **todas** as páginas protegidas (Dashboard, Leads, Tarefas, Funis, Configurações) de uma só vez.
 
-Executar uma migration SQL que insere:
+### Arquivo alterado
+| Arquivo | Mudança |
+|---------|---------|
+| `src/components/layout/MainLayout.tsx` | `<main className="flex-1">` → `<main className="flex-1 p-4 sm:p-6">` |
 
-1. **10 leads** com dados fictícios variados (nomes, emails, telefones, empresas brasileiras, valores, tags, fontes, prioridades), distribuídos entre as 4 etapas do funil.
-
-2. **10 custom_field_values** vinculando cada lead ao campo "Tipo de negócio" alternando entre "Importador" e "Exportador".
-
-### Dados dos leads (exemplo):
-
-| Nome | Empresa | Etapa | Valor | Prioridade | Tipo Negócio |
-|------|---------|-------|-------|------------|--------------|
-| Carlos Silva | TechBR Ltda | Novo Lead | 15000 | medium | Importador |
-| Ana Oliveira | Global Trade SA | Qualificação | 45000 | high | Exportador |
-| Roberto Santos | Porto Logística | Proposta | 82000 | urgent | Importador |
-| ... (7 mais) | ... | ... | ... | ... | ... |
-
-### Arquivos
-| Arquivo | Ação |
-|---------|------|
-| supabase/migrations/xxx.sql | Criar (INSERT de 10 leads + 10 custom_field_values) |
-
-Nenhuma alteração de schema, apenas dados.
+Apenas 1 linha alterada. Efeito global em todas as páginas dentro do layout.
 
