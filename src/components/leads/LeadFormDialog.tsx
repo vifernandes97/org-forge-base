@@ -279,6 +279,10 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
                 <Label>Empresa</Label>
                 <Input {...form.register('company')} placeholder="Nome da empresa" />
               </div>
+              <div className="space-y-1.5">
+                <Label>Razão Social</Label>
+                <Input {...form.register('company_name')} placeholder="Razão social da empresa" />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
