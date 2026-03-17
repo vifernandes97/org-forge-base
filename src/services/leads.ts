@@ -89,6 +89,7 @@ export async function createLead(lead: {
   phone?: string | null;
   company?: string | null;
   company_name?: string | null;
+  company_instagram?: string | null;
   assigned_to?: string | null;
   value?: number;
   tags?: string[];

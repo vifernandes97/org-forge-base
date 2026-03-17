@@ -17,6 +17,7 @@ const FIELD_ALIASES: Record<string, string[]> = {
   phone: ["phone", "telefone", "tel", "yourphone", "whatsapp", "celular"],
   company: ["company", "empresa", "companyname"],
   company_name: ["companyname", "razaosocial", "razao", "nomeempresa", "razãosocial"],
+  company_instagram: ["companyinstagram", "instagram", "ig"],
   value: ["value", "valor", "budget", "orcamento"],
   notes: ["notes", "message", "mensagem", "yourmessage", "observacoes"],
 };
@@ -171,7 +172,7 @@ Deno.serve(async (req) => {
     const fieldMapping = (webhook.field_mapping || {}) as Record<string, any>;
     const mappedData: Record<string, any> = {};
 
-    for (const crmField of ["name", "email", "phone", "company", "company_name", "value", "notes"]) {
+    for (const crmField of ["name", "email", "phone", "company", "company_name", "company_instagram", "value", "notes"]) {
       const val = findFieldValue(payload, fieldMapping, crmField);
       if (val && val.trim()) mappedData[crmField] = val.trim();
     }
@@ -187,7 +188,7 @@ Deno.serve(async (req) => {
 
     // Collect unmapped fields into notes
     const allMappedFormKeys = new Set<string>();
-    for (const crmField of ["name", "email", "phone", "company", "company_name", "value", "notes"]) {
+    for (const crmField of ["name", "email", "phone", "company", "company_name", "company_instagram", "value", "notes"]) {
       const mk = fieldMapping[crmField];
       if (mk) allMappedFormKeys.add(mk);
       // Also add auto-detected keys
@@ -296,7 +297,7 @@ Deno.serve(async (req) => {
       const changes: Array<{ field: string; old_value: any; new_value: any }> = [];
       const updateData: Record<string, any> = {};
 
-      for (const field of ["name", "email", "phone", "company", "company_name", "notes"]) {
+      for (const field of ["name", "email", "phone", "company", "company_name", "company_instagram", "notes"]) {
         if (mappedData[field] && mappedData[field] !== existingLead[field]) {
           changes.push({ field, old_value: existingLead[field], new_value: mappedData[field] });
           updateData[field] = mappedData[field];
@@ -394,6 +395,7 @@ Deno.serve(async (req) => {
       phone: mappedData.phone || null,
       company: mappedData.company || null,
       company_name: mappedData.company_name || null,
+      company_instagram: mappedData.company_instagram || null,
       value: mappedData.value ? Number(mappedData.value) || 0 : 0,
       notes: mappedData.notes || null,
       source: webhook.default_source || "formulário",

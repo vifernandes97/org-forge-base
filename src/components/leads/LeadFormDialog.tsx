@@ -69,6 +69,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
     phone: z.string().optional(),
     company: z.string().optional(),
     company_name: z.string().optional(),
+    company_instagram: z.string().optional(),
     funnel_id: z.string().min(1, 'Selecione um funil'),
     stage_id: z.string().min(1, 'Selecione uma etapa'),
     assigned_to: z.string().optional(),
@@ -89,6 +90,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
       phone: '',
       company: '',
       company_name: '',
+      company_instagram: '',
       funnel_id: '',
       stage_id: '',
       assigned_to: '',
@@ -112,6 +114,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
           phone: lead.phone || '',
           company: lead.company || '',
           company_name: (lead as any).company_name || '',
+          company_instagram: (lead as any).company_instagram || '',
           funnel_id: lead.funnel_id,
           stage_id: lead.stage_id,
           assigned_to: lead.assigned_to || '',
@@ -167,6 +170,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
             phone: data.phone || null,
             company: data.company || null,
             company_name: data.company_name || null,
+            company_instagram: data.company_instagram || null,
             funnel_id: data.funnel_id,
             stage_id: data.stage_id,
             assigned_to: data.assigned_to || null,
@@ -182,7 +186,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
         // Auto-register field_update activity
         if (user && organization) {
           const changes: { field: string; old_value: any; new_value: any }[] = [];
-          const fields = ['name', 'email', 'phone', 'company', 'company_name', 'priority', 'source', 'notes'] as const;
+          const fields = ['name', 'email', 'phone', 'company', 'company_name', 'company_instagram', 'priority', 'source', 'notes'] as const;
           fields.forEach(f => {
             const oldVal = lead[f] || '';
             const newVal = (data as any)[f] || '';
@@ -214,6 +218,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
             phone: data.phone || null,
             company: data.company || null,
             company_name: data.company_name || null,
+            company_instagram: data.company_instagram || null,
             funnel_id: data.funnel_id,
             stage_id: data.stage_id,
             assigned_to: data.assigned_to || null,
@@ -282,6 +287,10 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
               <div className="space-y-1.5">
                 <Label>Razão Social</Label>
                 <Input {...form.register('company_name')} placeholder="Razão social da empresa" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Instagram</Label>
+                <Input {...form.register('company_instagram')} placeholder="@empresa" />
               </div>
             </div>
 
