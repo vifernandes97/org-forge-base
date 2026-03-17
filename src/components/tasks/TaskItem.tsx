@@ -45,7 +45,7 @@ export function TaskItem({ task, onComplete, onUncomplete, showLead, onLeadClick
             onClick={() => onLeadClick?.(task.lead!.id)}
             className="text-xs text-primary hover:underline truncate block"
           >
-            {task.lead.name}
+            {(task.lead as any).company_name || task.lead.name}
           </button>
         )}
         <div className="flex items-center gap-2 flex-wrap">

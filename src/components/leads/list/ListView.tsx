@@ -131,7 +131,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
                       onCheckedChange={() => toggleSelect(lead.id)}
                     />
                   </TableCell>
-                  <TableCell className="font-medium max-w-[160px] truncate">{lead.name}</TableCell>
+                  <TableCell className="font-medium max-w-[160px] truncate">{lead.company_name || lead.name}</TableCell>
                   <TableCell className="max-w-[120px] truncate text-muted-foreground">{lead.company || '—'}</TableCell>
                   <TableCell className="max-w-[120px] truncate text-muted-foreground">{lead.company_name || '—'}</TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground text-xs">{lead.email || '—'}</TableCell>

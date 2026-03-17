@@ -223,7 +223,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                   <div className="flex-1 min-w-0">
                     <InlineEditField
                       type="text"
-                      value={typedLead.name}
+                      value={typedLead.company_name || typedLead.name}
                       icon={undefined}
                       placeholder="Nome do lead"
                       onSave={(v) => handleInlineSave('name', v)}
