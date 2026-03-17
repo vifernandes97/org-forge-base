@@ -1,35 +1,23 @@
 
 
-# Seed de 10 Leads com Dados Aleatórios
+# Exibir `company_name` como nome principal do lead
 
-## Contexto identificado
-- **User ID:** `a3376ca3-d7c9-4140-bd10-cee295a0f3e8`
-- **Organization:** `13a96fcb-faed-42f4-8a88-85c0a7103b98`
-- **Funil:** "Funil de Vendas" (`8473568a-aa3f-4303-b693-06627d5d2968`)
-- **Etapas:** Novo Lead, Qualificação, Proposta, Fechamento
-- **Campo personalizado:** "Tipo de negócio" (select: Importador / Exportador)
+## Objetivo
+Substituir a exibição do campo `name` pelo campo `company_name` em todos os pontos da interface onde o nome do lead aparece como identificador principal. O campo `name` continua existindo no banco e no formulário, mas a UI prioriza `company_name`.
 
-## Plano
+## Lógica de exibição
+Usar fallback: `lead.company_name || lead.name` — se `company_name` estiver preenchido, exibe ele; caso contrário, mantém `name`.
 
-Executar uma migration SQL que insere:
+## Arquivos a alterar
 
-1. **10 leads** com dados fictícios variados (nomes, emails, telefones, empresas brasileiras, valores, tags, fontes, prioridades), distribuídos entre as 4 etapas do funil.
+| Arquivo | O que muda |
+|---------|------------|
+| `LeadDetailSheet.tsx` | Título no topo do drawer: `company_name \|\| name` |
+| `KanbanCard.tsx` | Nome no card: `company_name \|\| name` |
+| `DragOverlayCard.tsx` | Nome no overlay: `company_name \|\| name` |
+| `ListView.tsx` | Coluna Nome na tabela: `company_name \|\| name` |
+| `LeadCard.tsx` | Nome exibido: `company_name \|\| name` |
+| `TaskItem.tsx` | Link do lead: `lead.company_name \|\| lead.name` |
 
-2. **10 custom_field_values** vinculando cada lead ao campo "Tipo de negócio" alternando entre "Importador" e "Exportador".
-
-### Dados dos leads (exemplo):
-
-| Nome | Empresa | Etapa | Valor | Prioridade | Tipo Negócio |
-|------|---------|-------|-------|------------|--------------|
-| Carlos Silva | TechBR Ltda | Novo Lead | 15000 | medium | Importador |
-| Ana Oliveira | Global Trade SA | Qualificação | 45000 | high | Exportador |
-| Roberto Santos | Porto Logística | Proposta | 82000 | urgent | Importador |
-| ... (7 mais) | ... | ... | ... | ... | ... |
-
-### Arquivos
-| Arquivo | Ação |
-|---------|------|
-| supabase/migrations/xxx.sql | Criar (INSERT de 10 leads + 10 custom_field_values) |
-
-Nenhuma alteração de schema, apenas dados.
+Todos os pontos usam a mesma expressão: `lead.company_name || lead.name`.
 
