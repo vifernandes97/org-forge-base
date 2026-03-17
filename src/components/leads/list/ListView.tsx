@@ -133,6 +133,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
                   </TableCell>
                   <TableCell className="font-medium max-w-[160px] truncate">{lead.name}</TableCell>
                   <TableCell className="max-w-[120px] truncate text-muted-foreground">{lead.company || '—'}</TableCell>
+                  <TableCell className="max-w-[120px] truncate text-muted-foreground">{lead.company_name || '—'}</TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground text-xs">{lead.email || '—'}</TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground text-xs">{lead.phone || '—'}</TableCell>
                   <TableCell>
