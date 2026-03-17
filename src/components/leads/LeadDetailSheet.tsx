@@ -335,7 +335,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                     <InlineEditField
                       type="text"
                       value={(typedLead as any).company_instagram || ''}
-                      icon={<Building2 className="h-4 w-4" />}
+                      icon={<Instagram className="h-4 w-4" />}
                       placeholder="Adicionar Instagram..."
                       onSave={(v) => handleInlineSave('company_instagram', v)}
                     />
