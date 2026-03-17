@@ -1,35 +1,35 @@
 
 
-# Seed de 10 Leads com Dados Aleatórios
+# Adicionar campo `media_de_festas` ao lead
 
-## Contexto identificado
-- **User ID:** `a3376ca3-d7c9-4140-bd10-cee295a0f3e8`
-- **Organization:** `13a96fcb-faed-42f4-8a88-85c0a7103b98`
-- **Funil:** "Funil de Vendas" (`8473568a-aa3f-4303-b693-06627d5d2968`)
-- **Etapas:** Novo Lead, Qualificação, Proposta, Fechamento
-- **Campo personalizado:** "Tipo de negócio" (select: Importador / Exportador)
+## Mudanças
 
-## Plano
+### 1. Migration SQL
+```sql
+ALTER TABLE public.leads ADD COLUMN media_de_festas text;
+```
 
-Executar uma migration SQL que insere:
+### 2. `src/types/index.ts`
+Adicionar `media_de_festas: string | null` à interface `Lead`.
 
-1. **10 leads** com dados fictícios variados (nomes, emails, telefones, empresas brasileiras, valores, tags, fontes, prioridades), distribuídos entre as 4 etapas do funil.
+### 3. `src/services/leads.ts`
+Incluir `media_de_festas` nos parâmetros de `createLead`.
 
-2. **10 custom_field_values** vinculando cada lead ao campo "Tipo de negócio" alternando entre "Importador" e "Exportador".
+### 4. `supabase/functions/inbound-webhook/index.ts`
+Adicionar aliases no `FIELD_ALIASES`:
+```
+media_de_festas: ["mediadefestas", "mediafestas", "mediafesta"]
+```
+E incluir no mapeamento do lead data.
 
-### Dados dos leads (exemplo):
+### 5. `src/components/leads/LeadDetailSheet.tsx`
+Adicionar `InlineEditField` para `media_de_festas` logo após o campo Instagram, com placeholder "Média de festas...".
 
-| Nome | Empresa | Etapa | Valor | Prioridade | Tipo Negócio |
-|------|---------|-------|-------|------------|--------------|
-| Carlos Silva | TechBR Ltda | Novo Lead | 15000 | medium | Importador |
-| Ana Oliveira | Global Trade SA | Qualificação | 45000 | high | Exportador |
-| Roberto Santos | Porto Logística | Proposta | 82000 | urgent | Importador |
-| ... (7 mais) | ... | ... | ... | ... | ... |
-
-### Arquivos
 | Arquivo | Ação |
 |---------|------|
-| supabase/migrations/xxx.sql | Criar (INSERT de 10 leads + 10 custom_field_values) |
-
-Nenhuma alteração de schema, apenas dados.
+| Migration | `ALTER TABLE leads ADD COLUMN media_de_festas text` |
+| `types/index.ts` | Novo campo na interface Lead |
+| `services/leads.ts` | Incluir no createLead |
+| `inbound-webhook/index.ts` | Aliases + mapeamento |
+| `LeadDetailSheet.tsx` | InlineEditField no drawer |
 
