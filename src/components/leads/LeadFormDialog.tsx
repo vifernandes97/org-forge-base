@@ -69,6 +69,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
     phone: z.string().optional(),
     company: z.string().optional(),
     company_name: z.string().optional(),
+    company_instagram: z.string().optional(),
     funnel_id: z.string().min(1, 'Selecione um funil'),
     stage_id: z.string().min(1, 'Selecione uma etapa'),
     assigned_to: z.string().optional(),
