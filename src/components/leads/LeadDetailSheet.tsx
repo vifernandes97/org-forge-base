@@ -340,6 +340,13 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                       onSave={(v) => handleInlineSave('company_instagram', v)}
                     />
                     <InlineEditField
+                      type="text"
+                      value={(typedLead as any).media_de_festas || ''}
+                      icon={<Building2 className="h-4 w-4" />}
+                      placeholder="Média de festas..."
+                      onSave={(v) => handleInlineSave('media_de_festas', v)}
+                    />
+                    <InlineEditField
                       type="currency"
                       value={Number(typedLead.value || 0)}
                       icon={<DollarSign className="h-4 w-4" />}

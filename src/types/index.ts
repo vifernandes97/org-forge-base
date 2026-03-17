@@ -102,6 +102,7 @@ export interface Lead {
   updated_at: string;
   last_activity_at: string;
   stage_entered_at: string;
+  media_de_festas: string | null;
   archived_at: string | null;
   archive_reason_id: string | null;
 }
