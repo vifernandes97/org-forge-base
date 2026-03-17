@@ -98,6 +98,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
               </TableHead>
               <SortHeader col="name">Nome</SortHeader>
               <SortHeader col="company">Empresa</SortHeader>
+              <SortHeader col="company_name">Razão Social</SortHeader>
               <TableHead className="hidden md:table-cell">E-mail</TableHead>
               <TableHead className="hidden md:table-cell">Telefone</TableHead>
               <SortHeader col="stage_id">Etapa</SortHeader>
@@ -113,7 +114,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
           <TableBody>
             {leads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={13} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={14} className="text-center text-muted-foreground py-8">
                   Nenhum lead encontrado neste funil.
                 </TableCell>
               </TableRow>
@@ -132,6 +133,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
                   </TableCell>
                   <TableCell className="font-medium max-w-[160px] truncate">{lead.name}</TableCell>
                   <TableCell className="max-w-[120px] truncate text-muted-foreground">{lead.company || '—'}</TableCell>
+                  <TableCell className="max-w-[120px] truncate text-muted-foreground">{lead.company_name || '—'}</TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground text-xs">{lead.email || '—'}</TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground text-xs">{lead.phone || '—'}</TableCell>
                   <TableCell>

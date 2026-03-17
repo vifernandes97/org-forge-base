@@ -1,47 +1,35 @@
 
 
-# Adicionar campo `company_name` à tabela de leads
+# Seed de 10 Leads com Dados Aleatórios
 
-## Objetivo
-Adicionar uma nova coluna `company_name` (text, nullable) à tabela `leads`, mantendo o campo `company` existente.
+## Contexto identificado
+- **User ID:** `a3376ca3-d7c9-4140-bd10-cee295a0f3e8`
+- **Organization:** `13a96fcb-faed-42f4-8a88-85c0a7103b98`
+- **Funil:** "Funil de Vendas" (`8473568a-aa3f-4303-b693-06627d5d2968`)
+- **Etapas:** Novo Lead, Qualificação, Proposta, Fechamento
+- **Campo personalizado:** "Tipo de negócio" (select: Importador / Exportador)
 
-## Mudanças
+## Plano
 
-### 1. Migration SQL
-```sql
-ALTER TABLE leads ADD COLUMN company_name text;
-```
+Executar uma migration SQL que insere:
 
-### 2. `src/types/index.ts`
-Adicionar `company_name: string | null` à interface `Lead`.
+1. **10 leads** com dados fictícios variados (nomes, emails, telefones, empresas brasileiras, valores, tags, fontes, prioridades), distribuídos entre as 4 etapas do funil.
 
-### 3. `src/services/leads.ts`
-Incluir `company_name` nos parâmetros de `createLead`.
+2. **10 custom_field_values** vinculando cada lead ao campo "Tipo de negócio" alternando entre "Importador" e "Exportador".
 
-### 4. `src/components/leads/LeadFormDialog.tsx`
-- Adicionar campo `company_name` ao schema zod e ao formulário (label: "Razão Social" ou similar)
-- Incluir no `defaultValues`, no `form.reset` (edição), e no submit (create/update)
+### Dados dos leads (exemplo):
 
-### 5. `src/components/leads/LeadDetailSheet.tsx`
-Exibir `company_name` nas informações do lead (ao lado de company).
+| Nome | Empresa | Etapa | Valor | Prioridade | Tipo Negócio |
+|------|---------|-------|-------|------------|--------------|
+| Carlos Silva | TechBR Ltda | Novo Lead | 15000 | medium | Importador |
+| Ana Oliveira | Global Trade SA | Qualificação | 45000 | high | Exportador |
+| Roberto Santos | Porto Logística | Proposta | 82000 | urgent | Importador |
+| ... (7 mais) | ... | ... | ... | ... | ... |
 
-### 6. `src/components/leads/list/ListView.tsx`
-Adicionar coluna `company_name` na tabela de listagem (opcional, se desejado).
-
-### 7. `src/components/leads/kanban/KanbanCard.tsx` e `DragOverlayCard.tsx`
-Exibir `company_name` se disponível.
-
-### 8. `supabase/functions/inbound-webhook/index.ts`
-Adicionar mapeamento para `company_name` (aliases: `company_name`, `razao_social`, `razao`, `nome_empresa`).
-
+### Arquivos
 | Arquivo | Ação |
 |---------|------|
-| Migration SQL | `ALTER TABLE leads ADD COLUMN company_name text` |
-| `src/types/index.ts` | Adicionar campo à interface Lead |
-| `src/services/leads.ts` | Incluir no createLead |
-| `LeadFormDialog.tsx` | Novo campo no formulário |
-| `LeadDetailSheet.tsx` | Exibir na ficha do lead |
-| `ListView.tsx` | Coluna na tabela |
-| `KanbanCard.tsx` / `DragOverlayCard.tsx` | Exibir no card |
-| `inbound-webhook/index.ts` | Mapeamento do campo |
+| supabase/migrations/xxx.sql | Criar (INSERT de 10 leads + 10 custom_field_values) |
+
+Nenhuma alteração de schema, apenas dados.
 

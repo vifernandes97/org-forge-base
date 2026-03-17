@@ -68,6 +68,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
     email: z.string().email('Email inválido').or(z.literal('')).optional(),
     phone: z.string().optional(),
     company: z.string().optional(),
+    company_name: z.string().optional(),
     funnel_id: z.string().min(1, 'Selecione um funil'),
     stage_id: z.string().min(1, 'Selecione uma etapa'),
     assigned_to: z.string().optional(),
@@ -87,6 +88,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
       email: '',
       phone: '',
       company: '',
+      company_name: '',
       funnel_id: '',
       stage_id: '',
       assigned_to: '',
@@ -109,6 +111,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
           email: lead.email || '',
           phone: lead.phone || '',
           company: lead.company || '',
+          company_name: (lead as any).company_name || '',
           funnel_id: lead.funnel_id,
           stage_id: lead.stage_id,
           assigned_to: lead.assigned_to || '',
@@ -163,6 +166,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
             email: data.email || null,
             phone: data.phone || null,
             company: data.company || null,
+            company_name: data.company_name || null,
             funnel_id: data.funnel_id,
             stage_id: data.stage_id,
             assigned_to: data.assigned_to || null,
@@ -178,7 +182,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
         // Auto-register field_update activity
         if (user && organization) {
           const changes: { field: string; old_value: any; new_value: any }[] = [];
-          const fields = ['name', 'email', 'phone', 'company', 'priority', 'source', 'notes'] as const;
+          const fields = ['name', 'email', 'phone', 'company', 'company_name', 'priority', 'source', 'notes'] as const;
           fields.forEach(f => {
             const oldVal = lead[f] || '';
             const newVal = (data as any)[f] || '';
@@ -209,6 +213,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
             email: data.email || null,
             phone: data.phone || null,
             company: data.company || null,
+            company_name: data.company_name || null,
             funnel_id: data.funnel_id,
             stage_id: data.stage_id,
             assigned_to: data.assigned_to || null,
@@ -273,6 +278,10 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
               <div className="space-y-1.5">
                 <Label>Empresa</Label>
                 <Input {...form.register('company')} placeholder="Nome da empresa" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Razão Social</Label>
+                <Input {...form.register('company_name')} placeholder="Razão social da empresa" />
               </div>
             </div>
 

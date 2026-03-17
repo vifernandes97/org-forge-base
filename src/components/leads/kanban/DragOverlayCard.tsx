@@ -20,7 +20,7 @@ export function DragOverlayCard({ lead }: { lead: LeadWithRelations }) {
           </Avatar>
         )}
       </div>
-      {lead.company && <p className="text-xs text-muted-foreground truncate">{lead.company}</p>}
+      {((lead as any).company_name || lead.company) && <p className="text-xs text-muted-foreground truncate">{(lead as any).company_name || lead.company}</p>}
       {lead.value > 0 && (
         <p className="text-xs font-medium">R$ {Number(lead.value).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</p>
       )}
