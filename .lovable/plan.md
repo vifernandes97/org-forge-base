@@ -1,25 +1,35 @@
 
 
-# Trocar ícone de telefone por WhatsApp com link direto
+# Seed de 10 Leads com Dados Aleatórios
 
-## Mudanças em `src/components/leads/LeadDetailSheet.tsx`
+## Contexto identificado
+- **User ID:** `a3376ca3-d7c9-4140-bd10-cee295a0f3e8`
+- **Organization:** `13a96fcb-faed-42f4-8a88-85c0a7103b98`
+- **Funil:** "Funil de Vendas" (`8473568a-aa3f-4303-b693-06627d5d2968`)
+- **Etapas:** Novo Lead, Qualificação, Proposta, Fechamento
+- **Campo personalizado:** "Tipo de negócio" (select: Importador / Exportador)
 
-### 1. Ícone
-- Lucide não tem ícone nativo de WhatsApp. Usar um SVG inline pequeno do logo WhatsApp ou, mais simples, trocar `Phone` por `MessageCircle` (lucide) que remete a chat — **ou** criar um componente SVG do WhatsApp.
-- Recomendo usar um SVG inline do WhatsApp para ficar claro visualmente.
+## Plano
 
-### 2. Comportamento do ícone
-- Tornar o ícone clicável (separado do InlineEditField de edição).
-- Ao clicar no ícone, abrir `https://wa.me/{número_limpo}` em nova aba.
-- Limpar o número removendo espaços, parênteses, hifens — manter apenas dígitos.
-- Se não houver telefone, ícone fica desabilitado.
+Executar uma migration SQL que insere:
 
-### 3. Implementação
-- Envolver o ícone do campo phone em um `<a>` ou botão que abre o link wa.me.
-- Manter o `InlineEditField` para edição do número, mas substituir o ícone estático por um botão clicável com o SVG do WhatsApp.
-- Passar o ícone como um elemento clicável com `onClick` + `e.stopPropagation()` para não ativar a edição.
+1. **10 leads** com dados fictícios variados (nomes, emails, telefones, empresas brasileiras, valores, tags, fontes, prioridades), distribuídos entre as 4 etapas do funil.
 
+2. **10 custom_field_values** vinculando cada lead ao campo "Tipo de negócio" alternando entre "Importador" e "Exportador".
+
+### Dados dos leads (exemplo):
+
+| Nome | Empresa | Etapa | Valor | Prioridade | Tipo Negócio |
+|------|---------|-------|-------|------------|--------------|
+| Carlos Silva | TechBR Ltda | Novo Lead | 15000 | medium | Importador |
+| Ana Oliveira | Global Trade SA | Qualificação | 45000 | high | Exportador |
+| Roberto Santos | Porto Logística | Proposta | 82000 | urgent | Importador |
+| ... (7 mais) | ... | ... | ... | ... | ... |
+
+### Arquivos
 | Arquivo | Ação |
 |---------|------|
-| `LeadDetailSheet.tsx` | Substituir ícone Phone por WhatsApp SVG clicável com link wa.me |
+| supabase/migrations/xxx.sql | Criar (INSERT de 10 leads + 10 custom_field_values) |
+
+Nenhuma alteração de schema, apenas dados.
 
