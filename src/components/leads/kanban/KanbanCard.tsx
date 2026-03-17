@@ -1,7 +1,5 @@
 import { useDraggable } from '@dnd-kit/core';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { StatusBadge } from '@/components/leads/StatusBadge';
 import { formatStageTime } from '@/lib/formatStageTime';
 import type { LeadWithRelations, LeadPriority } from '@/types';
 
@@ -28,20 +26,16 @@ export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
     ? { transform: `translate(${transform.x}px, ${transform.y}px)` }
     : undefined;
 
-  const tags = lead.tags || [];
-  const visibleTags = tags.slice(0, 2);
-  const extraTags = tags.length - 2;
-
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
       style={style}
-      className={`rounded-lg border bg-card p-3 cursor-grab active:cursor-grabbing transition-shadow space-y-2 ${isDragging ? 'opacity-50 shadow-lg' : 'hover:shadow-md'}`}
+      className={`rounded-lg border bg-card p-3 cursor-grab active:cursor-grabbing transition-shadow space-y-1.5 ${isDragging ? 'opacity-50 shadow-lg' : 'hover:shadow-md'}`}
       onClick={e => { e.stopPropagation(); onClick(); }}
     >
-      {/* Row 1: name + priority dot */}
+      {/* Row 1: company_name + priority dot + avatar */}
       <div className="flex items-center gap-2">
         <span className={`h-2 w-2 rounded-full shrink-0 ${priorityDotColor[lead.priority] || priorityDotColor.medium}`} />
         <span className="font-medium text-sm truncate flex-1">{lead.company_name || lead.name}</span>
@@ -52,33 +46,15 @@ export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
         )}
       </div>
 
-      {/* Row 2: company + value */}
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        {(lead as any).company_name || lead.company ? <span className="truncate">{(lead as any).company_name || lead.company}</span> : <span />}
-        {lead.value > 0 && (
-          <span className="font-medium text-foreground whitespace-nowrap">
-            R$ {Number(lead.value).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
-          </span>
-        )}
-      </div>
+      {/* Row 2: company */}
+      {lead.company && (
+        <p className="text-xs text-muted-foreground truncate pl-4">{lead.company}</p>
+      )}
 
-      {/* Row 3: status + tags + stage time */}
-      <div className="flex items-center justify-between gap-1">
-        <div className="flex gap-1 overflow-hidden items-center">
-          {lead.status && lead.status !== 'open' && (
-            <StatusBadge status={lead.status} size="sm" />
-          )}
-          {visibleTags.map(t => (
-            <Badge key={t} variant="secondary" className="text-[10px] px-1.5 py-0">{t}</Badge>
-          ))}
-          {extraTags > 0 && (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">+{extraTags}</Badge>
-          )}
-        </div>
-        <span className={`text-[10px] whitespace-nowrap ${slaExceeded ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>
-          {formatStageTime(lead.stage_entered_at)}
-        </span>
-      </div>
+      {/* Row 3: created_at relative */}
+      <p className="text-[10px] text-muted-foreground text-right">
+        {formatStageTime(lead.created_at)}
+      </p>
     </div>
   );
 }

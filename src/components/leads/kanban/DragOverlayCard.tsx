@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { formatStageTime } from '@/lib/formatStageTime';
 import type { LeadWithRelations, LeadPriority } from '@/types';
 
 const priorityDotColor: Record<LeadPriority, string> = {
@@ -10,7 +11,7 @@ const priorityDotColor: Record<LeadPriority, string> = {
 
 export function DragOverlayCard({ lead }: { lead: LeadWithRelations }) {
   return (
-    <div className="rounded-lg border bg-card p-3 shadow-xl w-[260px] space-y-2 rotate-2">
+    <div className="rounded-lg border bg-card p-3 shadow-xl w-[260px] space-y-1.5 rotate-2">
       <div className="flex items-center gap-2">
         <span className={`h-2 w-2 rounded-full shrink-0 ${priorityDotColor[lead.priority] || priorityDotColor.medium}`} />
         <span className="font-medium text-sm truncate flex-1">{lead.company_name || lead.name}</span>
@@ -20,10 +21,12 @@ export function DragOverlayCard({ lead }: { lead: LeadWithRelations }) {
           </Avatar>
         )}
       </div>
-      {((lead as any).company_name || lead.company) && <p className="text-xs text-muted-foreground truncate">{(lead as any).company_name || lead.company}</p>}
-      {lead.value > 0 && (
-        <p className="text-xs font-medium">R$ {Number(lead.value).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</p>
+      {lead.company && (
+        <p className="text-xs text-muted-foreground truncate pl-4">{lead.company}</p>
       )}
+      <p className="text-[10px] text-muted-foreground text-right">
+        {formatStageTime(lead.created_at)}
+      </p>
     </div>
   );
 }
