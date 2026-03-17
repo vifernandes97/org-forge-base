@@ -23,7 +23,7 @@ import { InlineEditField } from './InlineEditField';
 import { StagePipeline } from './StagePipeline';
 
 import { LeadFormDialog } from './LeadFormDialog';
-import { Pencil, Trash2, Clock, AlertTriangle, Building2, Mail, Phone, Tag, User, DollarSign, FileText } from 'lucide-react';
+import { Pencil, Trash2, Clock, AlertTriangle, Building2, Mail, Phone, Tag, User, DollarSign, FileText, Instagram, PartyPopper } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { differenceInHours, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
