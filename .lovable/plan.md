@@ -1,27 +1,35 @@
 
-# Simplificar KanbanCard: exibir company_name, company e data de criação
 
-## Mudanças em `src/components/leads/kanban/KanbanCard.tsx`
+# Seed de 10 Leads com Dados Aleatórios
 
-Reformular o card para exibir apenas 3 informações:
+## Contexto identificado
+- **User ID:** `a3376ca3-d7c9-4140-bd10-cee295a0f3e8`
+- **Organization:** `13a96fcb-faed-42f4-8a88-85c0a7103b98`
+- **Funil:** "Funil de Vendas" (`8473568a-aa3f-4303-b693-06627d5d2968`)
+- **Etapas:** Novo Lead, Qualificação, Proposta, Fechamento
+- **Campo personalizado:** "Tipo de negócio" (select: Importador / Exportador)
 
-1. **Linha 1**: `company_name` (com priority dot e avatar mantidos)
-2. **Linha 2**: `company` (nome fantasia/empresa)
-3. **Linha 3**: data de criação relativa (`created_at`) usando `formatStageTime` (já existente, reutilizar a lógica mas passando `lead.created_at` em vez de `stage_entered_at`)
+## Plano
 
-### Remover do card
-- Valor (R$)
-- Tags/badges de status
-- Tempo na etapa (stage_entered_at)
+Executar uma migration SQL que insere:
 
-### Reutilizar `formatStageTime`
-A função `formatStageTime` já calcula "Xmin / Xh / Xd" a partir de uma data. Basta chamar `formatStageTime(lead.created_at)` para exibir há quanto tempo o lead foi criado.
+1. **10 leads** com dados fictícios variados (nomes, emails, telefones, empresas brasileiras, valores, tags, fontes, prioridades), distribuídos entre as 4 etapas do funil.
 
-### Layout final do card
-```
-● Company Name                    [Avatar]
-  Company
-                                      3d
-```
+2. **10 custom_field_values** vinculando cada lead ao campo "Tipo de negócio" alternando entre "Importador" e "Exportador".
 
-Também atualizar `DragOverlayCard.tsx` para consistência.
+### Dados dos leads (exemplo):
+
+| Nome | Empresa | Etapa | Valor | Prioridade | Tipo Negócio |
+|------|---------|-------|-------|------------|--------------|
+| Carlos Silva | TechBR Ltda | Novo Lead | 15000 | medium | Importador |
+| Ana Oliveira | Global Trade SA | Qualificação | 45000 | high | Exportador |
+| Roberto Santos | Porto Logística | Proposta | 82000 | urgent | Importador |
+| ... (7 mais) | ... | ... | ... | ... | ... |
+
+### Arquivos
+| Arquivo | Ação |
+|---------|------|
+| supabase/migrations/xxx.sql | Criar (INSERT de 10 leads + 10 custom_field_values) |
+
+Nenhuma alteração de schema, apenas dados.
+
