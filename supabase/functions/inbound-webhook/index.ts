@@ -395,6 +395,7 @@ Deno.serve(async (req) => {
       phone: mappedData.phone || null,
       company: mappedData.company || null,
       company_name: mappedData.company_name || null,
+      company_instagram: mappedData.company_instagram || null,
       value: mappedData.value ? Number(mappedData.value) || 0 : 0,
       notes: mappedData.notes || null,
       source: webhook.default_source || "formulário",
