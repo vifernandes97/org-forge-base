@@ -111,6 +111,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
           email: lead.email || '',
           phone: lead.phone || '',
           company: lead.company || '',
+          company_name: (lead as any).company_name || '',
           funnel_id: lead.funnel_id,
           stage_id: lead.stage_id,
           assigned_to: lead.assigned_to || '',
