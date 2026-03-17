@@ -342,7 +342,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                     <InlineEditField
                       type="text"
                       value={(typedLead as any).media_de_festas || ''}
-                      icon={<Building2 className="h-4 w-4" />}
+                      icon={<PartyPopper className="h-4 w-4" />}
                       placeholder="Média de festas..."
                       onSave={(v) => handleInlineSave('media_de_festas', v)}
                     />
