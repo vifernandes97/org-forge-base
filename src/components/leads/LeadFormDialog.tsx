@@ -170,6 +170,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
             phone: data.phone || null,
             company: data.company || null,
             company_name: data.company_name || null,
+            company_instagram: data.company_instagram || null,
             funnel_id: data.funnel_id,
             stage_id: data.stage_id,
             assigned_to: data.assigned_to || null,
