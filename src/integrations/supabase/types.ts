@@ -455,6 +455,7 @@ export type Database = {
           archived_at: string | null
           assigned_to: string | null
           company: string | null
+          company_instagram: string | null
           company_name: string | null
           created_at: string
           email: string | null
@@ -479,6 +480,7 @@ export type Database = {
           archived_at?: string | null
           assigned_to?: string | null
           company?: string | null
+          company_instagram?: string | null
           company_name?: string | null
           created_at?: string
           email?: string | null
@@ -503,6 +505,7 @@ export type Database = {
           archived_at?: string | null
           assigned_to?: string | null
           company?: string | null
+          company_instagram?: string | null
           company_name?: string | null
           created_at?: string
           email?: string | null
