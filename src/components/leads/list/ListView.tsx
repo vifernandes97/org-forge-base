@@ -98,6 +98,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
               </TableHead>
               <SortHeader col="name">Nome</SortHeader>
               <SortHeader col="company">Empresa</SortHeader>
+              <SortHeader col="company_name">Razão Social</SortHeader>
               <TableHead className="hidden md:table-cell">E-mail</TableHead>
               <TableHead className="hidden md:table-cell">Telefone</TableHead>
               <SortHeader col="stage_id">Etapa</SortHeader>
