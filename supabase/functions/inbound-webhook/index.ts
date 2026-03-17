@@ -298,7 +298,7 @@ Deno.serve(async (req) => {
       const changes: Array<{ field: string; old_value: any; new_value: any }> = [];
       const updateData: Record<string, any> = {};
 
-      for (const field of ["name", "email", "phone", "company", "company_name", "company_instagram", "notes"]) {
+      for (const field of ["name", "email", "phone", "company", "company_name", "company_instagram", "media_de_festas", "notes"]) {
         if (mappedData[field] && mappedData[field] !== existingLead[field]) {
           changes.push({ field, old_value: existingLead[field], new_value: mappedData[field] });
           updateData[field] = mappedData[field];
@@ -397,6 +397,7 @@ Deno.serve(async (req) => {
       company: mappedData.company || null,
       company_name: mappedData.company_name || null,
       company_instagram: mappedData.company_instagram || null,
+      media_de_festas: mappedData.media_de_festas || null,
       value: mappedData.value ? Number(mappedData.value) || 0 : 0,
       notes: mappedData.notes || null,
       source: webhook.default_source || "formulário",
