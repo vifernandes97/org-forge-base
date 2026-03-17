@@ -17,6 +17,7 @@ const FIELD_ALIASES: Record<string, string[]> = {
   phone: ["phone", "telefone", "tel", "yourphone", "whatsapp", "celular"],
   company: ["company", "empresa", "companyname"],
   company_name: ["companyname", "razaosocial", "razao", "nomeempresa", "razãosocial"],
+  company_instagram: ["companyinstagram", "instagram", "ig"],
   value: ["value", "valor", "budget", "orcamento"],
   notes: ["notes", "message", "mensagem", "yourmessage", "observacoes"],
 };
