@@ -23,7 +23,7 @@ import { InlineEditField } from './InlineEditField';
 import { StagePipeline } from './StagePipeline';
 
 import { LeadFormDialog } from './LeadFormDialog';
-import { Pencil, Trash2, Clock, AlertTriangle, Building2, Mail, Phone, Tag, User, DollarSign, FileText } from 'lucide-react';
+import { Pencil, Trash2, Clock, AlertTriangle, Building2, Mail, Phone, Tag, User, DollarSign, FileText, Instagram, PartyPopper } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { differenceInHours, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -335,14 +335,14 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                     <InlineEditField
                       type="text"
                       value={(typedLead as any).company_instagram || ''}
-                      icon={<Building2 className="h-4 w-4" />}
+                      icon={<Instagram className="h-4 w-4" />}
                       placeholder="Adicionar Instagram..."
                       onSave={(v) => handleInlineSave('company_instagram', v)}
                     />
                     <InlineEditField
                       type="text"
                       value={(typedLead as any).media_de_festas || ''}
-                      icon={<Building2 className="h-4 w-4" />}
+                      icon={<PartyPopper className="h-4 w-4" />}
                       placeholder="Média de festas..."
                       onSave={(v) => handleInlineSave('media_de_festas', v)}
                     />
