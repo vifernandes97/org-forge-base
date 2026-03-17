@@ -187,7 +187,7 @@ Deno.serve(async (req) => {
 
     // Collect unmapped fields into notes
     const allMappedFormKeys = new Set<string>();
-    for (const crmField of ["name", "email", "phone", "company", "value", "notes"]) {
+    for (const crmField of ["name", "email", "phone", "company", "company_name", "value", "notes"]) {
       const mk = fieldMapping[crmField];
       if (mk) allMappedFormKeys.add(mk);
       // Also add auto-detected keys
