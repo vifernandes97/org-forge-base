@@ -90,6 +90,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
       phone: '',
       company: '',
       company_name: '',
+      company_instagram: '',
       funnel_id: '',
       stage_id: '',
       assigned_to: '',
