@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
     const fieldMapping = (webhook.field_mapping || {}) as Record<string, any>;
     const mappedData: Record<string, any> = {};
 
-    for (const crmField of ["name", "email", "phone", "company", "value", "notes"]) {
+    for (const crmField of ["name", "email", "phone", "company", "company_name", "value", "notes"]) {
       const val = findFieldValue(payload, fieldMapping, crmField);
       if (val && val.trim()) mappedData[crmField] = val.trim();
     }
