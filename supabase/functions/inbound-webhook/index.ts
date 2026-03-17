@@ -18,6 +18,7 @@ const FIELD_ALIASES: Record<string, string[]> = {
   company: ["company", "empresa", "companyname"],
   company_name: ["companyname", "razaosocial", "razao", "nomeempresa", "razãosocial"],
   company_instagram: ["companyinstagram", "instagram", "ig"],
+  media_de_festas: ["mediadefestas", "mediafestas", "mediafesta", "mediadefestasmedia"],
   value: ["value", "valor", "budget", "orcamento"],
   notes: ["notes", "message", "mensagem", "yourmessage", "observacoes"],
 };
@@ -172,7 +173,7 @@ Deno.serve(async (req) => {
     const fieldMapping = (webhook.field_mapping || {}) as Record<string, any>;
     const mappedData: Record<string, any> = {};
 
-    for (const crmField of ["name", "email", "phone", "company", "company_name", "company_instagram", "value", "notes"]) {
+    for (const crmField of ["name", "email", "phone", "company", "company_name", "company_instagram", "media_de_festas", "value", "notes"]) {
       const val = findFieldValue(payload, fieldMapping, crmField);
       if (val && val.trim()) mappedData[crmField] = val.trim();
     }
@@ -188,7 +189,7 @@ Deno.serve(async (req) => {
 
     // Collect unmapped fields into notes
     const allMappedFormKeys = new Set<string>();
-    for (const crmField of ["name", "email", "phone", "company", "company_name", "company_instagram", "value", "notes"]) {
+    for (const crmField of ["name", "email", "phone", "company", "company_name", "company_instagram", "media_de_festas", "value", "notes"]) {
       const mk = fieldMapping[crmField];
       if (mk) allMappedFormKeys.add(mk);
       // Also add auto-detected keys

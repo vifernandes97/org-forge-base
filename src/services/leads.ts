@@ -90,6 +90,7 @@ export async function createLead(lead: {
   company?: string | null;
   company_name?: string | null;
   company_instagram?: string | null;
+  media_de_festas?: string | null;
   assigned_to?: string | null;
   value?: number;
   tags?: string[];
