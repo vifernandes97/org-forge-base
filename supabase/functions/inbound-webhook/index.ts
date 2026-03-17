@@ -298,7 +298,7 @@ Deno.serve(async (req) => {
       const changes: Array<{ field: string; old_value: any; new_value: any }> = [];
       const updateData: Record<string, any> = {};
 
-      for (const field of ["name", "email", "phone", "company", "company_name", "company_instagram", "notes"]) {
+      for (const field of ["name", "email", "phone", "company", "company_name", "company_instagram", "media_de_festas", "notes"]) {
         if (mappedData[field] && mappedData[field] !== existingLead[field]) {
           changes.push({ field, old_value: existingLead[field], new_value: mappedData[field] });
           updateData[field] = mappedData[field];
