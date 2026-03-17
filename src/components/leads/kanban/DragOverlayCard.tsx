@@ -13,7 +13,7 @@ export function DragOverlayCard({ lead }: { lead: LeadWithRelations }) {
     <div className="rounded-lg border bg-card p-3 shadow-xl w-[260px] space-y-2 rotate-2">
       <div className="flex items-center gap-2">
         <span className={`h-2 w-2 rounded-full shrink-0 ${priorityDotColor[lead.priority] || priorityDotColor.medium}`} />
-        <span className="font-medium text-sm truncate flex-1">{lead.name}</span>
+        <span className="font-medium text-sm truncate flex-1">{lead.company_name || lead.name}</span>
         {lead.assigned_profile && (
           <Avatar className="h-5 w-5 shrink-0">
             <AvatarFallback className="text-[9px]">{lead.assigned_profile.full_name?.[0] || '?'}</AvatarFallback>
