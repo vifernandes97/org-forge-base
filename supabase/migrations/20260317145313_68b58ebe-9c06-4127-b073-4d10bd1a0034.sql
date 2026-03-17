@@ -1,0 +1,1 @@
+ALTER TABLE public.leads ADD COLUMN media_de_festas text;
