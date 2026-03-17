@@ -182,7 +182,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
         // Auto-register field_update activity
         if (user && organization) {
           const changes: { field: string; old_value: any; new_value: any }[] = [];
-          const fields = ['name', 'email', 'phone', 'company', 'priority', 'source', 'notes'] as const;
+          const fields = ['name', 'email', 'phone', 'company', 'company_name', 'priority', 'source', 'notes'] as const;
           fields.forEach(f => {
             const oldVal = lead[f] || '';
             const newVal = (data as any)[f] || '';

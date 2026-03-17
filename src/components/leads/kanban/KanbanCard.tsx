@@ -54,7 +54,7 @@ export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
 
       {/* Row 2: company + value */}
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        {lead.company ? <span className="truncate">{lead.company}</span> : <span />}
+        {(lead as any).company_name || lead.company ? <span className="truncate">{(lead as any).company_name || lead.company}</span> : <span />}
         {lead.value > 0 && (
           <span className="font-medium text-foreground whitespace-nowrap">
             R$ {Number(lead.value).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
