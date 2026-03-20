@@ -1,35 +1,29 @@
 
 
-# Seed de 10 Leads com Dados Aleatórios
+# Fix: Trigger de automação não executa `move_lead`
 
-## Contexto identificado
-- **User ID:** `a3376ca3-d7c9-4140-bd10-cee295a0f3e8`
-- **Organization:** `13a96fcb-faed-42f4-8a88-85c0a7103b98`
-- **Funil:** "Funil de Vendas" (`8473568a-aa3f-4303-b693-06627d5d2968`)
-- **Etapas:** Novo Lead, Qualificação, Proposta, Fechamento
-- **Campo personalizado:** "Tipo de negócio" (select: Importador / Exportador)
+## Problema raiz
+O trigger `execute_stage_task_automations_trigger` está configurado como **AFTER UPDATE**, mas a ação `move_lead` modifica `NEW.funnel_id` e `NEW.stage_id` — o que só funciona em triggers **BEFORE UPDATE**. Em AFTER triggers, modificar `NEW` não tem efeito.
 
-## Plano
+## Solução
+Migration SQL para recriar o trigger como BEFORE UPDATE:
 
-Executar uma migration SQL que insere:
+```sql
+DROP TRIGGER IF EXISTS execute_stage_task_automations_trigger ON leads;
 
-1. **10 leads** com dados fictícios variados (nomes, emails, telefones, empresas brasileiras, valores, tags, fontes, prioridades), distribuídos entre as 4 etapas do funil.
+CREATE TRIGGER execute_stage_task_automations_trigger
+  BEFORE UPDATE ON leads
+  FOR EACH ROW
+  EXECUTE FUNCTION execute_stage_task_automations();
+```
 
-2. **10 custom_field_values** vinculando cada lead ao campo "Tipo de negócio" alternando entre "Importador" e "Exportador".
+## Cuidado com ordem de triggers
+Já existe `trg_execute_automations` (BEFORE UPDATE) que executa `execute_automations()`. Ambos os triggers BEFORE UPDATE vão executar em ordem alfabética. Como `execute_stage_task_automations_trigger` vem depois de `trg_execute_automations` alfabeticamente, a ordem está correta.
 
-### Dados dos leads (exemplo):
+## Teste
+Após a migration, marcar o lead como "won" novamente deve movê-lo automaticamente para o funil destino configurado na automação.
 
-| Nome | Empresa | Etapa | Valor | Prioridade | Tipo Negócio |
-|------|---------|-------|-------|------------|--------------|
-| Carlos Silva | TechBR Ltda | Novo Lead | 15000 | medium | Importador |
-| Ana Oliveira | Global Trade SA | Qualificação | 45000 | high | Exportador |
-| Roberto Santos | Porto Logística | Proposta | 82000 | urgent | Importador |
-| ... (7 mais) | ... | ... | ... | ... | ... |
-
-### Arquivos
-| Arquivo | Ação |
-|---------|------|
-| supabase/migrations/xxx.sql | Criar (INSERT de 10 leads + 10 custom_field_values) |
-
-Nenhuma alteração de schema, apenas dados.
+| Ação | Detalhe |
+|------|---------|
+| Migration SQL | Recriar trigger como BEFORE UPDATE |
 
