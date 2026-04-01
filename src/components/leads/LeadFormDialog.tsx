@@ -75,6 +75,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
     assigned_to: z.string().optional(),
     value: z.string().optional(),
     priority: z.enum(['low', 'medium', 'high', 'urgent']),
+    qualification: z.string().optional(),
     source: z.string().optional(),
     tags: z.array(z.string()),
     notes: z.string().optional(),
