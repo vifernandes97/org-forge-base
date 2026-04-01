@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { LeadFilters, LeadPriority, StageTimeFilter } from '@/types';
 
-const ARRAY_KEYS: (keyof LeadFilters)[] = ['stage_ids', 'assigned_to', 'priorities', 'tags', 'sources'];
+const ARRAY_KEYS: (keyof LeadFilters)[] = ['stage_ids', 'assigned_to', 'priorities', 'tags', 'sources', 'qualifications'];
 const NUMBER_KEYS: (keyof LeadFilters)[] = ['value_min', 'value_max'];
 const STRING_KEYS: (keyof LeadFilters)[] = ['search', 'created_at_from', 'created_at_to', 'last_activity_from', 'last_activity_to', 'stage_time', 'status_filter'];
 
