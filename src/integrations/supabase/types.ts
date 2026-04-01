@@ -468,6 +468,7 @@ export type Database = {
           organization_id: string
           phone: string | null
           priority: string
+          qualification: number | null
           source: string | null
           stage_entered_at: string
           stage_id: string
@@ -494,6 +495,7 @@ export type Database = {
           organization_id: string
           phone?: string | null
           priority?: string
+          qualification?: number | null
           source?: string | null
           stage_entered_at?: string
           stage_id: string
@@ -520,6 +522,7 @@ export type Database = {
           organization_id?: string
           phone?: string | null
           priority?: string
+          qualification?: number | null
           source?: string | null
           stage_entered_at?: string
           stage_id?: string

@@ -75,6 +75,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
     assigned_to: z.string().optional(),
     value: z.string().optional(),
     priority: z.enum(['low', 'medium', 'high', 'urgent']),
+    qualification: z.string().optional(),
     source: z.string().optional(),
     tags: z.array(z.string()),
     notes: z.string().optional(),
@@ -96,6 +97,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
       assigned_to: '',
       value: '0',
       priority: 'medium' as LeadPriority,
+      qualification: '',
       source: '',
       tags: [] as string[],
       notes: '',
@@ -120,6 +122,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
           assigned_to: lead.assigned_to || '',
           value: String(lead.value || 0),
           priority: lead.priority,
+          qualification: String((lead as any).qualification || ''),
           source: lead.source || '',
           tags: lead.tags || [],
           notes: lead.notes || '',
@@ -176,6 +179,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
             assigned_to: data.assigned_to || null,
             value: parseFloat(data.value || '0'),
             priority: data.priority,
+            qualification: data.qualification ? parseInt(data.qualification, 10) : null,
             source: data.source || null,
             tags: data.tags,
             notes: data.notes || null,
@@ -224,6 +228,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
             assigned_to: data.assigned_to || null,
             value: parseFloat(data.value || '0'),
             priority: data.priority,
+            qualification: data.qualification ? parseInt(data.qualification, 10) : null,
             source: data.source || null,
             tags: data.tags,
             notes: data.notes || null,
@@ -388,6 +393,29 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
               <div className="space-y-1.5">
                 <Label>Fonte</Label>
                 <Input {...form.register('source')} placeholder="Ex: manual, formulário, indicação" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Qualificação</Label>
+                <Controller
+                  control={form.control}
+                  name="qualification"
+                  render={({ field }) => (
+                    <Select value={field.value || '__none__'} onValueChange={v => field.onChange(v === '__none__' ? '' : v)}>
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Nenhuma</SelectItem>
+                        <SelectItem value="1">1 - Muito Baixa</SelectItem>
+                        <SelectItem value="2">2 - Baixa</SelectItem>
+                        <SelectItem value="3">3 - Média</SelectItem>
+                        <SelectItem value="4">4 - Alta</SelectItem>
+                        <SelectItem value="5">5 - Muito Alta</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
             </div>
 

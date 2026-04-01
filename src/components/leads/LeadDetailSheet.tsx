@@ -81,6 +81,8 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
     const updates: Record<string, any> = {};
     if (field === 'value') {
       updates[field] = parseFloat(value) || 0;
+    } else if (field === 'qualification') {
+      updates[field] = value ? parseInt(value, 10) : null;
     } else if (field === 'assigned_to') {
       updates[field] = value || null;
     } else {
@@ -411,6 +413,20 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                         { value: 'urgent', label: 'Urgente' },
                       ]}
                       onSave={(v) => handleInlineSave('priority', v)}
+                    />
+                    <InlineEditField
+                      type="select"
+                      value={String((typedLead as any).qualification || '')}
+                      icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>}
+                      placeholder="Qualificação"
+                      options={[
+                        { value: '1', label: '1 - Muito Baixa' },
+                        { value: '2', label: '2 - Baixa' },
+                        { value: '3', label: '3 - Média' },
+                        { value: '4', label: '4 - Alta' },
+                        { value: '5', label: '5 - Muito Alta' },
+                      ]}
+                      onSave={(v) => handleInlineSave('qualification', v)}
                     />
                   </div>
 
