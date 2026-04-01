@@ -187,6 +187,20 @@ export function LeadFilterBar({
               />
             )}
 
+            {/* Qualification */}
+            <FilterMultiSelect
+              label="Qualificação"
+              options={[
+                { value: '1', label: '1 - Muito Baixa' },
+                { value: '2', label: '2 - Baixa' },
+                { value: '3', label: '3 - Média' },
+                { value: '4', label: '4 - Alta' },
+                { value: '5', label: '5 - Muito Alta' },
+              ]}
+              selected={(filters.qualifications || []).map(String)}
+              onChange={v => setFilter('qualifications', v.map(Number))}
+            />
+
             {/* Value range */}
             <FilterValueRange
               valueMin={filters.value_min}
