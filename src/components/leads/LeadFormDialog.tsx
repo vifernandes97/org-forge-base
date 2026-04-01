@@ -122,6 +122,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
           assigned_to: lead.assigned_to || '',
           value: String(lead.value || 0),
           priority: lead.priority,
+          qualification: String((lead as any).qualification || ''),
           source: lead.source || '',
           tags: lead.tags || [],
           notes: lead.notes || '',
