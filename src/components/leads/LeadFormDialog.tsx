@@ -396,6 +396,29 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
               </div>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Qualificação</Label>
+                <Controller
+                  control={form.control}
+                  name="qualification"
+                  render={({ field }) => (
+                    <Select value={field.value || '__none__'} onValueChange={v => field.onChange(v === '__none__' ? '' : v)}>
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Nenhuma</SelectItem>
+                        <SelectItem value="1">1 - Muito Baixa</SelectItem>
+                        <SelectItem value="2">2 - Baixa</SelectItem>
+                        <SelectItem value="3">3 - Média</SelectItem>
+                        <SelectItem value="4">4 - Alta</SelectItem>
+                        <SelectItem value="5">5 - Muito Alta</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+            </div>
+
             <div className="space-y-1.5">
               <Label>Tags</Label>
               <Controller

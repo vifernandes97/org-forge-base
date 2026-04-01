@@ -105,6 +105,7 @@ export interface Lead {
   media_de_festas: string | null;
   archived_at: string | null;
   archive_reason_id: string | null;
+  qualification: number | null;
 }
 
 export interface LeadWithRelations extends Lead {
