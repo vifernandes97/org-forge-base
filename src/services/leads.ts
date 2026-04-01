@@ -3,11 +3,16 @@ import type { Lead, LeadFilters } from '@/types';
 
 function applyFilters(query: any, filters?: LeadFilters) {
   if (!filters) {
-    query = query.is('archived_at', null);
+    query = query.is('archived_at', null).eq('status', 'open');
     return query;
   }
-  if (!filters.show_archived) {
-    query = query.is('archived_at', null);
+  const statusFilter = filters.status_filter || 'open';
+  if (statusFilter === 'archived') {
+    query = query.not('archived_at', 'is', null);
+  } else if (statusFilter === 'won') {
+    query = query.eq('status', 'won').is('archived_at', null);
+  } else {
+    query = query.eq('status', 'open').is('archived_at', null);
   }
   if (filters.search) {
     const s = `%${filters.search}%`;
