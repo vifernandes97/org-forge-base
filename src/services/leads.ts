@@ -61,6 +61,9 @@ function applyFilters(query: any, filters?: LeadFilters) {
   if (filters.last_activity_to) {
     query = query.lte('last_activity_at', filters.last_activity_to);
   }
+  if (filters.qualifications?.length) {
+    query = query.in('qualification', filters.qualifications);
+  }
   return query;
 }
 

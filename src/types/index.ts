@@ -227,6 +227,7 @@ export interface LeadFilters {
   last_activity_to?: string;
   stage_time?: StageTimeFilter;
   custom_fields?: Record<string, any>;
+  qualifications?: number[];
   show_archived?: boolean;
   status_filter?: 'open' | 'won' | 'archived';
 }

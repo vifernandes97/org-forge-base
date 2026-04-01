@@ -116,6 +116,7 @@ export function useLeadFilters() {
     if (filters.created_at_from || filters.created_at_to) count++;
     if (filters.last_activity_from || filters.last_activity_to) count++;
     if (filters.stage_time) count++;
+    if (filters.qualifications?.length) count++;
     if (filters.custom_fields && Object.keys(filters.custom_fields).length > 0) count += Object.keys(filters.custom_fields).length;
     return count;
   }, [filters]);
