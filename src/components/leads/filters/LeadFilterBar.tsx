@@ -234,17 +234,6 @@ export function LeadFilterBar({
               onChange={handleCustomFieldChange}
             />
 
-            {/* Show archived */}
-            <div className="flex items-center gap-2 h-8 px-2">
-              <Checkbox
-                id="show-archived"
-                checked={!!filters.show_archived}
-                onCheckedChange={v => setFilter('show_archived', v === true ? true : undefined)}
-              />
-              <label htmlFor="show-archived" className="text-xs cursor-pointer flex items-center gap-1">
-                <Archive className="h-3 w-3" /> Mostrar arquivados
-              </label>
-            </div>
           </div>
         </CollapsibleContent>
       </Collapsible>

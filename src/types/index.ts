@@ -227,4 +227,5 @@ export interface LeadFilters {
   stage_time?: StageTimeFilter;
   custom_fields?: Record<string, any>;
   show_archived?: boolean;
+  status_filter?: 'open' | 'won' | 'archived';
 }

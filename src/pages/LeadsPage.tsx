@@ -9,6 +9,7 @@ import { LeadFilterBar } from '@/components/leads/filters/LeadFilterBar';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Toggle } from '@/components/ui/toggle';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, LayoutGrid, List, Contact } from 'lucide-react';
 
 type ViewMode = 'kanban' | 'list';
@@ -29,6 +30,8 @@ export default function LeadsPage() {
     localStorage.getItem(LS_FUNNEL_KEY) || ''
   );
   const [createOpen, setCreateOpen] = useState(false);
+
+  const currentStatusFilter = filters.status_filter || 'open';
 
   // Persist view mode
   useEffect(() => { localStorage.setItem(LS_VIEW_KEY, viewMode); }, [viewMode]);
@@ -99,6 +102,15 @@ export default function LeadsPage() {
           )}
         </div>
       </div>
+
+      {/* Status Tabs */}
+      <Tabs value={currentStatusFilter} onValueChange={(v) => setFilter('status_filter', v as 'open' | 'won' | 'archived')}>
+        <TabsList>
+          <TabsTrigger value="open">Ativos</TabsTrigger>
+          <TabsTrigger value="won">Ganhos</TabsTrigger>
+          <TabsTrigger value="archived">Arquivados</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Filter Bar */}
       {selectedFunnelId && (
