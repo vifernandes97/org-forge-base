@@ -97,6 +97,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
       assigned_to: '',
       value: '0',
       priority: 'medium' as LeadPriority,
+      qualification: '',
       source: '',
       tags: [] as string[],
       notes: '',
