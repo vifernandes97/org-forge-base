@@ -1,37 +1,34 @@
 
 
-# Adicionar abas de status: Ativos, Ganhos e Arquivados
+# Adicionar campo de Qualificação (1–5) ao Lead
 
 ## Resumo
-Adicionar um conjunto de abas/tabs no topo da página de Leads para alternar entre leads "Ativos" (status=open, não arquivados), "Ganhos" (status=won) e "Arquivados" (archived_at != null). Substituir o checkbox "Mostrar arquivados" por essa navegação visual.
+Adicionar uma coluna `qualification` (integer, 1–5, nullable) na tabela `leads` e exibi-la no painel de detalhes do lead (LeadDetailSheet) e no formulário de criação/edição (LeadFormDialog) como um seletor inline.
 
 ## Mudanças
 
-### 1. `src/types/index.ts`
-- Adicionar campo `status_filter?: 'open' | 'won' | 'archived'` ao `LeadFilters`
+### 1. Migration — nova coluna `qualification`
+```sql
+ALTER TABLE leads ADD COLUMN qualification integer DEFAULT NULL;
+```
 
-### 2. `src/services/leads.ts` — `applyFilters`
-- Quando `status_filter === 'archived'`: remover filtro `archived_at is null`, manter apenas `archived_at is not null`
-- Quando `status_filter === 'won'`: filtrar `status = 'won'` e `archived_at is null`
-- Quando `status_filter === 'open'` (ou padrão): filtrar `status = 'open'` e `archived_at is null`
-- Remover lógica antiga de `show_archived`
+### 2. `src/types/index.ts`
+Adicionar `qualification: number | null;` à interface `Lead`.
 
-### 3. `src/pages/LeadsPage.tsx`
-- Adicionar tabs (usando componente `Tabs` do shadcn) entre o header e o filter bar com 3 opções: **Ativos**, **Ganhos**, **Arquivados**
-- Ao trocar a aba, chamar `setFilter('status_filter', value)`
-- Valor padrão: `'open'`
+### 3. `src/components/leads/LeadDetailSheet.tsx`
+Na seção "Detalhes" (após prioridade, ~linha 414), adicionar um `InlineEditField` tipo `select` com opções 1–5 (labels: "1 - Muito Baixa", "2 - Baixa", "3 - Média", "4 - Alta", "5 - Muito Alta"), salvando via `handleInlineSave('qualification', v)`. Ajustar `handleInlineSave` para converter o valor para integer.
 
-### 4. `src/hooks/useLeadFilters.ts`
-- Adicionar `'status_filter'` ao `STRING_KEYS` para sincronizar com URL
+### 4. `src/components/leads/LeadFormDialog.tsx`
+Adicionar campo `qualification` ao schema e ao formulário (select com opções 1–5), na seção de Prioridade/Fonte.
 
-### 5. `src/components/leads/filters/LeadFilterBar.tsx`
-- Remover o checkbox "Mostrar arquivados" (substituído pelas abas)
+### 5. `src/services/leads.ts`
+Incluir `qualification` no `createLead` e `updateLead` (já aceito via `Partial<Lead>`).
 
 | Arquivo | Ação |
 |---------|------|
-| `src/types/index.ts` | Adicionar `status_filter` ao `LeadFilters` |
-| `src/services/leads.ts` | Implementar filtragem por status/arquivamento |
-| `src/pages/LeadsPage.tsx` | Adicionar Tabs de Ativos/Ganhos/Arquivados |
-| `src/hooks/useLeadFilters.ts` | Sincronizar `status_filter` com URL |
-| `src/components/leads/filters/LeadFilterBar.tsx` | Remover checkbox "Mostrar arquivados" |
+| Migration SQL | `ALTER TABLE leads ADD COLUMN qualification integer` |
+| `src/types/index.ts` | Adicionar campo `qualification` |
+| `src/components/leads/LeadDetailSheet.tsx` | Exibir qualificação inline editável |
+| `src/components/leads/LeadFormDialog.tsx` | Campo de qualificação no formulário |
+| `src/services/leads.ts` | Suportar `qualification` no create |
 
