@@ -179,6 +179,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
             assigned_to: data.assigned_to || null,
             value: parseFloat(data.value || '0'),
             priority: data.priority,
+            qualification: data.qualification ? parseInt(data.qualification, 10) : null,
             source: data.source || null,
             tags: data.tags,
             notes: data.notes || null,
