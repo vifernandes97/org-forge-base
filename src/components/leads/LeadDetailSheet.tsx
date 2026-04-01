@@ -81,6 +81,8 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
     const updates: Record<string, any> = {};
     if (field === 'value') {
       updates[field] = parseFloat(value) || 0;
+    } else if (field === 'qualification') {
+      updates[field] = value ? parseInt(value, 10) : null;
     } else if (field === 'assigned_to') {
       updates[field] = value || null;
     } else {
