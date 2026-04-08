@@ -1,6 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useLeadsList } from '@/hooks/useLeads';
 import { useStages } from '@/hooks/useStages';
+import { useCustomFields } from '@/hooks/useCustomFields';
+import { getCustomFieldValuesForLeads } from '@/services/leads';
 import { LeadDetailSheet } from '@/components/leads/LeadDetailSheet';
 import { BulkActionsBar } from './BulkActionsBar';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -13,10 +16,11 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ArrowUpDown, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
+import { ArrowUpDown, ChevronLeft, ChevronRight, SlidersHorizontal, Check, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import type { LeadFilters } from '@/types';
+import { Separator } from '@/components/ui/separator';
+import type { LeadFilters, CustomFieldDefinition } from '@/types';
 
 interface ListViewProps {
   funnelId: string;
@@ -41,17 +45,45 @@ const COLUMNS = [
   { key: 'created_at', label: 'Criado em', defaultVisible: false, sortable: false },
 ] as const;
 
-type ColumnKey = (typeof COLUMNS)[number]['key'];
+type FixedColumnKey = (typeof COLUMNS)[number]['key'];
 
-function loadVisibleColumns(): ColumnKey[] {
+function loadVisibleColumns(): string[] {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored) as string[];
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed as ColumnKey[];
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch {}
   return COLUMNS.filter(c => c.defaultVisible).map(c => c.key);
+}
+
+function formatCustomFieldValue(value: string | null, field: CustomFieldDefinition): React.ReactNode {
+  if (!value) return '—';
+  switch (field.field_type) {
+    case 'number':
+      return Number(value).toLocaleString('pt-BR');
+    case 'currency':
+      return `R$ ${Number(value.replace(',', '.')).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    case 'date':
+      try { return new Date(value).toLocaleDateString('pt-BR'); } catch { return value; }
+    case 'checkbox':
+      return value === 'true' ? <Check className="h-4 w-4 text-green-500" /> : <X className="h-4 w-4 text-muted-foreground" />;
+    case 'select':
+      return <Badge variant="secondary" className="text-[10px]">{value}</Badge>;
+    case 'multi_select':
+      try {
+        const items = JSON.parse(value) as string[];
+        return (
+          <div className="flex gap-1 flex-wrap">
+            {items.slice(0, 2).map(i => <Badge key={i} variant="secondary" className="text-[10px] px-1.5 py-0">{i}</Badge>)}
+            {items.length > 2 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">+{items.length - 2}</Badge>}
+          </div>
+        );
+      } catch { return value; }
+    default:
+      return <span className="truncate max-w-[150px] block">{value}</span>;
+  }
 }
 
 export function ListView({ funnelId, filters }: ListViewProps) {
