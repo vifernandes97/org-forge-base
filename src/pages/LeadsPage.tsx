@@ -35,9 +35,42 @@ export default function LeadsPage() {
   );
   const [createOpen, setCreateOpen] = useState(false);
 
+  const [exporting, setExporting] = useState(false);
+
   const currentStatusFilter = filters.status_filter || 'open';
 
-  // Persist view mode
+  const handleExportCSV = async () => {
+    if (!selectedFunnelId) return;
+    setExporting(true);
+    try {
+      const leads = await getLeadsByFunnel(selectedFunnelId, filters);
+      if (!leads.length) {
+        toast.info('Nenhum lead encontrado para exportar.');
+        return;
+      }
+      const rows = leads.map(l => ({
+        Nome: l.name,
+        Email: l.email || '',
+        Telefone: l.phone || '',
+        Empresa: l.company || '',
+        Valor: l.value,
+        Prioridade: l.priority,
+        'Qualificação': l.qualification ?? '',
+        Fonte: l.source || '',
+        Tags: (l.tags || []).join('; '),
+        Etapa: l.stage?.name || '',
+        'Responsável': l.assigned_profile?.full_name || '',
+        Status: l.status,
+        'Criado em': format(new Date(l.created_at), 'dd/MM/yyyy HH:mm'),
+      }));
+      downloadCSV(rows, `leads_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+      toast.success('CSV exportado com sucesso!');
+    } catch {
+      toast.error('Erro ao exportar CSV.');
+    } finally {
+      setExporting(false);
+    }
+  };
   useEffect(() => { localStorage.setItem(LS_VIEW_KEY, viewMode); }, [viewMode]);
   useEffect(() => {
     if (selectedFunnelId) localStorage.setItem(LS_FUNNEL_KEY, selectedFunnelId);
