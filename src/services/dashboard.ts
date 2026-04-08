@@ -113,7 +113,6 @@ export async function getQualifiedLeadsRate(
 ): Promise<QualifiedRate> {
   let baseQuery = supabase.from('leads').select('*', { count: 'exact', head: true })
     .eq('organization_id', orgId)
-    .is('archived_at', null)
     .gte('created_at', dateFrom).lte('created_at', dateTo);
   if (funnelId) baseQuery = baseQuery.eq('funnel_id', funnelId);
   const { count: total, error: e1 } = await baseQuery;
@@ -121,7 +120,6 @@ export async function getQualifiedLeadsRate(
 
   let qualQuery = supabase.from('leads').select('*', { count: 'exact', head: true })
     .eq('organization_id', orgId)
-    .is('archived_at', null)
     .gte('created_at', dateFrom).lte('created_at', dateTo)
     .in('qualification', [4, 5]);
   if (funnelId) qualQuery = qualQuery.eq('funnel_id', funnelId);
