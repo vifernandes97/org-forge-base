@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useLeadsList } from '@/hooks/useLeads';
 import { useStages } from '@/hooks/useStages';
 import { LeadDetailSheet } from '@/components/leads/LeadDetailSheet';
@@ -12,7 +12,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ArrowUpDown, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { LeadFilters } from '@/types';
@@ -22,6 +23,37 @@ interface ListViewProps {
   filters?: LeadFilters;
 }
 
+const STORAGE_KEY = 'crm_leads_visible_cols';
+
+const COLUMNS = [
+  { key: 'name', label: 'Nome', defaultVisible: true, sortable: true },
+  { key: 'company', label: 'Empresa', defaultVisible: true, sortable: true },
+  { key: 'company_name', label: 'Razão Social', defaultVisible: true, sortable: true },
+  { key: 'email', label: 'E-mail', defaultVisible: true, sortable: false },
+  { key: 'phone', label: 'Telefone', defaultVisible: true, sortable: false },
+  { key: 'stage_id', label: 'Etapa', defaultVisible: true, sortable: true },
+  { key: 'assigned', label: 'Responsável', defaultVisible: true, sortable: false },
+  { key: 'value', label: 'Valor', defaultVisible: true, sortable: true },
+  { key: 'priority', label: 'Prioridade', defaultVisible: true, sortable: true },
+  { key: 'status', label: 'Status', defaultVisible: true, sortable: false },
+  { key: 'tags', label: 'Tags', defaultVisible: false, sortable: false },
+  { key: 'last_activity_at', label: 'Última atividade', defaultVisible: true, sortable: true },
+  { key: 'created_at', label: 'Criado em', defaultVisible: false, sortable: false },
+] as const;
+
+type ColumnKey = (typeof COLUMNS)[number]['key'];
+
+function loadVisibleColumns(): ColumnKey[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored) as string[];
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed as ColumnKey[];
+    }
+  } catch {}
+  return COLUMNS.filter(c => c.defaultVisible).map(c => c.key);
+}
+
 export function ListView({ funnelId, filters }: ListViewProps) {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(25);
@@ -29,6 +61,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [visibleColumns, setVisibleColumns] = useState<ColumnKey[]>(loadVisibleColumns);
 
   const { data: stages } = useStages(funnelId);
   const { data: result, isLoading } = useLeadsList(funnelId, page, pageSize, sortBy, sortOrder, filters);
@@ -36,6 +69,18 @@ export function ListView({ funnelId, filters }: ListViewProps) {
   const leads = result?.data || [];
   const totalCount = result?.count || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(visibleColumns));
+  }, [visibleColumns]);
+
+  const toggleColumn = (key: ColumnKey) => {
+    setVisibleColumns(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
+
+  const isVisible = (key: ColumnKey) => visibleColumns.includes(key);
 
   const toggleSort = (col: string) => {
     if (sortBy === col) {
@@ -76,15 +121,46 @@ export function ListView({ funnelId, filters }: ListViewProps) {
     );
   }
 
+  const visibleCount = visibleColumns.length + 1; // +1 for checkbox col
+
   return (
     <>
-      {selectedIds.length > 0 && (
-        <BulkActionsBar
-          selectedIds={selectedIds}
-          stages={stages || []}
-          onClear={() => setSelectedIds([])}
-        />
-      )}
+      <div className="flex items-center justify-between mb-2">
+        {selectedIds.length > 0 && (
+          <BulkActionsBar
+            selectedIds={selectedIds}
+            stages={stages || []}
+            onClear={() => setSelectedIds([])}
+          />
+        )}
+        <div className="ml-auto">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <SlidersHorizontal className="h-4 w-4" />
+                Colunas
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56 p-2">
+              <p className="text-xs font-medium text-muted-foreground mb-2 px-2">Colunas visíveis</p>
+              <div className="space-y-1">
+                {COLUMNS.map(col => (
+                  <label
+                    key={col.key}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer text-sm"
+                  >
+                    <Checkbox
+                      checked={isVisible(col.key)}
+                      onCheckedChange={() => toggleColumn(col.key)}
+                    />
+                    {col.label}
+                  </label>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
 
       <div className="rounded-lg border overflow-auto">
         <Table>
@@ -96,25 +172,25 @@ export function ListView({ funnelId, filters }: ListViewProps) {
                   onCheckedChange={toggleAll}
                 />
               </TableHead>
-              <SortHeader col="name">Nome</SortHeader>
-              <SortHeader col="company">Empresa</SortHeader>
-              <SortHeader col="company_name">Razão Social</SortHeader>
-              <TableHead className="hidden md:table-cell">E-mail</TableHead>
-              <TableHead className="hidden md:table-cell">Telefone</TableHead>
-              <SortHeader col="stage_id">Etapa</SortHeader>
-              <TableHead>Responsável</TableHead>
-              <SortHeader col="value">Valor</SortHeader>
-              <SortHeader col="priority">Prioridade</SortHeader>
-              <TableHead>Status</TableHead>
-              <TableHead className="hidden lg:table-cell">Tags</TableHead>
-              <SortHeader col="last_activity_at">Última atividade</SortHeader>
-              <TableHead className="hidden lg:table-cell">Criado em</TableHead>
+              {isVisible('name') && <SortHeader col="name">Nome</SortHeader>}
+              {isVisible('company') && <SortHeader col="company">Empresa</SortHeader>}
+              {isVisible('company_name') && <SortHeader col="company_name">Razão Social</SortHeader>}
+              {isVisible('email') && <TableHead>E-mail</TableHead>}
+              {isVisible('phone') && <TableHead>Telefone</TableHead>}
+              {isVisible('stage_id') && <SortHeader col="stage_id">Etapa</SortHeader>}
+              {isVisible('assigned') && <TableHead>Responsável</TableHead>}
+              {isVisible('value') && <SortHeader col="value">Valor</SortHeader>}
+              {isVisible('priority') && <SortHeader col="priority">Prioridade</SortHeader>}
+              {isVisible('status') && <TableHead>Status</TableHead>}
+              {isVisible('tags') && <TableHead>Tags</TableHead>}
+              {isVisible('last_activity_at') && <SortHeader col="last_activity_at">Última atividade</SortHeader>}
+              {isVisible('created_at') && <TableHead>Criado em</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {leads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={14} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={visibleCount} className="text-center text-muted-foreground py-8">
                   Nenhum lead encontrado neste funil.
                 </TableCell>
               </TableRow>
@@ -131,53 +207,79 @@ export function ListView({ funnelId, filters }: ListViewProps) {
                       onCheckedChange={() => toggleSelect(lead.id)}
                     />
                   </TableCell>
-                  <TableCell className="font-medium max-w-[160px] truncate">{lead.company_name || lead.name}</TableCell>
-                  <TableCell className="max-w-[120px] truncate text-muted-foreground">{lead.company || '—'}</TableCell>
-                  <TableCell className="max-w-[120px] truncate text-muted-foreground">{lead.company_name || '—'}</TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground text-xs">{lead.email || '—'}</TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground text-xs">{lead.phone || '—'}</TableCell>
-                  <TableCell>
-                    {lead.stage && (
-                      <Badge variant="outline" className="text-xs" style={{ borderColor: lead.stage.color, color: lead.stage.color }}>
-                        {lead.stage.name}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {lead.assigned_profile ? (
-                      <div className="flex items-center gap-1.5">
-                        <Avatar className="h-5 w-5">
-                          <AvatarFallback className="text-[9px]">{lead.assigned_profile.full_name?.[0]}</AvatarFallback>
-                        </Avatar>
-                        <span className="text-xs truncate max-w-[80px]">{lead.assigned_profile.full_name}</span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right whitespace-nowrap">
-                    {lead.value > 0
-                      ? `R$ ${Number(lead.value).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}`
-                      : '—'}
-                  </TableCell>
-                  <TableCell><PriorityBadge priority={lead.priority} /></TableCell>
-                  <TableCell><StatusBadge status={lead.status || 'open'} /></TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    <div className="flex gap-1">
-                      {(lead.tags || []).slice(0, 2).map((t: string) => (
-                        <Badge key={t} variant="secondary" className="text-[10px] px-1.5 py-0">{t}</Badge>
-                      ))}
-                      {(lead.tags || []).length > 2 && (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">+{lead.tags.length - 2}</Badge>
+                  {isVisible('name') && (
+                    <TableCell className="font-medium max-w-[160px] truncate">{lead.company_name || lead.name}</TableCell>
+                  )}
+                  {isVisible('company') && (
+                    <TableCell className="max-w-[120px] truncate text-muted-foreground">{lead.company || '—'}</TableCell>
+                  )}
+                  {isVisible('company_name') && (
+                    <TableCell className="max-w-[120px] truncate text-muted-foreground">{lead.company_name || '—'}</TableCell>
+                  )}
+                  {isVisible('email') && (
+                    <TableCell className="text-muted-foreground text-xs">{lead.email || '—'}</TableCell>
+                  )}
+                  {isVisible('phone') && (
+                    <TableCell className="text-muted-foreground text-xs">{lead.phone || '—'}</TableCell>
+                  )}
+                  {isVisible('stage_id') && (
+                    <TableCell>
+                      {lead.stage && (
+                        <Badge variant="outline" className="text-xs" style={{ borderColor: lead.stage.color, color: lead.stage.color }}>
+                          {lead.stage.name}
+                        </Badge>
                       )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                    {formatDistanceToNow(new Date(lead.last_activity_at), { addSuffix: true, locale: ptBR })}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell text-xs text-muted-foreground whitespace-nowrap">
-                    {new Date(lead.created_at).toLocaleDateString('pt-BR')}
-                  </TableCell>
+                    </TableCell>
+                  )}
+                  {isVisible('assigned') && (
+                    <TableCell>
+                      {lead.assigned_profile ? (
+                        <div className="flex items-center gap-1.5">
+                          <Avatar className="h-5 w-5">
+                            <AvatarFallback className="text-[9px]">{lead.assigned_profile.full_name?.[0]}</AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs truncate max-w-[80px]">{lead.assigned_profile.full_name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                  )}
+                  {isVisible('value') && (
+                    <TableCell className="text-right whitespace-nowrap">
+                      {lead.value > 0
+                        ? `R$ ${Number(lead.value).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}`
+                        : '—'}
+                    </TableCell>
+                  )}
+                  {isVisible('priority') && (
+                    <TableCell><PriorityBadge priority={lead.priority} /></TableCell>
+                  )}
+                  {isVisible('status') && (
+                    <TableCell><StatusBadge status={lead.status || 'open'} /></TableCell>
+                  )}
+                  {isVisible('tags') && (
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {(lead.tags || []).slice(0, 2).map((t: string) => (
+                          <Badge key={t} variant="secondary" className="text-[10px] px-1.5 py-0">{t}</Badge>
+                        ))}
+                        {(lead.tags || []).length > 2 && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">+{lead.tags.length - 2}</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
+                  {isVisible('last_activity_at') && (
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                      {formatDistanceToNow(new Date(lead.last_activity_at), { addSuffix: true, locale: ptBR })}
+                    </TableCell>
+                  )}
+                  {isVisible('created_at') && (
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                      {new Date(lead.created_at).toLocaleDateString('pt-BR')}
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             )}
