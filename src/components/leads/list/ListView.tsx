@@ -93,26 +93,45 @@ export function ListView({ funnelId, filters }: ListViewProps) {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
-  const [visibleColumns, setVisibleColumns] = useState<ColumnKey[]>(loadVisibleColumns);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(loadVisibleColumns);
 
   const { data: stages } = useStages(funnelId);
   const { data: result, isLoading } = useLeadsList(funnelId, page, pageSize, sortBy, sortOrder, filters);
+  const { data: customFields } = useCustomFields();
 
   const leads = result?.data || [];
   const totalCount = result?.count || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
 
+  const activeCustomFields = useMemo(() => (customFields || []).filter(f => f.is_active), [customFields]);
+
+  const leadIds = useMemo(() => leads.map((l: any) => l.id), [leads]);
+  const { data: cfValues } = useQuery({
+    queryKey: ['custom-field-values-list', leadIds],
+    queryFn: () => getCustomFieldValuesForLeads(leadIds),
+    enabled: leadIds.length > 0,
+  });
+
+  const cfValueMap = useMemo(() => {
+    const map: Record<string, Record<string, string | null>> = {};
+    (cfValues || []).forEach((v: any) => {
+      if (!map[v.lead_id]) map[v.lead_id] = {};
+      map[v.lead_id][v.field_definition_id] = v.value;
+    });
+    return map;
+  }, [cfValues]);
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(visibleColumns));
   }, [visibleColumns]);
 
-  const toggleColumn = (key: ColumnKey) => {
+  const toggleColumn = (key: string) => {
     setVisibleColumns(prev =>
       prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
     );
   };
 
-  const isVisible = (key: ColumnKey) => visibleColumns.includes(key);
+  const isVisible = (key: string) => visibleColumns.includes(key);
 
   const toggleSort = (col: string) => {
     if (sortBy === col) {
@@ -153,7 +172,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
     );
   }
 
-  const visibleCount = visibleColumns.length + 1; // +1 for checkbox col
+  const visibleCount = visibleColumns.length + 1;
 
   return (
     <>
@@ -173,7 +192,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
                 Colunas
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-56 p-2">
+            <PopoverContent align="end" className="w-56 p-2 max-h-[400px] overflow-y-auto">
               <p className="text-xs font-medium text-muted-foreground mb-2 px-2">Colunas visíveis</p>
               <div className="space-y-1">
                 {COLUMNS.map(col => (
@@ -189,6 +208,26 @@ export function ListView({ funnelId, filters }: ListViewProps) {
                   </label>
                 ))}
               </div>
+              {activeCustomFields.length > 0 && (
+                <>
+                  <Separator className="my-2" />
+                  <p className="text-xs font-medium text-muted-foreground mb-2 px-2">Campos personalizados</p>
+                  <div className="space-y-1">
+                    {activeCustomFields.map(cf => (
+                      <label
+                        key={cf.id}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer text-sm"
+                      >
+                        <Checkbox
+                          checked={isVisible(`cf_${cf.id}`)}
+                          onCheckedChange={() => toggleColumn(`cf_${cf.id}`)}
+                        />
+                        {cf.field_label}
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
             </PopoverContent>
           </Popover>
         </div>
@@ -217,6 +256,9 @@ export function ListView({ funnelId, filters }: ListViewProps) {
               {isVisible('tags') && <TableHead>Tags</TableHead>}
               {isVisible('last_activity_at') && <SortHeader col="last_activity_at">Última atividade</SortHeader>}
               {isVisible('created_at') && <TableHead>Criado em</TableHead>}
+              {activeCustomFields.map(cf =>
+                isVisible(`cf_${cf.id}`) ? <TableHead key={cf.id}>{cf.field_label}</TableHead> : null
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -311,6 +353,13 @@ export function ListView({ funnelId, filters }: ListViewProps) {
                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                       {new Date(lead.created_at).toLocaleDateString('pt-BR')}
                     </TableCell>
+                  )}
+                  {activeCustomFields.map(cf =>
+                    isVisible(`cf_${cf.id}`) ? (
+                      <TableCell key={cf.id} className="text-xs">
+                        {formatCustomFieldValue(cfValueMap[lead.id]?.[cf.id] ?? null, cf)}
+                      </TableCell>
+                    ) : null
                   )}
                 </TableRow>
               ))
