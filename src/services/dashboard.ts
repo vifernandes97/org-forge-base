@@ -102,6 +102,35 @@ export async function getLeadsBySource(
   return Object.entries(counts).map(([source, count]) => ({ source, count })).sort((a, b) => b.count - a.count);
 }
 
+export interface QualifiedRate {
+  qualified: number;
+  total: number;
+  rate: number;
+}
+
+export async function getQualifiedLeadsRate(
+  orgId: string, funnelId: string | null, dateFrom: string, dateTo: string
+): Promise<QualifiedRate> {
+  let baseQuery = supabase.from('leads').select('*', { count: 'exact', head: true })
+    .eq('organization_id', orgId)
+    .gte('created_at', dateFrom).lte('created_at', dateTo);
+  if (funnelId) baseQuery = baseQuery.eq('funnel_id', funnelId);
+  const { count: total, error: e1 } = await baseQuery;
+  if (e1) throw e1;
+
+  let qualQuery = supabase.from('leads').select('*', { count: 'exact', head: true })
+    .eq('organization_id', orgId)
+    .gte('created_at', dateFrom).lte('created_at', dateTo)
+    .in('qualification', [4, 5]);
+  if (funnelId) qualQuery = qualQuery.eq('funnel_id', funnelId);
+  const { count: qualified, error: e2 } = await qualQuery;
+  if (e2) throw e2;
+
+  const t = total ?? 0;
+  const q = qualified ?? 0;
+  return { qualified: q, total: t, rate: t > 0 ? (q / t) * 100 : 0 };
+}
+
 export async function getPendingTasksCount(orgId: string): Promise<number> {
   const { count, error } = await supabase.from('tasks')
     .select('*', { count: 'exact', head: true })
