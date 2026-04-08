@@ -230,4 +230,5 @@ export interface LeadFilters {
   qualifications?: number[];
   show_archived?: boolean;
   status_filter?: 'open' | 'won' | 'archived';
+  archive_reason_ids?: string[];
 }

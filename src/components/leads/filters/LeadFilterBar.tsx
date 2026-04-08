@@ -15,6 +15,7 @@ import { useStages } from '@/hooks/useStages';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { useCustomFields } from '@/hooks/useCustomFields';
 import { useLeads } from '@/hooks/useLeads';
+import { useActiveArchiveReasons } from '@/hooks/useArchiveReasons';
 import type { LeadFilters, LeadPriority, StageTimeFilter } from '@/types';
 
 interface LeadFilterBarProps {
@@ -53,6 +54,12 @@ export function LeadFilterBar({
   const { data: members } = useOrgMembers();
   const { data: customFields } = useCustomFields();
   const { data: allLeads } = useLeads();
+  const { data: archiveReasons } = useActiveArchiveReasons();
+
+  const archiveReasonOptions = useMemo(() =>
+    (archiveReasons || []).map(r => ({ value: r.id, label: r.label })),
+    [archiveReasons]
+  );
 
   const stageOptions = useMemo(() =>
     (stages || [])
@@ -200,6 +207,16 @@ export function LeadFilterBar({
               selected={(filters.qualifications || []).map(String)}
               onChange={v => setFilter('qualifications', v.map(Number))}
             />
+
+            {/* Archive reason - only when viewing archived */}
+            {filters.status_filter === 'archived' && archiveReasonOptions.length > 0 && (
+              <FilterMultiSelect
+                label="Motivo de arquivamento"
+                options={archiveReasonOptions}
+                selected={filters.archive_reason_ids || []}
+                onChange={v => setFilter('archive_reason_ids', v)}
+              />
+            )}
 
             {/* Value range */}
             <FilterValueRange
