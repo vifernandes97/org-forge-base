@@ -10,7 +10,11 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Toggle } from '@/components/ui/toggle';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, LayoutGrid, List, Contact } from 'lucide-react';
+import { Plus, LayoutGrid, List, Contact, Download, Loader2 } from 'lucide-react';
+import { getLeadsByFunnel } from '@/services/leads';
+import { downloadCSV } from '@/lib/exportCsv';
+import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 type ViewMode = 'kanban' | 'list';
 
@@ -31,9 +35,42 @@ export default function LeadsPage() {
   );
   const [createOpen, setCreateOpen] = useState(false);
 
+  const [exporting, setExporting] = useState(false);
+
   const currentStatusFilter = filters.status_filter || 'open';
 
-  // Persist view mode
+  const handleExportCSV = async () => {
+    if (!selectedFunnelId) return;
+    setExporting(true);
+    try {
+      const leads = await getLeadsByFunnel(selectedFunnelId, filters);
+      if (!leads.length) {
+        toast.info('Nenhum lead encontrado para exportar.');
+        return;
+      }
+      const rows = leads.map(l => ({
+        Nome: l.name,
+        Email: l.email || '',
+        Telefone: l.phone || '',
+        Empresa: l.company || '',
+        Valor: l.value,
+        Prioridade: l.priority,
+        'Qualificação': l.qualification ?? '',
+        Fonte: l.source || '',
+        Tags: (l.tags || []).join('; '),
+        Etapa: l.stage?.name || '',
+        'Responsável': l.assigned_profile?.full_name || '',
+        Status: l.status,
+        'Criado em': format(new Date(l.created_at), 'dd/MM/yyyy HH:mm'),
+      }));
+      downloadCSV(rows, `leads_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+      toast.success('CSV exportado com sucesso!');
+    } catch {
+      toast.error('Erro ao exportar CSV.');
+    } finally {
+      setExporting(false);
+    }
+  };
   useEffect(() => { localStorage.setItem(LS_VIEW_KEY, viewMode); }, [viewMode]);
   useEffect(() => {
     if (selectedFunnelId) localStorage.setItem(LS_FUNNEL_KEY, selectedFunnelId);
@@ -93,6 +130,13 @@ export default function LeadsPage() {
               <List className="h-4 w-4" />
             </Toggle>
           </div>
+
+          {selectedFunnelId && (
+            <Button onClick={handleExportCSV} size="sm" variant="outline" disabled={exporting}>
+              {exporting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Download className="mr-1.5 h-4 w-4" />}
+              Exportar CSV
+            </Button>
+          )}
 
           {canCreate && (
             <Button onClick={() => setCreateOpen(true)} size="sm">
