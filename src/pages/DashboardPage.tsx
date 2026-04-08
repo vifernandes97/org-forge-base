@@ -15,6 +15,7 @@ import {
   useLeadsBySource,
   useTeamRanking,
   useTaskCounts,
+  useQualifiedRate,
 } from '@/hooks/useDashboard';
 import { useFunnels } from '@/hooks/useFunnels';
 
@@ -33,6 +34,7 @@ export default function DashboardPage() {
   const leadsBySource = useLeadsBySource(period, funnelId);
   const teamRanking = useTeamRanking(period, funnelId);
   const { pending, overdue } = useTaskCounts();
+  const qualifiedRate = useQualifiedRate(period, funnelId);
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -61,7 +63,8 @@ export default function DashboardPage() {
         summary={summary.data}
         pendingTasks={pending.data}
         overdueTasks={overdue.data}
-        isLoading={summary.isLoading || pending.isLoading || overdue.isLoading}
+        qualifiedRate={qualifiedRate.data}
+        isLoading={summary.isLoading || pending.isLoading || overdue.isLoading || qualifiedRate.isLoading}
       />
 
       {/* Charts Grid */}
