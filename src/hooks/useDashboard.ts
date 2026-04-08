@@ -102,6 +102,16 @@ export function useTeamRanking(period: DashboardPeriod, funnelId: string | null)
   });
 }
 
+export function useQualifiedRate(period: DashboardPeriod, funnelId: string | null) {
+  const { organization } = useOrganization();
+  const orgId = organization?.id;
+  return useQuery({
+    queryKey: ['dashboard-qualified-rate', orgId, funnelId, period.dateFrom, period.dateTo],
+    queryFn: () => dashboardService.getQualifiedLeadsRate(orgId!, funnelId, period.dateFrom, period.dateTo),
+    enabled: !!orgId,
+  });
+}
+
 export function useTaskCounts() {
   const { organization } = useOrganization();
   const orgId = organization?.id;

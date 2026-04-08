@@ -1,17 +1,18 @@
-import { Users, UserPlus, DollarSign, TrendingUp, ClipboardList, AlertTriangle, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Users, UserPlus, DollarSign, TrendingUp, ClipboardList, AlertTriangle, ArrowUpRight, ArrowDownRight, Star } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/lib/formatCurrency';
-import type { DashboardSummary } from '@/services/dashboard';
+import type { DashboardSummary, QualifiedRate } from '@/services/dashboard';
 
 interface SummaryCardsProps {
   summary?: DashboardSummary;
   pendingTasks?: number;
   overdueTasks?: number;
+  qualifiedRate?: QualifiedRate;
   isLoading: boolean;
 }
 
-export default function SummaryCards({ summary, pendingTasks, overdueTasks, isLoading }: SummaryCardsProps) {
+export default function SummaryCards({ summary, pendingTasks, overdueTasks, qualifiedRate, isLoading }: SummaryCardsProps) {
   if (isLoading) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -37,6 +38,7 @@ export default function SummaryCards({ summary, pendingTasks, overdueTasks, isLo
     { title: 'Taxa de Conversão', value: `${conversionRate.toFixed(1)}%`, icon: TrendingUp, color: 'text-violet-500', bg: 'bg-violet-500/10' },
     { title: 'Tarefas Pendentes', value: String(pendingTasks ?? 0), icon: ClipboardList, color: (pendingTasks ?? 0) > 0 ? 'text-yellow-500' : 'text-muted-foreground', bg: (pendingTasks ?? 0) > 0 ? 'bg-yellow-500/10' : 'bg-muted' },
     { title: 'Tarefas Atrasadas', value: String(overdueTasks ?? 0), icon: AlertTriangle, color: (overdueTasks ?? 0) > 0 ? 'text-destructive' : 'text-muted-foreground', bg: (overdueTasks ?? 0) > 0 ? 'bg-destructive/10' : 'bg-muted' },
+    { title: 'Leads Qualificados', value: `${(qualifiedRate?.rate ?? 0).toFixed(1)}%`, icon: Star, color: 'text-amber-500', bg: 'bg-amber-500/10', subtitle: qualifiedRate ? `${qualifiedRate.qualified}/${qualifiedRate.total}` : undefined },
   ];
 
   return (
@@ -58,6 +60,9 @@ export default function SummaryCards({ summary, pendingTasks, overdueTasks, isLo
                   </span>
                 )}
               </div>
+              {(c as any).subtitle && (
+                <p className="text-xs text-muted-foreground">{(c as any).subtitle}</p>
+              )}
             </div>
           </CardContent>
         </Card>
