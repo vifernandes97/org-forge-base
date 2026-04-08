@@ -1,36 +1,33 @@
 
 
-# Filtro de Qualificação com Checkboxes (1–5)
+# Filtro de Leads Arquivados por Motivo de Arquivamento
+
+## Resumo
+Adicionar um filtro `FilterMultiSelect` de "Motivo de arquivamento" na barra de filtros, visível apenas quando a aba "Arquivados" estiver selecionada. Permite selecionar um ou mais motivos para filtrar os leads arquivados.
 
 ## Mudanças
 
 ### 1. `src/types/index.ts`
-Adicionar `qualifications?: number[]` ao `LeadFilters`.
+Adicionar `archive_reason_ids?: string[]` ao `LeadFilters`.
 
 ### 2. `src/hooks/useLeadFilters.ts`
-Adicionar `'qualifications'` ao `ARRAY_KEYS` para serializar/deserializar como array na URL.
+Adicionar `'archive_reason_ids'` ao `ARRAY_KEYS` para serialização URL. Incrementar `activeFilterCount` quando preenchido.
 
 ### 3. `src/services/leads.ts` — `applyFilters`
-Adicionar filtro:
+Quando `filters.archive_reason_ids?.length`, adicionar:
 ```ts
-if (filters.qualifications?.length) {
-  query = query.in('qualification', filters.qualifications);
-}
+query = query.in('archive_reason_id', filters.archive_reason_ids);
 ```
 
 ### 4. `src/components/leads/filters/LeadFilterBar.tsx`
-Adicionar na área expandida um `FilterMultiSelect` com opções:
-- `1 - Muito Baixa`, `2 - Baixa`, `3 - Média`, `4 - Alta`, `5 - Muito Alta`
-
-Converter os valores selecionados (strings) para números ao chamar `setFilter('qualifications', ...)`.
-
-### 5. `src/hooks/useLeadFilters.ts` — `activeFilterCount`
-Incrementar contador quando `filters.qualifications?.length > 0`.
+- Importar `useActiveArchiveReasons` do hook existente.
+- Adicionar um `FilterMultiSelect` com label "Motivo de arquivamento", renderizado condicionalmente apenas quando `filters.status_filter === 'archived'`.
+- As opções vêm da query de archive reasons (id → label).
 
 | Arquivo | Ação |
 |---------|------|
-| `src/types/index.ts` | Adicionar `qualifications` ao `LeadFilters` |
+| `src/types/index.ts` | Adicionar `archive_reason_ids` ao `LeadFilters` |
 | `src/hooks/useLeadFilters.ts` | Serialização URL + contagem |
 | `src/services/leads.ts` | Filtro server-side via `.in()` |
-| `src/components/leads/filters/LeadFilterBar.tsx` | FilterMultiSelect de qualificação |
+| `src/components/leads/filters/LeadFilterBar.tsx` | FilterMultiSelect condicional |
 
