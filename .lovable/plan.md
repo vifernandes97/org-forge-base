@@ -1,37 +1,25 @@
 
 
-# Métrica de Qualificação no Dashboard
+# Seletor de Colunas Visíveis na ListView
 
 ## Resumo
-Adicionar um card "Leads Qualificados" ao grid de summary cards do dashboard, exibindo a porcentagem de leads do período que possuem qualificação 4 ou 5.
+Adicionar um dropdown com toggles (checkboxes) acima da tabela de leads no modo lista, permitindo ao usuário escolher quais colunas exibir. A preferência será salva no localStorage.
 
 ## Mudanças
 
-### 1. `src/services/dashboard.ts` — nova função `getQualifiedLeadsRate`
-Consulta a tabela `leads` filtrando pelo período e funil, contando o total e os que têm `qualification IN (4, 5)`. Retorna `{ qualified: number, total: number, rate: number }`.
+### `src/components/leads/list/ListView.tsx`
 
-```ts
-export async function getQualifiedLeadsRate(orgId, funnelId, dateFrom, dateTo) {
-  // Query total leads no período
-  // Query leads com qualification in (4,5) no mesmo período
-  // Calcula rate = (qualified / total) * 100
-}
-```
+1. **Definir mapa de colunas** com array de objetos `{ key, label, defaultVisible }` para as 13 colunas existentes (Nome, Empresa, Razão Social, E-mail, Telefone, Etapa, Responsável, Valor, Prioridade, Status, Tags, Última atividade, Criado em).
 
-### 2. `src/hooks/useDashboard.ts` — novo hook `useQualifiedRate`
-Hook com `useQuery` chamando `getQualifiedLeadsRate`, habilitado quando `orgId` existe.
+2. **Estado `visibleColumns`** inicializado a partir do `localStorage` (chave `crm_leads_visible_cols`), com fallback para as colunas visíveis por padrão. Salvar no localStorage a cada mudança.
 
-### 3. `src/components/dashboard/SummaryCards.tsx`
-- Receber nova prop `qualifiedRate?: { qualified: number; total: number; rate: number }`.
-- Adicionar card "Leads Qualificados" com ícone `Star`, exibindo `rate%` como valor principal e `qualified/total` como subtexto.
+3. **Dropdown de colunas** usando `Popover` + lista de `Checkbox` com o label de cada coluna. Botão trigger com ícone `SlidersHorizontal` e texto "Colunas", posicionado acima da tabela (ao lado da barra de ações em massa ou no topo).
 
-### 4. `src/pages/DashboardPage.tsx`
-- Chamar `useQualifiedRate(period, funnelId)` e passar o resultado para `SummaryCards`.
+4. **Renderização condicional** das `TableHead` e `TableCell` — cada coluna só renderiza se `visibleColumns.includes(key)`. Remover as classes `hidden md:table-cell` / `hidden lg:table-cell` fixas, já que a visibilidade será controlada pelo estado.
+
+5. **Atualizar `colSpan`** da linha vazia para usar `visibleColumns.length + 1` (checkbox sempre visível).
 
 | Arquivo | Ação |
 |---------|------|
-| `src/services/dashboard.ts` | Nova função `getQualifiedLeadsRate` |
-| `src/hooks/useDashboard.ts` | Novo hook `useQualifiedRate` |
-| `src/components/dashboard/SummaryCards.tsx` | Novo card com porcentagem |
-| `src/pages/DashboardPage.tsx` | Integrar hook e passar prop |
+| `src/components/leads/list/ListView.tsx` | Seletor de colunas + renderização condicional |
 
