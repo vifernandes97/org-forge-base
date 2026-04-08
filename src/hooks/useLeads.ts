@@ -4,7 +4,7 @@ import type { LeadFilters } from '@/types';
 import {
   getLeads, getLead, createLead, updateLead, deleteLead,
   upsertCustomFieldValues, getLeadsByFunnel, getLeadsListPaginated,
-  moveLeadToStage, bulkMoveLeads, bulkAssignLeads, bulkDeleteLeads,
+  moveLeadToStage, bulkMoveLeads, bulkAssignLeads, bulkDeleteLeads, bulkArchiveLeads,
   archiveLead, unarchiveLead,
 } from '@/services/leads';
 
@@ -158,6 +158,18 @@ export function useBulkDeleteLeads() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (leadIds: string[]) => bulkDeleteLeads(leadIds),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['leads-kanban'] });
+      qc.invalidateQueries({ queryKey: ['leads-list'] });
+    },
+  });
+}
+
+export function useBulkArchiveLeads() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ leadIds, reasonId }: { leadIds: string[]; reasonId: string }) =>
+      bulkArchiveLeads(leadIds, reasonId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['leads-kanban'] });
       qc.invalidateQueries({ queryKey: ['leads-list'] });
