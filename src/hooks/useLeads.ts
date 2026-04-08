@@ -4,7 +4,7 @@ import type { LeadFilters } from '@/types';
 import {
   getLeads, getLead, createLead, updateLead, deleteLead,
   upsertCustomFieldValues, getLeadsByFunnel, getLeadsListPaginated,
-  moveLeadToStage, bulkMoveLeads, bulkAssignLeads, bulkDeleteLeads,
+  moveLeadToStage, bulkMoveLeads, bulkAssignLeads, bulkDeleteLeads, bulkArchiveLeads,
   archiveLead, unarchiveLead,
 } from '@/services/leads';
 
