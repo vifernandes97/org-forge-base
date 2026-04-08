@@ -1,35 +1,37 @@
 
 
-# Arquivamento em Massa de Leads
+# Métrica de Qualificação no Dashboard
 
 ## Resumo
-Adicionar um botão "Arquivar" na barra de ações em massa que abre um dialog para selecionar o motivo de arquivamento. O motivo selecionado será aplicado a todos os leads selecionados.
+Adicionar um card "Leads Qualificados" ao grid de summary cards do dashboard, exibindo a porcentagem de leads do período que possuem qualificação 4 ou 5.
 
 ## Mudanças
 
-### 1. `src/services/leads.ts` — nova função `bulkArchiveLeads`
+### 1. `src/services/dashboard.ts` — nova função `getQualifiedLeadsRate`
+Consulta a tabela `leads` filtrando pelo período e funil, contando o total e os que têm `qualification IN (4, 5)`. Retorna `{ qualified: number, total: number, rate: number }`.
+
 ```ts
-export async function bulkArchiveLeads(leadIds: string[], reasonId: string) {
-  const { error } = await supabase
-    .from('leads')
-    .update({ archived_at: new Date().toISOString(), archive_reason_id: reasonId, status: 'inactive' })
-    .in('id', leadIds);
-  if (error) throw error;
+export async function getQualifiedLeadsRate(orgId, funnelId, dateFrom, dateTo) {
+  // Query total leads no período
+  // Query leads com qualification in (4,5) no mesmo período
+  // Calcula rate = (qualified / total) * 100
 }
 ```
 
-### 2. `src/hooks/useLeads.ts` — novo hook `useBulkArchiveLeads`
-Mutation que chama `bulkArchiveLeads` e invalida as queries `leads-kanban` e `leads-list`.
+### 2. `src/hooks/useDashboard.ts` — novo hook `useQualifiedRate`
+Hook com `useQuery` chamando `getQualifiedLeadsRate`, habilitado quando `orgId` existe.
 
-### 3. `src/components/leads/list/BulkActionsBar.tsx`
-- Importar `useActiveArchiveReasons` e `useBulkArchiveLeads`.
-- Adicionar um `Select` com ícone `Archive` e placeholder "Arquivar", listando os motivos de arquivamento ativos.
-- Ao selecionar um motivo, chamar `bulkArchiveLeads` com os IDs selecionados e o motivo escolhido.
-- Exibir toast de sucesso e limpar seleção.
+### 3. `src/components/dashboard/SummaryCards.tsx`
+- Receber nova prop `qualifiedRate?: { qualified: number; total: number; rate: number }`.
+- Adicionar card "Leads Qualificados" com ícone `Star`, exibindo `rate%` como valor principal e `qualified/total` como subtexto.
+
+### 4. `src/pages/DashboardPage.tsx`
+- Chamar `useQualifiedRate(period, funnelId)` e passar o resultado para `SummaryCards`.
 
 | Arquivo | Ação |
 |---------|------|
-| `src/services/leads.ts` | Nova função `bulkArchiveLeads` |
-| `src/hooks/useLeads.ts` | Novo hook `useBulkArchiveLeads` |
-| `src/components/leads/list/BulkActionsBar.tsx` | Select de arquivamento em massa |
+| `src/services/dashboard.ts` | Nova função `getQualifiedLeadsRate` |
+| `src/hooks/useDashboard.ts` | Novo hook `useQualifiedRate` |
+| `src/components/dashboard/SummaryCards.tsx` | Novo card com porcentagem |
+| `src/pages/DashboardPage.tsx` | Integrar hook e passar prop |
 
