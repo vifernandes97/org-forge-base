@@ -221,6 +221,16 @@ export async function bulkDeleteLeads(leadIds: string[]) {
   if (error) throw error;
 }
 
+export async function getCustomFieldValuesForLeads(leadIds: string[]) {
+  if (leadIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from('custom_field_values')
+    .select('*')
+    .in('lead_id', leadIds);
+  if (error) throw error;
+  return data;
+}
+
 export async function bulkArchiveLeads(leadIds: string[], reasonId: string) {
   const { error } = await supabase
     .from('leads')
