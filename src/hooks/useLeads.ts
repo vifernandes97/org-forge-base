@@ -165,6 +165,18 @@ export function useBulkDeleteLeads() {
   });
 }
 
+export function useBulkArchiveLeads() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ leadIds, reasonId }: { leadIds: string[]; reasonId: string }) =>
+      bulkArchiveLeads(leadIds, reasonId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['leads-kanban'] });
+      qc.invalidateQueries({ queryKey: ['leads-list'] });
+    },
+  });
+}
+
 export function useArchiveLead() {
   const qc = useQueryClient();
   const { organization } = useOrganization();

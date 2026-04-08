@@ -1,12 +1,12 @@
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useBulkMoveLeads, useBulkAssignLeads, useBulkDeleteLeads } from '@/hooks/useLeads';
+import { useBulkMoveLeads, useBulkAssignLeads, useBulkDeleteLeads, useBulkArchiveLeads } from '@/hooks/useLeads';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
+import { useActiveArchiveReasons } from '@/hooks/useArchiveReasons';
 import { toast } from 'sonner';
-import { Trash2, ArrowRight, UserPlus } from 'lucide-react';
+import { Trash2, ArrowRight, UserPlus, Archive } from 'lucide-react';
 import type { Stage } from '@/types';
 
 interface BulkActionsBarProps {
@@ -19,7 +19,9 @@ export function BulkActionsBar({ selectedIds, stages, onClear }: BulkActionsBarP
   const bulkMove = useBulkMoveLeads();
   const bulkAssign = useBulkAssignLeads();
   const bulkDelete = useBulkDeleteLeads();
+  const bulkArchive = useBulkArchiveLeads();
   const { data: members } = useOrgMembers();
+  const { data: archiveReasons } = useActiveArchiveReasons();
 
   const handleMove = async (stageId: string) => {
     try {
@@ -35,6 +37,14 @@ export function BulkActionsBar({ selectedIds, stages, onClear }: BulkActionsBarP
       toast.success(`${selectedIds.length} leads atribuídos`);
       onClear();
     } catch { toast.error('Erro ao atribuir leads'); }
+  };
+
+  const handleArchive = async (reasonId: string) => {
+    try {
+      await bulkArchive.mutateAsync({ leadIds: selectedIds, reasonId });
+      toast.success(`${selectedIds.length} leads arquivados`);
+      onClear();
+    } catch { toast.error('Erro ao arquivar leads'); }
   };
 
   const handleDelete = async () => {
@@ -80,6 +90,18 @@ export function BulkActionsBar({ selectedIds, stages, onClear }: BulkActionsBarP
                 {m.profile?.full_name}
               </span>
             </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select onValueChange={handleArchive}>
+        <SelectTrigger className="w-[180px] h-8">
+          <Archive className="h-3.5 w-3.5 mr-1" />
+          <SelectValue placeholder="Arquivar" />
+        </SelectTrigger>
+        <SelectContent>
+          {archiveReasons?.map(r => (
+            <SelectItem key={r.id} value={r.id}>{r.label}</SelectItem>
           ))}
         </SelectContent>
       </Select>
