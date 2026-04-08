@@ -131,6 +131,13 @@ export default function LeadsPage() {
             </Toggle>
           </div>
 
+          {selectedFunnelId && (
+            <Button onClick={handleExportCSV} size="sm" variant="outline" disabled={exporting}>
+              {exporting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Download className="mr-1.5 h-4 w-4" />}
+              Exportar CSV
+            </Button>
+          )}
+
           {canCreate && (
             <Button onClick={() => setCreateOpen(true)} size="sm">
               <Plus className="mr-1.5 h-4 w-4" />
