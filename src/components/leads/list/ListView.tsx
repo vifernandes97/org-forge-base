@@ -40,6 +40,7 @@ const COLUMNS = [
   { key: 'value', label: 'Valor', defaultVisible: true, sortable: true },
   { key: 'priority', label: 'Prioridade', defaultVisible: true, sortable: true },
   { key: 'status', label: 'Status', defaultVisible: true, sortable: false },
+  { key: 'qualification', label: 'Qualificação', defaultVisible: true, sortable: true },
   { key: 'tags', label: 'Tags', defaultVisible: false, sortable: false },
   { key: 'last_activity_at', label: 'Última atividade', defaultVisible: true, sortable: true },
   { key: 'created_at', label: 'Criado em', defaultVisible: false, sortable: false },
@@ -253,6 +254,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
               {isVisible('value') && <SortHeader col="value">Valor</SortHeader>}
               {isVisible('priority') && <SortHeader col="priority">Prioridade</SortHeader>}
               {isVisible('status') && <TableHead>Status</TableHead>}
+              {isVisible('qualification') && <SortHeader col="qualification">Qualificação</SortHeader>}
               {isVisible('tags') && <TableHead>Tags</TableHead>}
               {isVisible('last_activity_at') && <SortHeader col="last_activity_at">Última atividade</SortHeader>}
               {isVisible('created_at') && <TableHead>Criado em</TableHead>}
@@ -331,6 +333,13 @@ export function ListView({ funnelId, filters }: ListViewProps) {
                   )}
                   {isVisible('status') && (
                     <TableCell><StatusBadge status={lead.status || 'open'} /></TableCell>
+                  )}
+                  {isVisible('qualification') && (
+                    <TableCell className="text-xs">
+                      {lead.qualification
+                        ? { 1: '1 - Muito Baixa', 2: '2 - Baixa', 3: '3 - Média', 4: '4 - Alta', 5: '5 - Muito Alta' }[lead.qualification as number] ?? lead.qualification
+                        : '—'}
+                    </TableCell>
                   )}
                   {isVisible('tags') && (
                     <TableCell>
