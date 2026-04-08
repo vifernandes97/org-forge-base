@@ -62,7 +62,8 @@ export default function SummaryCards({ summary, pendingTasks, overdueTasks, qual
               </div>
               {(c as any).subtitle && (
                 <p className="text-xs text-muted-foreground">{(c as any).subtitle}</p>
-              </div>
+              )}
+            </div>
             </div>
           </CardContent>
         </Card>
