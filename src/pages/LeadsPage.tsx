@@ -10,7 +10,11 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Toggle } from '@/components/ui/toggle';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, LayoutGrid, List, Contact } from 'lucide-react';
+import { Plus, LayoutGrid, List, Contact, Download, Loader2 } from 'lucide-react';
+import { getLeadsByFunnel } from '@/services/leads';
+import { downloadCSV } from '@/lib/exportCsv';
+import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 type ViewMode = 'kanban' | 'list';
 
