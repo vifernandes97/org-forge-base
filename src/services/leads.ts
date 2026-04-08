@@ -221,6 +221,14 @@ export async function bulkDeleteLeads(leadIds: string[]) {
   if (error) throw error;
 }
 
+export async function bulkArchiveLeads(leadIds: string[], reasonId: string) {
+  const { error } = await supabase
+    .from('leads')
+    .update({ archived_at: new Date().toISOString(), archive_reason_id: reasonId, status: 'inactive' } as any)
+    .in('id', leadIds);
+  if (error) throw error;
+}
+
 export async function archiveLead(id: string, archiveReasonId: string) {
   const { data, error } = await supabase
     .from('leads')
