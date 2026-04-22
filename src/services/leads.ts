@@ -143,6 +143,29 @@ export async function upsertCustomFieldValues(leadId: string, values: { field_de
   if (error) throw error;
 }
 
+export async function upsertCustomFieldValue(
+  leadId: string,
+  fieldDefinitionId: string,
+  value: string | null
+) {
+  if (!value) {
+    const { error } = await supabase
+      .from('custom_field_values')
+      .delete()
+      .eq('lead_id', leadId)
+      .eq('field_definition_id', fieldDefinitionId);
+    if (error) throw error;
+    return;
+  }
+  const { error } = await supabase
+    .from('custom_field_values')
+    .upsert(
+      { lead_id: leadId, field_definition_id: fieldDefinitionId, value },
+      { onConflict: 'lead_id,field_definition_id' }
+    );
+  if (error) throw error;
+}
+
 export async function getOrgMembers(orgId: string) {
   const { data, error } = await supabase
     .from('organization_members')

@@ -3,7 +3,7 @@ import { useOrganization } from '@/contexts/OrganizationContext';
 import type { LeadFilters } from '@/types';
 import {
   getLeads, getLead, createLead, updateLead, deleteLead,
-  upsertCustomFieldValues, getLeadsByFunnel, getLeadsListPaginated,
+  upsertCustomFieldValues, upsertCustomFieldValue, getLeadsByFunnel, getLeadsListPaginated,
   moveLeadToStage, bulkMoveLeads, bulkAssignLeads, bulkDeleteLeads, bulkArchiveLeads,
   archiveLead, unarchiveLead,
 } from '@/services/leads';
@@ -188,6 +188,17 @@ export function useArchiveLead() {
       qc.invalidateQueries({ queryKey: ['lead', vars.leadId] });
       qc.invalidateQueries({ queryKey: ['leads-kanban'] });
       qc.invalidateQueries({ queryKey: ['leads-list'] });
+    },
+  });
+}
+
+export function useUpsertCustomFieldValue() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ leadId, fieldDefinitionId, value }: { leadId: string; fieldDefinitionId: string; value: string | null }) =>
+      upsertCustomFieldValue(leadId, fieldDefinitionId, value),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['lead', vars.leadId] });
     },
   });
 }
