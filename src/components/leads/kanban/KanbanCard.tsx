@@ -1,7 +1,9 @@
 import { useDraggable } from '@dnd-kit/core';
-import { MessageCircle, Star } from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { formatStageTime } from '@/lib/formatStageTime';
+import { useUpdateLead } from '@/hooks/useLeads';
+import { StarRating } from './StarRating';
 import type { LeadWithRelations } from '@/types';
 
 interface KanbanCardProps {
@@ -11,6 +13,7 @@ interface KanbanCardProps {
 }
 
 export function KanbanCard({ lead, onClick }: KanbanCardProps) {
+  const updateLead = useUpdateLead();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: lead.id,
     data: { lead },
@@ -35,7 +38,7 @@ export function KanbanCard({ lead, onClick }: KanbanCardProps) {
       {...listeners}
       {...attributes}
       style={style}
-      className={`rounded-lg border bg-card p-3 cursor-grab active:cursor-grabbing transition-shadow space-y-1.5 ${isDragging ? 'opacity-50 shadow-lg' : 'hover:shadow-md'}`}
+      className={`group rounded-lg border bg-card p-3 cursor-grab active:cursor-grabbing transition-shadow space-y-1.5 ${isDragging ? 'opacity-50 shadow-lg' : 'hover:shadow-md'}`}
       onClick={e => { e.stopPropagation(); onClick(); }}
     >
       {/* Row 1: identifier + avatar + WhatsApp */}
@@ -65,16 +68,12 @@ export function KanbanCard({ lead, onClick }: KanbanCardProps) {
 
       {/* Row 3: stars + relative time */}
       <div className="flex items-center justify-between gap-2">
-        {qualification > 0 ? (
-          <div className="flex items-center gap-0.5">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Star
-                key={i}
-                className={`h-3 w-3 ${i < qualification ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/30'}`}
-              />
-            ))}
-          </div>
-        ) : <span />}
+        <div className={qualification > 0 ? '' : 'opacity-0 group-hover:opacity-100 transition-opacity'}>
+          <StarRating
+            value={qualification}
+            onChange={(n) => updateLead.mutate({ id: lead.id, updates: { qualification: n || null } })}
+          />
+        </div>
         <p className="text-[10px] text-muted-foreground">
           {formatStageTime(lead.created_at)}
         </p>
