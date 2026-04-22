@@ -1,7 +1,9 @@
 import { useDraggable } from '@dnd-kit/core';
-import { MessageCircle, Star } from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { formatStageTime } from '@/lib/formatStageTime';
+import { useUpdateLead } from '@/hooks/useLeads';
+import { StarRating } from './StarRating';
 import type { LeadWithRelations } from '@/types';
 
 interface KanbanCardProps {
