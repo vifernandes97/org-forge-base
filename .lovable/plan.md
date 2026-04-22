@@ -1,63 +1,33 @@
 
 
-# Qualificação rápida via hover no card do Kanban
+# Trocar ícone genérico por logo do WhatsApp no card do Kanban
 
-## Comportamento
+## Problema
+O card do Kanban usa o ícone `MessageCircle` (lucide-react) para o botão de WhatsApp. Como `lucide-react` não inclui o logo oficial do WhatsApp (por questões de marca), precisamos renderizar um SVG inline com o caminho oficial do logo.
 
-No hover do card (Kanban), a linha de estrelas torna-se **interativa**, permitindo qualificar o lead diretamente sem abrir o drawer.
+## Solução
+Substituir o `MessageCircle` por um componente SVG inline com o glyph oficial do WhatsApp, mantendo o mesmo tamanho (`h-4 w-4`) e estilo de hover (cinza → verde).
 
-### Estados visuais
+### Componente SVG inline
+Criar o ícone diretamente nos arquivos onde é usado (sem novo arquivo, pois é simples e localizado):
 
-| Estado | O que aparece |
-|---|---|
-| **Sem qualificação + sem hover** | Linha vazia (apenas tempo à direita, como hoje) |
-| **Sem qualificação + hover** | 5 estrelas vazias clicáveis |
-| **Com qualificação + sem hover** | Estrelas preenchidas (como hoje) |
-| **Com qualificação + hover** | Estrelas preenchidas + hover individual em cada estrela mostra preview da nota |
+```tsx
+<svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+</svg>
+```
 
-### Interações
-
-- **Click em uma estrela** → salva `qualification = N` (1 a 5).
-- **Click na estrela já selecionada** (mesma nota atual) → limpa qualificação (`qualification = 0` ou `null`).
-- **Hover em uma estrela** → preview visual: estrelas até a posição do cursor ficam amarelas; restantes cinza.
-- **stopPropagation** em todos os clicks para não abrir o drawer.
-
-## Implementação
-
-### 1. Novo componente `StarRating` reutilizável
-`src/components/leads/kanban/StarRating.tsx`:
-- Props: `value: number`, `onChange: (n: number) => void`, `size?: 'sm' | 'md'`.
-- Estado local `hoverValue` para preview ao passar o mouse.
-- Renderiza 5 botões `<button>` com `Star` do lucide-react.
-- Cada estrela tem `onMouseEnter`, `onMouseLeave`, `onClick`.
-- Lógica de toggle: se clicar na mesma nota atual, envia `0`.
-
-### 2. Atualizar `KanbanCard.tsx`
-- Import `StarRating` + hook `useUpdateLead` (já existe em `useLeads.ts`).
-- Substituir o bloco atual de renderização das estrelas pelo `<StarRating>`.
-- `onChange` chama `updateLead.mutate({ id: lead.id, qualification: newValue || null })`.
-- **Sempre renderizar a linha das estrelas** (não condicionar a `qualification > 0`), para garantir que o usuário possa qualificar leads ainda sem nota — usar opacidade reduzida (`opacity-0 group-hover:opacity-100 transition-opacity`) quando `qualification === 0` para não poluir visualmente.
-- O elemento pai do card já tem `group` implícito; adicionar a classe `group` se ainda não existir.
-
-### 3. `DragOverlayCard.tsx`
-- **Não alterar** comportamento — durante o arrasto não faz sentido editar. Mantém estrelas como display puro (sem hover/click).
+A cor segue `currentColor`, então a transição `text-muted-foreground hover:text-green-600` continua funcionando exatamente como hoje.
 
 ## Arquivos afetados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/components/leads/kanban/StarRating.tsx` | **Novo** componente interativo de 1–5 estrelas com hover preview e toggle |
-| `src/components/leads/kanban/KanbanCard.tsx` | Trocar render estático por `StarRating`; sempre renderizar linha (com fade-in no hover quando vazio); chamar `useUpdateLead` |
-
-## Detalhes técnicos
-
-- O `useDraggable` do dnd-kit usa `listeners` no card inteiro. Os botões de estrela precisam de `e.stopPropagation()` no `onClick` **e** `onPointerDown` para evitar que o drag inicie ao clicar na estrela.
-- Mesmo padrão já usado no botão de WhatsApp adicionado anteriormente — apenas estender para os botões de estrela.
-- Toast de sucesso opcional; provavelmente desnecessário pois o feedback visual já é imediato. **Decisão: sem toast** para manter a interação fluida.
+| `src/components/leads/kanban/KanbanCard.tsx` | Remover import de `MessageCircle`; substituir o `<MessageCircle className="h-4 w-4" />` pelo SVG inline do WhatsApp |
+| `src/components/leads/kanban/DragOverlayCard.tsx` | Mesma substituição (caso o ícone esteja sendo renderizado também no overlay durante o drag, para manter consistência visual) |
 
 ## Resultado
-
-- Qualificar um lead vira ação de 1 clique direto no Kanban.
-- Cards sem qualificação ganham UI de qualificação apenas no hover, mantendo o visual limpo no estado de repouso.
-- Cards com qualificação permitem ajuste rápido (mudar nota ou limpar) sem abrir o drawer.
+- Botão visualmente reconhecível como WhatsApp (logo oficial).
+- Mesma área clicável, mesmo posicionamento, mesmo comportamento de hover (verde).
+- Sem dependências novas.
 
