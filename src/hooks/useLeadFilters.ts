@@ -104,6 +104,26 @@ export function useLeadFilters() {
     setSearchInput(newFilters.search || '');
   }, []);
 
+  const applyMany = useCallback((partial: Partial<LeadFilters>) => {
+    setFiltersState(prev => {
+      const next: LeadFilters = { ...prev };
+      for (const [key, value] of Object.entries(partial)) {
+        const k = key as keyof LeadFilters;
+        if (
+          value === undefined ||
+          value === null ||
+          (Array.isArray(value) && value.length === 0) ||
+          (typeof value === 'object' && !Array.isArray(value) && value !== null && Object.keys(value).length === 0)
+        ) {
+          delete next[k];
+        } else {
+          (next as any)[k] = value;
+        }
+      }
+      return next;
+    });
+  }, []);
+
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (filters.search) count++;
