@@ -1,51 +1,108 @@
 
 
-# Sidebar com auto-collapse e expansão no hover
+# Filtros mais elegantes na tela de Leads
 
-## Comportamento
+Repensar o painel de filtros para reduzir ruído visual, melhorar foco e dar feedback claro. Hoje, ao expandir, aparece um "muro" de pílulas heterogêneas (selects, ranges, datas) que confunde — vamos transformar em um **Popover organizado por categorias** com ações rápidas inline.
 
-A sidebar fica **colapsada por padrão** (modo `icon`, mostrando apenas ícones em ~3.5rem de largura). Quando o cursor entra na área da sidebar, ela **expande automaticamente** mostrando os labels. Ao sair com o cursor, **colapsa novamente** após um pequeno delay.
+## Princípios
 
-### Estados
+- **Toolbar enxuta** no estado de repouso: search + ações rápidas + botão "Filtros".
+- **Filtros pesados em Popover** (não inline) — não empurra o Kanban.
+- **Quick filters** acessíveis em 1 clique (Etapa, Responsável, Prioridade) sem abrir o painel completo.
+- **Chips ativos** mantêm-se como hoje, mas com agrupamento e tipografia mais leve.
 
-| Estado | Largura | Conteúdo |
-|---|---|---|
-| Repouso (sem hover) | ~56px (icon mode) | Apenas ícones |
-| Hover ativo | ~256px (expanded) | Ícones + labels + badges |
+---
 
-### Detalhes de UX
+## 1. Toolbar redesenhada
 
-- **Delay de saída**: ~200ms para evitar colapso acidental quando o cursor passa rapidamente fora.
-- **Sem delay de entrada**: expande imediatamente ao hover.
-- **SidebarTrigger** continua funcionando para travar a sidebar em estado expandido (override manual).
-- **Em mobile (`< md`)**: comportamento atual de offcanvas é mantido — auto-collapse só faz sentido em desktop.
-- **Sobreposição vs push**: a sidebar continua "empurrando" o conteúdo (comportamento atual). Caso queira flutuar por cima, é um ajuste extra — manter push para não deslocar layout abruptamente.
+```text
+┌──────────────────────────────────────────────────────────────────┐
+│ [🔍 Buscar...]  [Etapa▾] [Resp.▾] [Prioridade▾]  [⚙ Filtros·3]  │
+│                                            [⭐ Salvos] [↻ Limpar]│
+└──────────────────────────────────────────────────────────────────┘
+```
 
-## Implementação
+- **Search** continua como hoje (bg-muted/50, sem borda).
+- **Quick filter pills** (Etapa, Responsável, Prioridade): cada um abre um Popover com checklist; quando ativo, ganha bg azul claro + número (ex: `Etapa · 2`).
+- **Botão "Filtros"**: abre Popover lateral com TODOS os filtros (incluindo os quick), organizado por seções.
+- **Ações** (Salvos, Limpar) vão para o canto direito — só Limpar aparece se há filtros ativos. Salvar fica dentro do Popover principal de filtros.
 
-### 1. `src/components/layout/AppSidebar.tsx`
-- Importar `useSidebar` do `@/components/ui/sidebar` para acessar `setOpen` e `state`.
-- Adicionar handlers `onMouseEnter` e `onMouseLeave` no elemento `<Sidebar>`.
-- `onMouseEnter` → `setOpen(true)` imediatamente.
-- `onMouseLeave` → `setTimeout(() => setOpen(false), 200)`; armazenar timeout em `useRef` para cancelar se o cursor voltar.
-- Detectar mobile via `useIsMobile()` (`@/hooks/use-mobile`) e desabilitar o comportamento em mobile.
+## 2. Popover "Todos os filtros" (substitui Collapsible inline)
 
-### 2. `src/components/layout/MainLayout.tsx`
-- `<SidebarProvider defaultOpen={false}>` para que a sidebar inicie colapsada.
+Largura fixa (~420px), aberto à direita do botão. Layout em **seções com headers**:
 
-### 3. Transição suave
-- O componente `Sidebar` do shadcn já tem transição CSS de largura embutida (`transition-[width]`); nenhuma mudança de CSS necessária.
+```text
+┌─ Filtros ─────────────────────── [×] ┐
+│                                       │
+│ ▸ ESSENCIAIS                          │
+│   Etapa            [Selecionar...  ▾] │
+│   Responsável      [Selecionar...  ▾] │
+│   Prioridade       [Selecionar...  ▾] │
+│   Qualificação     [Selecionar...  ▾] │
+│                                       │
+│ ▸ ORIGEM & CLASSIFICAÇÃO              │
+│   Fonte            [Selecionar...  ▾] │
+│   Tags             [Selecionar...  ▾] │
+│                                       │
+│ ▸ TEMPO                               │
+│   Criação          [De ──── Até    📅]│
+│   Última atividade [De ──── Até    📅]│
+│   Tempo na etapa   [Qualquer       ▾] │
+│                                       │
+│ ▸ VALOR                               │
+│   Faixa            [R$ Min ── R$ Max] │
+│                                       │
+│ ▸ CAMPOS PERSONALIZADOS               │
+│   (campos do usuário)                 │
+│                                       │
+├───────────────────────────────────────┤
+│ [Limpar tudo]    [⭐ Salvar] [Aplicar]│
+└───────────────────────────────────────┘
+```
+
+- **Seções colapsáveis** (`Collapsible` por seção); "Essenciais" abre por padrão.
+- Cada filtro vira **linha**: label à esquerda em `text-xs text-muted-foreground`, controle full-width à direita — alinhamento limpo.
+- Footer fixo com **3 ações**: Limpar tudo (ghost esquerda), Salvar (ghost), Aplicar (primário direita).
+- Aplicar fecha o Popover; mudanças são staged dentro do popover (estado local) e só commitadas no Aplicar — evita re-render de listão a cada clique.
+
+## 3. Chips ativos refinados
+
+- **Agrupar por categoria** quando >5 chips: `Etapa: Negociação, Proposta` em vez de 2 chips separados.
+- Chip ganha **ponto colorido** quando relevante (cor da etapa, cor da prioridade) antes do texto.
+- Botão **"Limpar tudo"** aparece à direita da linha de chips se houver 3+ ativos.
+
+## 4. Quick filter pills (novo)
+
+Componente `QuickFilterPill` reutilizável:
+- Trigger: pill arredondado com label + badge de contagem.
+- Estado ativo: `bg-primary/10 text-primary border-primary/20`.
+- Conteúdo: `Command` (busca + lista de checkboxes), com botão "Limpar" no rodapé.
+
+## 5. Persistência e UX
+
+- **Filtros salvos** ganham destaque: dropdown atual fica visível como botão `⭐` no toolbar, abrindo lista com nome do filtro + ações (aplicar / excluir).
+- **Filtro aplicado vindo de "Salvos"**: mostrar pequeno indicador no toolbar `Aplicado: "Leads quentes" [×]` — clicar X reverte.
+
+## 6. Responsividade
+
+- Em `< md`: search ocupa 100%; quick pills ficam em scroll horizontal abaixo; botão "Filtros" abre `Sheet` (drawer lateral) em vez de Popover.
+
+---
 
 ## Arquivos afetados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/components/layout/AppSidebar.tsx` | Adicionar handlers de hover + timeout ref + integração com `useSidebar` e `useIsMobile` |
-| `src/components/layout/MainLayout.tsx` | `SidebarProvider` com `defaultOpen={false}` |
+| `src/components/leads/filters/LeadFilterBar.tsx` | Reestruturar toolbar; remover Collapsible inline; adicionar quick pills; integrar novo Popover |
+| `src/components/leads/filters/QuickFilterPill.tsx` *(novo)* | Componente reutilizável de pill com Popover de Command list |
+| `src/components/leads/filters/AdvancedFiltersPopover.tsx` *(novo)* | Popover com seções, estado staged, footer de ações (Aplicar/Salvar/Limpar) |
+| `src/components/leads/filters/SavedFiltersDropdown.tsx` | Trocar trigger por ícone `⭐` discreto + indicador de filtro salvo aplicado |
+| `src/hooks/useLeadFilters.ts` | Expor método `applyMany(partial)` para commit em lote vindo do popover |
 
 ## Resultado
 
-- Mais espaço útil para o conteúdo principal por padrão.
-- Acesso rápido à navegação completa sem clique — apenas aproximar o cursor.
-- Mobile continua com o drawer tradicional (sem regressão).
+- Toolbar respira (1 linha em desktop padrão).
+- Filtros frequentes acessíveis em 1 clique sem expandir um painel grande.
+- Filtros avançados em estrutura organizada, fácil de escanear.
+- Sem layout shift no Kanban ao abrir filtros.
 
