@@ -1,33 +1,91 @@
 
 
-# Trocar ícone genérico por logo do WhatsApp no card do Kanban
+# Melhorias visuais e UX da tela de Leads
 
-## Problema
-O card do Kanban usa o ícone `MessageCircle` (lucide-react) para o botão de WhatsApp. Como `lucide-react` não inclui o logo oficial do WhatsApp (por questões de marca), precisamos renderizar um SVG inline com o caminho oficial do logo.
+Conjunto de refinamentos focados em hierarquia visual, densidade de informação, feedback de estado e fluidez de uso. Tudo dentro do design system atual (slate/zinc + blue-600), sem mudanças estruturais nas funcionalidades.
 
-## Solução
-Substituir o `MessageCircle` por um componente SVG inline com o glyph oficial do WhatsApp, mantendo o mesmo tamanho (`h-4 w-4`) e estilo de hover (cinza → verde).
+## 1. Header: agrupamento e hierarquia
 
-### Componente SVG inline
-Criar o ícone diretamente nos arquivos onde é usado (sem novo arquivo, pois é simples e localizado):
+Hoje o header empilha 5 elementos sem agrupamento (funil, view toggle, exportar, novo lead). Visualmente "achatado".
 
-```tsx
-<svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-</svg>
-```
+- **Mover seletor de funil para o topo da página, ao lado do título** com estilo de "breadcrumb interativo": `Leads / [▼ Funil de Vendas]` — funil deixa de competir com ações.
+- **Agrupar ações secundárias** (Exportar, mais ações futuras) em um menu `⋯` (DropdownMenu) à direita, mantendo apenas o CTA primário (`+ Novo Lead`) com destaque sólido azul.
+- **Toggle Kanban/Lista** vira um `ToggleGroup` segmentado mais slim (ícones com tooltip), encostado ao lado direito.
+- Adicionar **contador de leads** ao lado do título (`Leads · 42`) para feedback imediato do total filtrado.
 
-A cor segue `currentColor`, então a transição `text-muted-foreground hover:text-green-600` continua funcionando exatamente como hoje.
+## 2. Tabs de status com indicador numérico
+
+Tabs `Ativos / Ganhos / Arquivados` hoje são puro texto.
+
+- Adicionar **badge com contagem** em cada tab (`Ativos 42`, `Ganhos 12`, `Arquivados 8`).
+- Trocar a tab ativa por um sublinhado azul fino + texto em `font-medium`, removendo o background pesado padrão do shadcn — visual mais editorial e menos "botão".
+- Aumentar levemente o spacing entre tabs (`gap-6`).
+
+## 3. Filter Bar: menos ruído, mais contexto
+
+- **Search**: remover a borda e usar fundo `bg-muted/50`, ícone à esquerda, placeholder mais curto (`"Buscar leads..."`). Largura responsiva: cresce até 380px.
+- **Botão "Filtros"** vira um chip com bordas arredondadas (`rounded-full`); badge de contagem em vermelho/azul vivo só quando > 0.
+- Quando filtros estão ativos, exibir **chips removíveis** abaixo da barra (`Etapa: Negociação ×`, `Prioridade: Alta ×`) em vez de só mostrar o número — feedback explícito do que está filtrado.
+- Botões "Limpar" e "Salvar" agrupados num bloco à direita, separados por `Separator` vertical.
+
+## 4. Coluna do Kanban: header mais informativo
+
+Header atual: nome + count + valor (text-xs cinza). Pouco contraste e sem identidade visual.
+
+- **Barra colorida superior** mais grossa (`borderTopWidth: 4`) em arco arredondado (`rounded-t-lg`), virando "etiqueta visual" da etapa.
+- **Layout do header em 2 linhas**:
+  - Linha 1: nome da etapa (`font-semibold text-sm`) + count em **pill cinza** (`bg-muted px-2 rounded-full text-xs`).
+  - Linha 2: valor total formatado com ícone `DollarSign` discreto + ticket médio (`R$ 45k · ticket R$ 5.6k`).
+- **Indicador de SLA na coluna**: se a coluna tem `sla_hours`, mostrar pequeno ícone `Clock` com tooltip "SLA: 24h"; se algum lead da coluna estourou SLA, ponto vermelho ao lado do count.
+
+## 5. Cards do Kanban: refinamentos finos
+
+- **Hover state** mais perceptível: além de `shadow-md`, adicionar leve `translate-y-[-1px]` e borda `border-primary/20` — feedback tátil.
+- **Stage time relativo**: trocar texto cinza simples por `Clock` icon + texto, e quando passar de SLA, virar texto âmbar/vermelho com tooltip "Acima do SLA da etapa".
+- **Avatar do responsável**: hoje fundo cinza padrão; gerar **cor consistente por hash do user_id** (paleta de 8 cores suaves) — facilita reconhecer responsável de relance.
+- **Tags** (se existirem): renderizar até 2 tags como mini-pills no rodapé do card; "+N" se sobrar.
+- **Indicador de prioridade discreto**: em vez da bolinha (que removemos), aplicar **borda esquerda colorida fina** (`border-l-2`) no card quando `priority === 'high' | 'urgent'` — sinaliza sem poluir.
+
+## 6. Coluna scrolling e espaçamento
+
+- Aumentar largura mínima da coluna de `280px` → `300px` para acomodar melhor as estrelas + WhatsApp + avatar.
+- Reduzir `gap` entre colunas de `gap-4` → `gap-3` para caber mais coluna no viewport.
+- **Sombra sutil de scroll horizontal** nos cantos do container quando há overflow (gradient mask), indicando que há mais colunas para os lados.
+
+## 7. Empty states refinados
+
+- Coluna vazia: em vez do espaço vazio, mostrar texto sutil centralizado `"Solte leads aqui"` + ícone `Inbox` com `opacity-30`. Aparece no estado normal e ganha destaque (background azul claro) quando há card sendo arrastado.
+- Tela sem leads no funil: ilustração simples (ícone grande), título "Nenhum lead ainda", botão `+ Adicionar primeiro lead`.
+
+## 8. Drag & Drop: feedback visual aprimorado
+
+- Coluna alvo durante drag: além do `ring-2 ring-primary/50`, adicionar **fundo `bg-primary/5`** e leve scale nos cards já presentes.
+- DragOverlay: rotação sutil de 2° (`rotate-2`) + sombra mais intensa para diferenciar de cards estáticos.
+
+## 9. Loading states
+
+- Trocar Skeleton genérico das colunas por **skeleton estruturado**: header da coluna + 3 cards-skeleton com mesmas proporções dos cards reais — reduz layout shift quando dados chegam.
+
+## 10. Responsividade
+
+- Em telas < `sm`, header colapsa: título + count na linha 1, ações em linha 2 com scroll horizontal.
+- Filter bar em mobile: search ocupa 100% da largura; chips de filtros ativos em scroll horizontal.
 
 ## Arquivos afetados
 
-| Arquivo | Mudança |
+| Arquivo | Mudanças |
 |---|---|
-| `src/components/leads/kanban/KanbanCard.tsx` | Remover import de `MessageCircle`; substituir o `<MessageCircle className="h-4 w-4" />` pelo SVG inline do WhatsApp |
-| `src/components/leads/kanban/DragOverlayCard.tsx` | Mesma substituição (caso o ícone esteja sendo renderizado também no overlay durante o drag, para manter consistência visual) |
+| `src/pages/LeadsPage.tsx` | Reorganizar header (funil junto ao título, ações agrupadas, contador de leads, ToggleGroup), tabs com badges de contagem |
+| `src/components/leads/filters/LeadFilterBar.tsx` | Search com bg-muted, botão filtros como chip arredondado, chips removíveis dos filtros ativos |
+| `src/components/leads/kanban/KanbanColumn.tsx` | Header em 2 linhas com pill de count, ticket médio, indicador SLA, empty state, largura 300px |
+| `src/components/leads/kanban/KanbanCard.tsx` | Hover refinado, ícone clock no tempo, cor amber se SLA estourado, avatar com cor por hash, tags no rodapé, border-l de prioridade |
+| `src/components/leads/kanban/DragOverlayCard.tsx` | Rotação + sombra mais intensa |
+| `src/components/leads/kanban/KanbanView.tsx` | Skeleton estruturado, gap de colunas reduzido, máscara de scroll lateral |
 
 ## Resultado
-- Botão visualmente reconhecível como WhatsApp (logo oficial).
-- Mesma área clicável, mesmo posicionamento, mesmo comportamento de hover (verde).
-- Sem dependências novas.
+
+- Hierarquia visual clara: título > tabs > filtros > kanban.
+- Feedback explícito em todos estados (filtros ativos, SLA, drag, loading, vazio).
+- Cards mais informativos sem perder a estética minimalista atual.
+- Densidade otimizada — mais colunas visíveis, mais informação por card sem sensação de lotação.
 
