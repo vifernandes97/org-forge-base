@@ -240,6 +240,7 @@ Deno.serve(async (req) => {
     for (const formKey of Object.values(customFieldMapping)) {
       if (formKey && typeof formKey === "string") allMappedFormKeys.add(formKey);
     }
+    for (const k of autoMatchedCustomFormKeys) allMappedFormKeys.add(k);
     allMappedFormKeys.add("api_key");
 
     const extraNotes: string[] = [];
