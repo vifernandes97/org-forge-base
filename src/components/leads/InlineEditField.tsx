@@ -3,6 +3,7 @@ import { Pencil } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 interface BaseProps {
@@ -71,12 +72,24 @@ export function InlineEditField(props: InlineEditFieldProps) {
     }
   };
 
+  const { label } = props;
+
+  const wrapWithTooltip = (node: JSX.Element) => {
+    if (!label) return node;
+    return (
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>{node}</TooltipTrigger>
+        <TooltipContent side="right">{label}</TooltipContent>
+      </Tooltip>
+    );
+  };
+
   // Select type
   if (type === 'select') {
     const opts = (props as SelectFieldProps).options;
     const currentLabel = opts.find(o => o.value === props.value)?.label;
 
-    return (
+    return wrapWithTooltip(
       <div className={cn('group flex items-center gap-3 text-sm', className)}>
         {icon && <span className="text-muted-foreground shrink-0">{icon}</span>}
         <Select
@@ -114,7 +127,7 @@ export function InlineEditField(props: InlineEditFieldProps) {
 
     const isEmpty = !props.value && props.value !== 0;
 
-    return (
+    return wrapWithTooltip(
       <div
         className={cn(
           'group flex items-center gap-3 text-sm cursor-pointer rounded px-1 -mx-1 py-0.5 transition-colors hover:bg-accent/50',

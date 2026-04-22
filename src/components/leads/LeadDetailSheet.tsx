@@ -23,7 +23,8 @@ import { InlineEditField } from './InlineEditField';
 import { StagePipeline } from './StagePipeline';
 
 import { LeadFormDialog } from './LeadFormDialog';
-import { Pencil, Trash2, Clock, AlertTriangle, Building2, Mail, Tag, User, DollarSign, FileText, Instagram, PartyPopper } from 'lucide-react';
+import { Pencil, Trash2, Clock, AlertTriangle, Building2, Mail, Tag, User, DollarSign, FileText, Instagram, FileBadge } from 'lucide-react';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { differenceInHours, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -189,7 +190,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   const isArchived = !!typedLead?.archived_at;
 
   return (
-    <>
+    <TooltipProvider>
       <Sheet open={!!leadId} onOpenChange={open => { if (!open) onClose(); }}>
         <SheetContent className="w-full sm:max-w-[90vw] p-0 flex flex-col overflow-hidden">
           {isLoading || !typedLead ? (
@@ -308,6 +309,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Contato</p>
                     <InlineEditField
                       type="text"
+                      label="Email"
                       value={typedLead.email || ''}
                       icon={<Mail className="h-4 w-4" />}
                       placeholder="Adicionar email..."
@@ -315,6 +317,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                     />
                     <InlineEditField
                       type="text"
+                      label="Telefone (WhatsApp)"
                       value={typedLead.phone || ''}
                       icon={
                         typedLead.phone ? (
@@ -337,6 +340,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                     />
                     <InlineEditField
                       type="text"
+                      label="Empresa"
                       value={typedLead.company || ''}
                       icon={<Building2 className="h-4 w-4" />}
                       placeholder="Adicionar empresa..."
@@ -344,27 +348,23 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                     />
                     <InlineEditField
                       type="text"
+                      label="Razão Social"
                       value={(typedLead as any).company_name || ''}
-                      icon={<Building2 className="h-4 w-4" />}
+                      icon={<FileBadge className="h-4 w-4" />}
                       placeholder="Adicionar razão social..."
                       onSave={(v) => handleInlineSave('company_name', v)}
                     />
                     <InlineEditField
                       type="text"
+                      label="Instagram"
                       value={(typedLead as any).company_instagram || ''}
                       icon={<Instagram className="h-4 w-4" />}
                       placeholder="Adicionar Instagram..."
                       onSave={(v) => handleInlineSave('company_instagram', v)}
                     />
                     <InlineEditField
-                      type="text"
-                      value={(typedLead as any).media_de_festas || ''}
-                      icon={<PartyPopper className="h-4 w-4" />}
-                      placeholder="Média de festas..."
-                      onSave={(v) => handleInlineSave('media_de_festas', v)}
-                    />
-                    <InlineEditField
                       type="currency"
+                      label="Valor"
                       value={Number(typedLead.value || 0)}
                       icon={<DollarSign className="h-4 w-4" />}
                       placeholder="Valor"
@@ -379,6 +379,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Detalhes</p>
                     <InlineEditField
                       type="select"
+                      label="Responsável"
                       value={typedLead.assigned_to || ''}
                       icon={<User className="h-4 w-4" />}
                       placeholder="Sem responsável"
@@ -396,6 +397,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                     )}
                     <InlineEditField
                       type="text"
+                      label="Fonte"
                       value={typedLead.source || ''}
                       icon={<Tag className="h-4 w-4" />}
                       placeholder="Adicionar fonte..."
@@ -403,6 +405,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                     />
                     <InlineEditField
                       type="select"
+                      label="Prioridade"
                       value={typedLead.priority || 'medium'}
                       icon={<AlertTriangle className="h-4 w-4" />}
                       placeholder="Prioridade"
@@ -416,6 +419,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                     />
                     <InlineEditField
                       type="select"
+                      label="Qualificação"
                       value={String((typedLead as any).qualification || '')}
                       icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>}
                       placeholder="Qualificação"
@@ -546,6 +550,6 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
       {typedLead && (
         <LeadFormDialog open={editOpen} onOpenChange={setEditOpen} lead={typedLead} />
       )}
-    </>
+    </TooltipProvider>
   );
 }

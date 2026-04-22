@@ -462,7 +462,6 @@ export type Database = {
           funnel_id: string
           id: string
           last_activity_at: string
-          media_de_festas: string | null
           name: string
           notes: string | null
           organization_id: string
@@ -489,7 +488,6 @@ export type Database = {
           funnel_id: string
           id?: string
           last_activity_at?: string
-          media_de_festas?: string | null
           name: string
           notes?: string | null
           organization_id: string
@@ -516,7 +514,6 @@ export type Database = {
           funnel_id?: string
           id?: string
           last_activity_at?: string
-          media_de_festas?: string | null
           name?: string
           notes?: string | null
           organization_id?: string
