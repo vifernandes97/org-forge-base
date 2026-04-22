@@ -550,6 +550,6 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
       {typedLead && (
         <LeadFormDialog open={editOpen} onOpenChange={setEditOpen} lead={typedLead} />
       )}
-    </>
+    </TooltipProvider>
   );
 }
