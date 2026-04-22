@@ -154,10 +154,25 @@ export function KanbanView({ funnelId, filters }: KanbanViewProps) {
 
   if (stagesLoading || leadsLoading) {
     return (
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex gap-3 overflow-x-auto pb-4">
         {[1, 2, 3, 4].map(i => (
-          <div key={i} className="w-[280px] min-w-[280px]">
-            <Skeleton className="h-[400px] rounded-lg" />
+          <div
+            key={i}
+            className="flex flex-col w-[300px] min-w-[300px] rounded-lg border bg-muted/30"
+          >
+            <Skeleton className="h-1 rounded-t-lg rounded-b-none" />
+            <div className="px-3 pt-2.5 pb-2 border-b space-y-2">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-8 rounded-full" />
+              </div>
+              <Skeleton className="h-3 w-32" />
+            </div>
+            <div className="p-2 space-y-2">
+              {[1, 2, 3].map(j => (
+                <Skeleton key={j} className="h-[88px] rounded-lg" />
+              ))}
+            </div>
           </div>
         ))}
       </div>
@@ -172,7 +187,15 @@ export function KanbanView({ funnelId, filters }: KanbanViewProps) {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-200px)]">
+        <div
+          className="flex gap-3 overflow-x-auto pb-4 h-[calc(100vh-220px)]"
+          style={{
+            maskImage:
+              'linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%)',
+            WebkitMaskImage:
+              'linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%)',
+          }}
+        >
           {sortedStages.map(stage => (
             <KanbanColumn
               key={stage.id}
