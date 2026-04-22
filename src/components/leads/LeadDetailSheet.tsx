@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { PriorityBadge } from './PriorityBadge';
 import { StatusBadge } from './StatusBadge';
-import { useLead, useDeleteLead, useArchiveLead, useUnarchiveLead, useUpdateLead } from '@/hooks/useLeads';
+import { useLead, useDeleteLead, useArchiveLead, useUnarchiveLead, useUpdateLead, useUpsertCustomFieldValue } from '@/hooks/useLeads';
 import { useActiveArchiveReasons } from '@/hooks/useArchiveReasons';
 import { useCustomFields } from '@/hooks/useCustomFields';
 import { useTeamMembers } from '@/hooks/useTeam';
@@ -48,6 +48,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   const { data: stages } = useStages(typedLeadForStages?.funnel_id);
   const deleteLead = useDeleteLead();
   const updateLeadMut = useUpdateLead();
+  const upsertCfv = useUpsertCustomFieldValue();
   const archiveLeadMut = useArchiveLead();
   const unarchiveLeadMut = useUnarchiveLead();
   const { user } = useAuth();
@@ -94,6 +95,17 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
       toast.success('Atualizado!');
     } catch (err: any) {
       toast.error(err.message || 'Erro ao atualizar');
+      throw err;
+    }
+  };
+
+  const handleCustomFieldSave = async (defId: string, value: string) => {
+    if (!leadId) return;
+    try {
+      await upsertCfv.mutateAsync({ leadId, fieldDefinitionId: defId, value: value || null });
+      toast.success('Atualizado!');
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao atualizar campo');
       throw err;
     }
   };
@@ -470,19 +482,44 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                   </div>
 
                   {/* Custom fields */}
-                  {typedLead.custom_field_values && typedLead.custom_field_values.length > 0 && customFields && (
+                  {customFields && customFields.filter(d => d.is_active).length > 0 && (
                     <>
                       <Separator />
                       <div className="space-y-2">
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Campos Personalizados</p>
-                        {typedLead.custom_field_values.map((cfv: any) => {
-                          const def = customFields.find(d => d.id === cfv.field_definition_id);
-                          if (!def || !cfv.value) return null;
+                        {customFields.filter(d => d.is_active).map((def) => {
+                          const cfv = (typedLead.custom_field_values || []).find((v: any) => v.field_definition_id === def.id);
+                          const currentValue = cfv?.value || '';
+                          const fieldType = def.field_type;
+
+                          if (fieldType === 'select' && Array.isArray(def.options)) {
+                            const opts = (def.options as any[]).map((o: any) =>
+                              typeof o === 'string' ? { value: o, label: o } : { value: o.value ?? o.label, label: o.label ?? o.value }
+                            );
+                            return (
+                              <InlineEditField
+                                key={def.id}
+                                type="select"
+                                label={def.field_label}
+                                value={currentValue}
+                                options={opts}
+                                icon={<Tag className="h-4 w-4" />}
+                                placeholder={`Adicionar ${def.field_label.toLowerCase()}...`}
+                                onSave={(v) => handleCustomFieldSave(def.id, v)}
+                              />
+                            );
+                          }
+
                           return (
-                            <div key={cfv.id} className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">{def.field_label}</span>
-                              <span>{cfv.value}</span>
-                            </div>
+                            <InlineEditField
+                              key={def.id}
+                              type="text"
+                              label={def.field_label}
+                              value={currentValue}
+                              icon={<Tag className="h-4 w-4" />}
+                              placeholder={`Adicionar ${def.field_label.toLowerCase()}...`}
+                              onSave={(v) => handleCustomFieldSave(def.id, v)}
+                            />
                           );
                         })}
                       </div>
