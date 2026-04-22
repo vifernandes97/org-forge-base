@@ -48,7 +48,7 @@ export default function LeadsPage() {
   const { isOwner, isAdmin, isMember } = useOrganization();
   const { data: funnels, isLoading: funnelsLoading } = useFunnels();
   const canCreate = isOwner || isAdmin || isMember;
-  const { filters, searchInput, setFilter, clearFilters, applyFilters, activeFilterCount } = useLeadFilters();
+  const { filters, searchInput, setFilter, clearFilters, applyFilters, applyMany, activeFilterCount } = useLeadFilters();
 
   const [viewMode, setViewMode] = useState<ViewMode>(() =>
     (localStorage.getItem(LS_VIEW_KEY) as ViewMode) || 'kanban'
@@ -261,6 +261,7 @@ export default function LeadsPage() {
             setFilter={setFilter}
             clearFilters={clearFilters}
             applyFilters={applyFilters}
+            applyMany={applyMany}
           />
         )}
 
