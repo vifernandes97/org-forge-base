@@ -1,62 +1,72 @@
 
 
-# Correções no Drawer de Detalhes do Lead
+# Exibir e editar todos os campos personalizados no drawer
 
-## 1. Ícones repetidos no painel "Contato"
+## Diagnóstico
 
-Atualmente `Building2` é usado tanto em **Empresa** quanto em **Razão Social**. Vou diferenciar:
+Hoje o drawer só renderiza campos personalizados que **já têm valor salvo** no banco — itera sobre `typedLead.custom_field_values`, não sobre as definições.
 
-- **Empresa** → manter `Building2` (prédio)
-- **Razão Social** → usar `BadgeCheck` ou `FileBadge` (documento/registro formal)
+Consequência:
+- **`dor_principal`** (criado agora, ainda sem valores) → não aparece em nenhum lead.
+- **`media_de_festas`** → só aparece para leads que já têm o valor preenchido (via webhook). Para os demais, fica invisível e sem como adicionar.
 
-Arquivo: `src/components/leads/LeadDetailSheet.tsx`
+Além disso, os valores hoje são **apenas leitura** (texto simples), enquanto os campos nativos são editáveis inline.
 
-## 2. Tooltip com label do campo no hover
+## Solução
 
-Hoje o usuário só vê o ícone + o valor (ou placeholder em itálico). Não fica claro o que cada linha representa, especialmente quando preenchida.
+Renderizar a seção iterando sobre **`customFields` (definições)** em vez de `custom_field_values`, e tornar cada linha editável inline — igual aos demais campos do painel.
 
-**Mudança em `src/components/leads/InlineEditField.tsx`:**
-- Adicionar prop `label?: string` (já existe na interface mas não é usada).
-- Envolver o componente em modo display com `<Tooltip>` do shadcn (`@/components/ui/tooltip`) exibindo a `label` ao passar o mouse.
-- Aplicar somente quando `label` for fornecida.
+### Arquivo: `src/components/leads/LeadDetailSheet.tsx`
 
-**Mudança em `src/components/leads/LeadDetailSheet.tsx`:**
-- Passar `label` em cada `InlineEditField` do painel esquerdo: "Email", "Telefone (WhatsApp)", "Empresa", "Razão Social", "Instagram", "Valor", "Responsável", "Fonte", "Prioridade", "Qualificação".
+- Substituir o bloco da seção "Campos Personalizados" (linhas 472–490).
+- Para cada `def` ativa em `customFields`, buscar o valor atual em `typedLead.custom_field_values` (pode ser vazio).
+- Renderizar com `<InlineEditField>` usando:
+  - `label={def.field_label}` (mostra no tooltip ao hover)
+  - `icon={<Tag className="h-4 w-4" />}` (genérico para todos os custom fields)
+  - `type` mapeado a partir de `def.field_type`: `number` → `number`, `select` → `select` (com `def.options`), demais → `text` (futuro: date/textarea).
+  - `placeholder="Adicionar..."` quando vazio.
+  - `onSave` chama um novo handler `handleCustomFieldSave(defId, value)` que persiste em `custom_field_values`.
+- Sempre exibir a seção "Campos Personalizados" se houver pelo menos uma definição ativa para a org.
 
-## 3. Migrar "Média de festas" para Campo Personalizado da org oniplataforma
+### Arquivo: `src/services/leads.ts`
 
-Hoje `media_de_festas` é uma coluna nativa da tabela `leads` usada por todas as orgs, mas é uma necessidade exclusiva do `vinicius@oniplataforma.com.br` (org `oniplataforma`, id `ff7bbd31-…`).
+Adicionar função:
+```ts
+export async function upsertCustomFieldValue(
+  leadId: string,
+  fieldDefinitionId: string,
+  value: string | null
+)
+```
+Usa `upsert` em `custom_field_values` com `onConflict: 'lead_id,field_definition_id'`. Se `value` for vazio/`null`, fazer `delete` do registro existente.
 
-### 3.1. Migração de dados (SQL)
+### Arquivo: `src/hooks/useLeads.ts`
 
-Executar uma migration que:
+Adicionar `useUpsertCustomFieldValue()` que chama o serviço acima e invalida `['lead', leadId]` para refletir no drawer.
 
-1. Cria a definição de campo personalizado para a org oniplataforma:
-   ```sql
-   INSERT INTO custom_field_definitions (organization_id, field_name, field_label, field_type, position)
-   VALUES ('ff7bbd31-e907-4a2e-8d9f-ad1d53a35aaa', 'media_de_festas', 'Média de festas', 'text', 100)
-   RETURNING id;
-   ```
-2. Copia os 142 valores existentes de `leads.media_de_festas` para `custom_field_values` referenciando o `id` retornado acima (apenas para leads dessa org).
-3. Remove a coluna `media_de_festas` da tabela `leads` (`ALTER TABLE leads DROP COLUMN media_de_festas`).
+### Handler em `LeadDetailSheet.tsx`
 
-### 3.2. Limpeza de código
+```ts
+const upsertCfv = useUpsertCustomFieldValue();
+const handleCustomFieldSave = async (defId: string, value: string) => {
+  if (!leadId) return;
+  await upsertCfv.mutateAsync({ leadId, fieldDefinitionId: defId, value: value || null });
+  toast.success('Atualizado!');
+};
+```
 
-- **`src/components/leads/LeadDetailSheet.tsx`**: remover o `InlineEditField` de "Média de festas" (linhas 359-365) e o ícone `PartyPopper` do import. O valor passará a aparecer automaticamente na seção "Campos Personalizados" do drawer (já implementada nas linhas 468-486).
-- **`src/components/leads/LeadFormDialog.tsx`**: remover o campo `media_de_festas` do schema Zod e do formulário.
-- **`src/services/leads.ts`**: remover `media_de_festas` da interface `LeadInput`.
-- **`src/pages/LeadsPage.tsx`** (export CSV): remover a coluna se existir.
-- **`supabase/functions/inbound-webhook/index.ts`**: remover `media_de_festas` do `fieldMapping` e dos arrays/objetos de mapeamento. (Caso se queira manter compatibilidade com webhooks já existentes da oniplataforma, fica como tarefa futura — por ora será capturado como campo "extra" e gravado em `notes`.)
-- `src/types/index.ts` e `src/integrations/supabase/types.ts` serão atualizados automaticamente após a migration.
+## Resultado
+
+- Campo **`dor_principal`** aparecerá em todos os leads da org oniplataforma, vazio por padrão e editável inline.
+- Campo **`media_de_festas`** aparecerá em todos os leads (mesmo sem valor), permitindo preencher manualmente.
+- Tooltip com a label do campo no hover (igual aos campos nativos).
+- Quando você excluir `media_de_festas` na página de Campos Personalizados, ele desaparece automaticamente do drawer.
 
 ## Tabela de mudanças
 
 | Arquivo | Ação |
-|---------|------|
-| `supabase/migrations/<nova>.sql` | Criar custom field, copiar valores, dropar coluna |
-| `src/components/leads/InlineEditField.tsx` | Suporte a tooltip via prop `label` |
-| `src/components/leads/LeadDetailSheet.tsx` | Diferenciar ícone de Razão Social, passar `label` em todos os campos, remover bloco Média de festas e import `PartyPopper` |
-| `src/components/leads/LeadFormDialog.tsx` | Remover campo `media_de_festas` do schema/form |
-| `src/services/leads.ts` | Remover `media_de_festas` de `LeadInput` |
-| `supabase/functions/inbound-webhook/index.ts` | Remover mapeamento de `media_de_festas` |
+|---|---|
+| `src/services/leads.ts` | Adicionar `upsertCustomFieldValue` (upsert ou delete se vazio) |
+| `src/hooks/useLeads.ts` | Adicionar `useUpsertCustomFieldValue` |
+| `src/components/leads/LeadDetailSheet.tsx` | Iterar sobre `customFields` em vez de `custom_field_values`; usar `InlineEditField` editável com tooltip |
 
