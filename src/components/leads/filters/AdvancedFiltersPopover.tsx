@@ -183,7 +183,7 @@ export function AdvancedFiltersPopover({
     ];
     const partial: Partial<LeadFilters> = {};
     for (const k of allKeys) {
-      partial[k] = (draft as any)[k];
+      (partial as any)[k] = (draft as any)[k];
     }
     applyMany(partial);
     setOpen(false);

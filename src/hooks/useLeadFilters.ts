@@ -142,5 +142,5 @@ export function useLeadFilters() {
     return count;
   }, [filters]);
 
-  return { filters, searchInput, setFilter, clearFilters, applyFilters, activeFilterCount };
+  return { filters, searchInput, setFilter, clearFilters, applyFilters, applyMany, activeFilterCount };
 }
