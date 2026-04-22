@@ -13,6 +13,7 @@ interface KanbanCardProps {
 }
 
 export function KanbanCard({ lead, onClick }: KanbanCardProps) {
+  const updateLead = useUpdateLead();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: lead.id,
     data: { lead },
