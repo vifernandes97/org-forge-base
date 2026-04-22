@@ -3,6 +3,7 @@ import { Search, SlidersHorizontal, X, Star } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { FilterMultiSelect } from './FilterMultiSelect';
@@ -104,27 +105,146 @@ export function LeadFilterBar({
     setFilter('custom_fields', Object.keys(current).length > 0 ? current : undefined);
   };
 
+  // Build active filter chips
+  type Chip = { key: string; label: string; onRemove: () => void };
+  const chips = useMemo<Chip[]>(() => {
+    const list: Chip[] = [];
+    const findLabel = <T extends { value: string; label: string }>(opts: T[], v: string) =>
+      opts.find(o => o.value === v)?.label ?? v;
+
+    (filters.stage_ids || []).forEach(id => {
+      list.push({
+        key: `stage-${id}`,
+        label: `Etapa: ${findLabel(stageOptions, id)}`,
+        onRemove: () =>
+          setFilter('stage_ids', (filters.stage_ids || []).filter(x => x !== id)),
+      });
+    });
+    (filters.assigned_to || []).forEach(id => {
+      list.push({
+        key: `assigned-${id}`,
+        label: `Responsável: ${findLabel(memberOptions, id)}`,
+        onRemove: () =>
+          setFilter('assigned_to', (filters.assigned_to || []).filter(x => x !== id)),
+      });
+    });
+    (filters.priorities || []).forEach(p => {
+      list.push({
+        key: `prio-${p}`,
+        label: `Prioridade: ${findLabel(PRIORITY_OPTIONS, p)}`,
+        onRemove: () =>
+          setFilter('priorities', (filters.priorities || []).filter(x => x !== p)),
+      });
+    });
+    (filters.tags || []).forEach(t => {
+      list.push({
+        key: `tag-${t}`,
+        label: `Tag: ${t}`,
+        onRemove: () => setFilter('tags', (filters.tags || []).filter(x => x !== t)),
+      });
+    });
+    (filters.sources || []).forEach(s => {
+      list.push({
+        key: `src-${s}`,
+        label: `Fonte: ${s}`,
+        onRemove: () => setFilter('sources', (filters.sources || []).filter(x => x !== s)),
+      });
+    });
+    (filters.qualifications || []).forEach(q => {
+      list.push({
+        key: `qual-${q}`,
+        label: `Qualificação: ${q}`,
+        onRemove: () =>
+          setFilter('qualifications', (filters.qualifications || []).filter(x => x !== q)),
+      });
+    });
+    (filters.archive_reason_ids || []).forEach(id => {
+      list.push({
+        key: `arch-${id}`,
+        label: `Motivo: ${findLabel(archiveReasonOptions, id)}`,
+        onRemove: () =>
+          setFilter('archive_reason_ids', (filters.archive_reason_ids || []).filter(x => x !== id)),
+      });
+    });
+    if (filters.value_min != null || filters.value_max != null) {
+      const min = filters.value_min != null ? `R$ ${filters.value_min}` : '−∞';
+      const max = filters.value_max != null ? `R$ ${filters.value_max}` : '+∞';
+      list.push({
+        key: 'value',
+        label: `Valor: ${min} – ${max}`,
+        onRemove: () => {
+          setFilter('value_min', undefined);
+          setFilter('value_max', undefined);
+        },
+      });
+    }
+    if (filters.created_at_from || filters.created_at_to) {
+      list.push({
+        key: 'created',
+        label: `Criação: ${filters.created_at_from || '...'} → ${filters.created_at_to || '...'}`,
+        onRemove: () => {
+          setFilter('created_at_from', undefined);
+          setFilter('created_at_to', undefined);
+        },
+      });
+    }
+    if (filters.last_activity_from || filters.last_activity_to) {
+      list.push({
+        key: 'lastact',
+        label: `Atividade: ${filters.last_activity_from || '...'} → ${filters.last_activity_to || '...'}`,
+        onRemove: () => {
+          setFilter('last_activity_from', undefined);
+          setFilter('last_activity_to', undefined);
+        },
+      });
+    }
+    if (filters.stage_time) {
+      const lbl = STAGE_TIME_OPTIONS.find(o => o.value === filters.stage_time)?.label;
+      list.push({
+        key: 'stagetime',
+        label: `Tempo: ${lbl}`,
+        onRemove: () => setFilter('stage_time', undefined),
+      });
+    }
+    Object.entries(filters.custom_fields || {}).forEach(([fid, val]) => {
+      const f = activeCustomFields.find(cf => cf.id === fid);
+      list.push({
+        key: `cf-${fid}`,
+        label: `${f?.field_label ?? 'Campo'}: ${String(val)}`,
+        onRemove: () => handleCustomFieldChange(fid, undefined),
+      });
+    });
+    return list;
+  }, [filters, stageOptions, memberOptions, archiveReasonOptions, activeCustomFields, setFilter]);
+
   return (
     <div className="space-y-2">
       {/* Collapsed bar */}
       <div className="flex items-center gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        <div className="relative flex-1 min-w-[200px] max-w-[380px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nome, e-mail, empresa, telefone..."
+            placeholder="Buscar leads..."
             value={searchInput}
             onChange={e => setFilter('search', e.target.value)}
-            className="h-8 pl-8 text-xs"
+            className="h-9 pl-9 text-sm bg-muted/50 border-transparent focus-visible:bg-background focus-visible:border-input"
           />
         </div>
 
         <Collapsible open={expanded} onOpenChange={setExpanded}>
           <CollapsibleTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
-              <SlidersHorizontal className="h-3 w-3" />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5 rounded-full px-4 text-xs"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
               Filtros
               {activeFilterCount > 0 && (
-                <Badge variant="default" className="ml-1 h-4 px-1 text-[10px]">
+                <Badge
+                  variant="default"
+                  className="ml-0.5 h-4 min-w-[16px] px-1 text-[10px] tabular-nums"
+                >
                   {activeFilterCount}
                 </Badge>
               )}
@@ -132,19 +252,48 @@ export function LeadFilterBar({
           </CollapsibleTrigger>
         </Collapsible>
 
-        <SavedFiltersDropdown onApply={applyFilters} />
-
-        {activeFilterCount > 0 && (
-          <>
-            <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs text-muted-foreground" onClick={clearFilters}>
-              <X className="h-3 w-3" /> Limpar
-            </Button>
-            <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs" onClick={() => setSaveOpen(true)}>
-              <Star className="h-3 w-3" /> Salvar
-            </Button>
-          </>
-        )}
+        <div className="flex items-center gap-1 ml-auto">
+          <SavedFiltersDropdown onApply={applyFilters} />
+          {activeFilterCount > 0 && (
+            <>
+              <Separator orientation="vertical" className="h-5 mx-1" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1 text-xs text-muted-foreground"
+                onClick={clearFilters}
+              >
+                <X className="h-3 w-3" /> Limpar
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1 text-xs"
+                onClick={() => setSaveOpen(true)}
+              >
+                <Star className="h-3 w-3" /> Salvar
+              </Button>
+            </>
+          )}
+        </div>
       </div>
+
+      {/* Active filter chips */}
+      {chips.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto">
+          {chips.map(c => (
+            <button
+              key={c.key}
+              type="button"
+              onClick={c.onRemove}
+              className="inline-flex items-center gap-1 h-6 rounded-full bg-muted/70 hover:bg-muted px-2.5 text-[11px] text-foreground transition-colors group"
+            >
+              <span className="truncate max-w-[200px]">{c.label}</span>
+              <X className="h-3 w-3 text-muted-foreground group-hover:text-foreground" />
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Expanded filters */}
       <Collapsible open={expanded} onOpenChange={setExpanded}>
