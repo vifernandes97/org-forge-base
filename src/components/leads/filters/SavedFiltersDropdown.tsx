@@ -43,7 +43,7 @@ export function SavedFiltersDropdown({ onApply }: SavedFiltersDropdownProps) {
           size="icon"
           className={cn(
             'h-9 w-9 rounded-full',
-            hasFilters && 'text-amber-500 hover:text-amber-500',
+            hasFilters && 'text-primary hover:text-primary',
           )}
           aria-label="Filtros salvos"
           title="Filtros salvos"
