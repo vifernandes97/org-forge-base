@@ -180,9 +180,49 @@ Deno.serve(async (req) => {
     // Custom fields mapping
     const customFieldMapping = fieldMapping.custom_fields || {};
     const mappedCustomFields: Record<string, string> = {};
+    const autoMatchedCustomFormKeys = new Set<string>();
     for (const [cfKey, formKey] of Object.entries(customFieldMapping)) {
       if (formKey && typeof formKey === "string" && payload[formKey] !== undefined) {
         mappedCustomFields[cfKey] = String(payload[formKey]);
+      }
+    }
+
+    // Auto-detect custom fields by matching payload keys to active definitions
+    // (field_name or field_label, normalized). Only fills entries not already mapped.
+    const nativeCrmFields = ["name", "email", "phone", "company", "company_name", "company_instagram", "value", "notes"];
+    const nativeNormalized = new Set<string>();
+    for (const f of nativeCrmFields) {
+      nativeNormalized.add(normalizeFieldName(f));
+      for (const a of FIELD_ALIASES[f] || []) nativeNormalized.add(a);
+    }
+
+    const { data: activeDefs } = await supabase
+      .from("custom_field_definitions")
+      .select("field_name, field_label")
+      .eq("organization_id", webhook.organization_id)
+      .eq("is_active", true);
+
+    if (activeDefs && activeDefs.length > 0) {
+      const payloadNormIndex: Record<string, { key: string; value: any }> = {};
+      for (const [k, v] of Object.entries(payload)) {
+        payloadNormIndex[normalizeFieldName(k)] = { key: k, value: v };
+      }
+      for (const def of activeDefs) {
+        if (mappedCustomFields[def.field_name] !== undefined) continue;
+        const candidates = [
+          normalizeFieldName(def.field_name),
+          def.field_label ? normalizeFieldName(def.field_label) : null,
+        ].filter(Boolean) as string[];
+        for (const norm of candidates) {
+          // Skip if this normalized key collides with a native CRM field — native takes priority
+          if (nativeNormalized.has(norm)) continue;
+          const hit = payloadNormIndex[norm];
+          if (hit && hit.value !== undefined && hit.value !== null && String(hit.value).trim()) {
+            mappedCustomFields[def.field_name] = String(hit.value);
+            autoMatchedCustomFormKeys.add(hit.key);
+            break;
+          }
+        }
       }
     }
 
