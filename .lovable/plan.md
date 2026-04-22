@@ -1,72 +1,37 @@
 
 
-# Exibir e editar todos os campos personalizados no drawer
+# Garantir que `media_de_festas` continue funcionando via webhook
 
-## Diagnóstico
+## Problema
+Após a migração de `media_de_festas` para custom field, a Edge Function `inbound-webhook` só vai gravá-lo automaticamente se o webhook da oniplataforma tiver `field_mapping.custom_fields.media_de_festas = "media_de_festas"`. Caso contrário, o valor cai em `notes` e o custom field fica vazio.
 
-Hoje o drawer só renderiza campos personalizados que **já têm valor salvo** no banco — itera sobre `typedLead.custom_field_values`, não sobre as definições.
+## Solução em duas frentes
 
-Consequência:
-- **`dor_principal`** (criado agora, ainda sem valores) → não aparece em nenhum lead.
-- **`media_de_festas`** → só aparece para leads que já têm o valor preenchido (via webhook). Para os demais, fica invisível e sem como adicionar.
-
-Além disso, os valores hoje são **apenas leitura** (texto simples), enquanto os campos nativos são editáveis inline.
-
-## Solução
-
-Renderizar a seção iterando sobre **`customFields` (definições)** em vez de `custom_field_values`, e tornar cada linha editável inline — igual aos demais campos do painel.
-
-### Arquivo: `src/components/leads/LeadDetailSheet.tsx`
-
-- Substituir o bloco da seção "Campos Personalizados" (linhas 472–490).
-- Para cada `def` ativa em `customFields`, buscar o valor atual em `typedLead.custom_field_values` (pode ser vazio).
-- Renderizar com `<InlineEditField>` usando:
-  - `label={def.field_label}` (mostra no tooltip ao hover)
-  - `icon={<Tag className="h-4 w-4" />}` (genérico para todos os custom fields)
-  - `type` mapeado a partir de `def.field_type`: `number` → `number`, `select` → `select` (com `def.options`), demais → `text` (futuro: date/textarea).
-  - `placeholder="Adicionar..."` quando vazio.
-  - `onSave` chama um novo handler `handleCustomFieldSave(defId, value)` que persiste em `custom_field_values`.
-- Sempre exibir a seção "Campos Personalizados" se houver pelo menos uma definição ativa para a org.
-
-### Arquivo: `src/services/leads.ts`
-
-Adicionar função:
-```ts
-export async function upsertCustomFieldValue(
-  leadId: string,
-  fieldDefinitionId: string,
-  value: string | null
-)
+### 1. Backfill imediato — atualizar webhook(s) existentes da oniplataforma
+Migration SQL que faz `UPDATE inbound_webhooks` na org `ff7bbd31-e907-4a2e-8d9f-ad1d53a35aaa`, fazendo merge no JSON `field_mapping` para incluir:
+```json
+{ "custom_fields": { "media_de_festas": "media_de_festas" } }
 ```
-Usa `upsert` em `custom_field_values` com `onConflict: 'lead_id,field_definition_id'`. Se `value` for vazio/`null`, fazer `delete` do registro existente.
+Preserva qualquer outro mapeamento já existente via `jsonb_set` / `||`.
 
-### Arquivo: `src/hooks/useLeads.ts`
+### 2. Fallback automático na Edge Function (defesa)
+Em `supabase/functions/inbound-webhook/index.ts`, após montar `mappedCustomFields` (linha 187), adicionar uma etapa que:
 
-Adicionar `useUpsertCustomFieldValue()` que chama o serviço acima e invalida `['lead', leadId]` para refletir no drawer.
+- Busca todas as `custom_field_definitions` ativas da org (uma única query).
+- Para cada definição, se ainda não estiver em `mappedCustomFields` **e** o payload tiver uma chave cujo `normalizeFieldName` bata com `normalizeFieldName(def.field_name)` ou `def.field_label`, atribui o valor.
+- Adiciona essas chaves ao `allMappedFormKeys` para não duplicarem em `notes`.
 
-### Handler em `LeadDetailSheet.tsx`
-
-```ts
-const upsertCfv = useUpsertCustomFieldValue();
-const handleCustomFieldSave = async (defId: string, value: string) => {
-  if (!leadId) return;
-  await upsertCfv.mutateAsync({ leadId, fieldDefinitionId: defId, value: value || null });
-  toast.success('Atualizado!');
-};
-```
-
-## Resultado
-
-- Campo **`dor_principal`** aparecerá em todos os leads da org oniplataforma, vazio por padrão e editável inline.
-- Campo **`media_de_festas`** aparecerá em todos os leads (mesmo sem valor), permitindo preencher manualmente.
-- Tooltip com a label do campo no hover (igual aos campos nativos).
-- Quando você excluir `media_de_festas` na página de Campos Personalizados, ele desaparece automaticamente do drawer.
+Resultado: qualquer payload com `media_de_festas` (ou variações como `Media de Festas`, `media-de-festas`) populará o custom field automaticamente em **todas as orgs**, sem exigir configuração manual.
 
 ## Tabela de mudanças
 
 | Arquivo | Ação |
 |---|---|
-| `src/services/leads.ts` | Adicionar `upsertCustomFieldValue` (upsert ou delete se vazio) |
-| `src/hooks/useLeads.ts` | Adicionar `useUpsertCustomFieldValue` |
-| `src/components/leads/LeadDetailSheet.tsx` | Iterar sobre `customFields` em vez de `custom_field_values`; usar `InlineEditField` editável com tooltip |
+| `supabase/migrations/<nova>.sql` | UPDATE em `inbound_webhooks` da oniplataforma para incluir `custom_fields.media_de_festas` no `field_mapping` |
+| `supabase/functions/inbound-webhook/index.ts` | Carregar definições ativas da org e fazer auto-match de payload → custom field por nome normalizado |
+
+## Resultado
+- Webhooks já existentes da oniplataforma voltam a alimentar o campo sem trocar nada do lado do cliente.
+- Novas orgs e novos custom fields ganham auto-detecção de graça (mesmo padrão dos campos nativos).
+- Se houver conflito (mesmo nome em nativo e custom), o nativo continua tendo prioridade pois é processado antes.
 
