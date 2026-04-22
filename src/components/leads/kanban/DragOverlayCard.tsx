@@ -1,19 +1,14 @@
+import { Star } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { formatStageTime } from '@/lib/formatStageTime';
-import type { LeadWithRelations, LeadPriority } from '@/types';
-
-const priorityDotColor: Record<LeadPriority, string> = {
-  low: 'bg-green-500',
-  medium: 'bg-yellow-500',
-  high: 'bg-orange-500',
-  urgent: 'bg-red-500',
-};
+import type { LeadWithRelations } from '@/types';
 
 export function DragOverlayCard({ lead }: { lead: LeadWithRelations }) {
+  const qualification = lead.qualification ?? 0;
+
   return (
     <div className="rounded-lg border bg-card p-3 shadow-xl w-[260px] space-y-1.5 rotate-2">
       <div className="flex items-center gap-2">
-        <span className={`h-2 w-2 rounded-full shrink-0 ${priorityDotColor[lead.priority] || priorityDotColor.medium}`} />
         <span className="font-medium text-sm truncate flex-1">{lead.company_name || lead.name}</span>
         {lead.assigned_profile && (
           <Avatar className="h-5 w-5 shrink-0">
@@ -22,11 +17,23 @@ export function DragOverlayCard({ lead }: { lead: LeadWithRelations }) {
         )}
       </div>
       {lead.company && (
-        <p className="text-xs text-muted-foreground truncate pl-4">{lead.company}</p>
+        <p className="text-xs text-muted-foreground truncate">{lead.company}</p>
       )}
-      <p className="text-[10px] text-muted-foreground text-right">
-        {formatStageTime(lead.created_at)}
-      </p>
+      <div className="flex items-center justify-between gap-2">
+        {qualification > 0 ? (
+          <div className="flex items-center gap-0.5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star
+                key={i}
+                className={`h-3 w-3 ${i < qualification ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/30'}`}
+              />
+            ))}
+          </div>
+        ) : <span />}
+        <p className="text-[10px] text-muted-foreground">
+          {formatStageTime(lead.created_at)}
+        </p>
+      </div>
     </div>
   );
 }
