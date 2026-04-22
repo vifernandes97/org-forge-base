@@ -68,16 +68,12 @@ export function KanbanCard({ lead, onClick }: KanbanCardProps) {
 
       {/* Row 3: stars + relative time */}
       <div className="flex items-center justify-between gap-2">
-        {qualification > 0 ? (
-          <div className="flex items-center gap-0.5">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Star
-                key={i}
-                className={`h-3 w-3 ${i < qualification ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/30'}`}
-              />
-            ))}
-          </div>
-        ) : <span />}
+        <div className={qualification > 0 ? '' : 'opacity-0 group-hover:opacity-100 transition-opacity'}>
+          <StarRating
+            value={qualification}
+            onChange={(n) => updateLead.mutate({ id: lead.id, updates: { qualification: n || null } })}
+          />
+        </div>
         <p className="text-[10px] text-muted-foreground">
           {formatStageTime(lead.created_at)}
         </p>
