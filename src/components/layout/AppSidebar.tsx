@@ -33,9 +33,29 @@ export function AppSidebar() {
   const { organization } = useOrganization();
   const { data: badgeCounts } = useTaskBadgeCounts();
   const totalBadge = (badgeCounts?.overdue || 0) + (badgeCounts?.today || 0);
+  const { setOpen } = useSidebar();
+  const isMobile = useIsMobile();
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMouseEnter = () => {
+    if (isMobile) return;
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    setOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    if (isMobile) return;
+    closeTimeoutRef.current = setTimeout(() => {
+      setOpen(false);
+      closeTimeoutRef.current = null;
+    }, 200);
+  };
 
   return (
-    <Sidebar collapsible="icon" className="border-r">
+    <Sidebar collapsible="icon" className="border-r" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
       <div className="flex h-14 items-center gap-2 border-b px-4">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
           {organization?.name?.[0]?.toUpperCase() || 'C'}
