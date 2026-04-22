@@ -1,8 +1,11 @@
 import { useDraggable } from '@dnd-kit/core';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatStageTime } from '@/lib/formatStageTime';
+import { avatarColorFromId } from '@/lib/avatarColor';
 import { useUpdateLead } from '@/hooks/useLeads';
 import { StarRating } from './StarRating';
+import { Clock } from 'lucide-react';
 import type { LeadWithRelations } from '@/types';
 
 interface KanbanCardProps {
@@ -11,7 +14,7 @@ interface KanbanCardProps {
   slaExceeded?: boolean;
 }
 
-export function KanbanCard({ lead, onClick }: KanbanCardProps) {
+export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
   const updateLead = useUpdateLead();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: lead.id,
@@ -30,23 +33,52 @@ export function KanbanCard({ lead, onClick }: KanbanCardProps) {
   };
 
   const qualification = lead.qualification ?? 0;
+  const isHighPriority = lead.priority === 'high' || lead.priority === 'urgent';
+  const priorityColor =
+    lead.priority === 'urgent'
+      ? 'hsl(0, 80%, 55%)'
+      : lead.priority === 'high'
+      ? 'hsl(25, 95%, 55%)'
+      : undefined;
+
+  const assigneeColors = avatarColorFromId(lead.assigned_to);
+  const tags = lead.tags || [];
+  const visibleTags = tags.slice(0, 2);
+  const extraTags = tags.length - visibleTags.length;
 
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      style={style}
-      className={`group rounded-lg border bg-card p-3 cursor-grab active:cursor-grabbing transition-shadow space-y-1.5 ${isDragging ? 'opacity-50 shadow-lg' : 'hover:shadow-md'}`}
+      style={{
+        ...style,
+        ...(isHighPriority && priorityColor ? { borderLeftColor: priorityColor, borderLeftWidth: 2 } : {}),
+      }}
+      className={`group rounded-lg border bg-card p-3 cursor-grab active:cursor-grabbing transition-all space-y-1.5 ${
+        isDragging
+          ? 'opacity-50 shadow-lg'
+          : 'hover:shadow-md hover:border-primary/20 hover:-translate-y-px'
+      }`}
       onClick={e => { e.stopPropagation(); onClick(); }}
     >
       {/* Row 1: identifier + avatar + WhatsApp */}
       <div className="flex items-center gap-2">
         <span className="font-medium text-sm truncate flex-1">{lead.company_name || lead.name}</span>
         {lead.assigned_profile && (
-          <Avatar className="h-5 w-5 shrink-0">
-            <AvatarFallback className="text-[9px]">{lead.assigned_profile.full_name?.[0] || '?'}</AvatarFallback>
-          </Avatar>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Avatar className="h-5 w-5 shrink-0">
+                <AvatarFallback
+                  className="text-[9px] font-medium"
+                  style={{ backgroundColor: assigneeColors.bg, color: assigneeColors.fg }}
+                >
+                  {lead.assigned_profile.full_name?.[0]?.toUpperCase() || '?'}
+                </AvatarFallback>
+              </Avatar>
+            </TooltipTrigger>
+            <TooltipContent>{lead.assigned_profile.full_name}</TooltipContent>
+          </Tooltip>
         )}
         {lead.phone && (
           <button
@@ -75,10 +107,40 @@ export function KanbanCard({ lead, onClick }: KanbanCardProps) {
             onChange={(n) => updateLead.mutate({ id: lead.id, updates: { qualification: n || null } })}
           />
         </div>
-        <p className="text-[10px] text-muted-foreground">
-          {formatStageTime(lead.created_at)}
-        </p>
+        {slaExceeded ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-500 font-medium">
+                <Clock className="h-2.5 w-2.5" />
+                {formatStageTime(lead.created_at)}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Acima do SLA da etapa</TooltipContent>
+          </Tooltip>
+        ) : (
+          <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+            <Clock className="h-2.5 w-2.5" />
+            {formatStageTime(lead.created_at)}
+          </span>
+        )}
       </div>
+
+      {/* Row 4: tags */}
+      {visibleTags.length > 0 && (
+        <div className="flex items-center gap-1 flex-wrap pt-0.5">
+          {visibleTags.map(tag => (
+            <span
+              key={tag}
+              className="inline-flex items-center text-[10px] bg-muted/70 text-foreground/70 rounded px-1.5 py-0.5 truncate max-w-[100px]"
+            >
+              {tag}
+            </span>
+          ))}
+          {extraTags > 0 && (
+            <span className="text-[10px] text-muted-foreground">+{extraTags}</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
