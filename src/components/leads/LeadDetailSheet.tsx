@@ -190,7 +190,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   const isArchived = !!typedLead?.archived_at;
 
   return (
-    <>
+    <TooltipProvider>
       <Sheet open={!!leadId} onOpenChange={open => { if (!open) onClose(); }}>
         <SheetContent className="w-full sm:max-w-[90vw] p-0 flex flex-col overflow-hidden">
           {isLoading || !typedLead ? (
