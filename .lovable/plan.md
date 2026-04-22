@@ -1,37 +1,49 @@
 
 
-# Garantir que `media_de_festas` continue funcionando via webhook
+# Exibir labels dos campos no drawer do lead
 
 ## Problema
-Após a migração de `media_de_festas` para custom field, a Edge Function `inbound-webhook` só vai gravá-lo automaticamente se o webhook da oniplataforma tiver `field_mapping.custom_fields.media_de_festas = "media_de_festas"`. Caso contrário, o valor cai em `notes` e o custom field fica vazio.
+Hoje os campos do drawer (Email, Telefone, Empresa, Razão Social, Instagram, Valor, Responsável, Fonte, Prioridade, Qualificação e Campos Personalizados) mostram apenas o **ícone** + **valor**. A label só aparece como tooltip ao passar o mouse, o que dificulta identificar o campo de relance — especialmente quando está vazio ou quando o ícone é ambíguo.
 
-## Solução em duas frentes
+## Solução
+Renderizar a label como texto fixo **à esquerda do valor**, com largura fixa para alinhamento vertical limpo (estilo formulário Bitrix/Pipedrive).
 
-### 1. Backfill imediato — atualizar webhook(s) existentes da oniplataforma
-Migration SQL que faz `UPDATE inbound_webhooks` na org `ff7bbd31-e907-4a2e-8d9f-ad1d53a35aaa`, fazendo merge no JSON `field_mapping` para incluir:
-```json
-{ "custom_fields": { "media_de_festas": "media_de_festas" } }
+### Layout proposto por linha
+```text
+[ícone]  Label do campo    Valor editável                    [✏️ on hover]
+         ────────────────  ────────────────────────────────
+         w-32 (128px)      flex-1
 ```
-Preserva qualquer outro mapeamento já existente via `jsonb_set` / `||`.
 
-### 2. Fallback automático na Edge Function (defesa)
-Em `supabase/functions/inbound-webhook/index.ts`, após montar `mappedCustomFields` (linha 187), adicionar uma etapa que:
+- Ícone permanece à esquerda (mantendo identificação visual rápida).
+- **Label fixa** com `w-32 text-muted-foreground text-xs` ao lado do ícone.
+- Valor (ou placeholder em itálico) ocupa o restante.
+- Lápis de edição continua aparecendo no hover, à direita.
+- Tooltip continua disponível para casos truncados, mas a label fica visível por padrão.
 
-- Busca todas as `custom_field_definitions` ativas da org (uma única query).
-- Para cada definição, se ainda não estiver em `mappedCustomFields` **e** o payload tiver uma chave cujo `normalizeFieldName` bata com `normalizeFieldName(def.field_name)` ou `def.field_label`, atribui o valor.
-- Adiciona essas chaves ao `allMappedFormKeys` para não duplicarem em `notes`.
+### Arquivos afetados
 
-Resultado: qualquer payload com `media_de_festas` (ou variações como `Media de Festas`, `media-de-festas`) populará o custom field automaticamente em **todas as orgs**, sem exigir configuração manual.
-
-## Tabela de mudanças
-
-| Arquivo | Ação |
+| Arquivo | Mudança |
 |---|---|
-| `supabase/migrations/<nova>.sql` | UPDATE em `inbound_webhooks` da oniplataforma para incluir `custom_fields.media_de_festas` no `field_mapping` |
-| `supabase/functions/inbound-webhook/index.ts` | Carregar definições ativas da org e fazer auto-match de payload → custom field por nome normalizado |
+| `src/components/leads/InlineEditField.tsx` | Renderizar `props.label` como `<span>` fixo entre o ícone e o valor (em todos os modos: display, select, text/currency, textarea). Manter tooltip apenas para acessibilidade/truncamento. Ajustar grid para `[ícone] [label w-32] [valor flex-1]`. |
+| `src/components/leads/LeadDetailSheet.tsx` | Garantir que o **título do lead** no header (linha 239) **não** receba label (passar `label={undefined}` — já está). E o campo **Notas** (linha 476) também sem label, pois já tem cabeçalho de seção próprio. |
+
+### Casos especiais
+- **Header (nome do lead)**: sem label, como hoje.
+- **Notas (textarea)**: sem label inline, mantém cabeçalho "NOTAS" da seção.
+- **Funil** (linha 404–409, leitura pura): adicionar label "Funil" no mesmo padrão para consistência visual.
+- **Tempo na etapa** (linha 464–470, leitura pura): adicionar label "Há" ou manter como está (texto já é autoexplicativo); decisão: **manter como está**, pois a frase já contém contexto.
 
 ## Resultado
-- Webhooks já existentes da oniplataforma voltam a alimentar o campo sem trocar nada do lado do cliente.
-- Novas orgs e novos custom fields ganham auto-detecção de graça (mesmo padrão dos campos nativos).
-- Se houver conflito (mesmo nome em nativo e custom), o nativo continua tendo prioridade pois é processado antes.
+Cada linha do painel esquerdo do drawer mostrará:
+
+```text
+📧  Email           contato@exemplo.com
+📱  Telefone        (11) 99999-0000
+🏢  Empresa         Adicionar empresa...
+🏷️  Fonte           Instagram
+🏷️  Dor Principal   Adicionar dor principal...
+```
+
+Identificação imediata de cada campo, sem depender de hover.
 
