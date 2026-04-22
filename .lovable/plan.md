@@ -1,54 +1,63 @@
 
 
-# Refinar card do Kanban
+# Qualificação rápida via hover no card do Kanban
 
-## Mudanças no card
+## Comportamento
 
-Remover a bolinha colorida de prioridade e adicionar dois novos elementos: botão de WhatsApp e qualificação em estrelas.
+No hover do card (Kanban), a linha de estrelas torna-se **interativa**, permitindo qualificar o lead diretamente sem abrir o drawer.
 
-### Novo layout do card
+### Estados visuais
 
-```text
-┌─────────────────────────────────────────┐
-│ Razão Social / Nome           [👤] [💬] │  ← Row 1: identificador + avatar + WhatsApp
-│ Nome do contato                         │  ← Row 2: company (se existir)
-│ ★★★★☆                          há 2h   │  ← Row 3: estrelas + tempo
-└─────────────────────────────────────────┘
-```
+| Estado | O que aparece |
+|---|---|
+| **Sem qualificação + sem hover** | Linha vazia (apenas tempo à direita, como hoje) |
+| **Sem qualificação + hover** | 5 estrelas vazias clicáveis |
+| **Com qualificação + sem hover** | Estrelas preenchidas (como hoje) |
+| **Com qualificação + hover** | Estrelas preenchidas + hover individual em cada estrela mostra preview da nota |
 
-## Detalhes
+### Interações
 
-### 1. Remover bolinha de prioridade
-- Apagar o `<span>` com `priorityDotColor` da Row 1.
-- Remover o objeto `priorityDotColor` (não é mais usado).
-- Aplicar a mesma remoção no `DragOverlayCard.tsx` para manter consistência visual durante o arrasto.
+- **Click em uma estrela** → salva `qualification = N` (1 a 5).
+- **Click na estrela já selecionada** (mesma nota atual) → limpa qualificação (`qualification = 0` ou `null`).
+- **Hover em uma estrela** → preview visual: estrelas até a posição do cursor ficam amarelas; restantes cinza.
+- **stopPropagation** em todos os clicks para não abrir o drawer.
 
-### 2. Botão WhatsApp
-- Ícone `MessageCircle` do `lucide-react` (ou `Phone`), tamanho `h-4 w-4`, dentro de um `<button>` com `onClick` que:
-  - Faz `e.stopPropagation()` para não abrir o drawer.
-  - Normaliza `lead.phone` removendo tudo exceto dígitos.
-  - Abre `https://wa.me/{phone}` em nova aba via `window.open(..., '_blank')`.
-- Renderizar **apenas se `lead.phone` existir**.
-- Estilo: `text-muted-foreground hover:text-green-600 transition-colors` para indicar ação.
-- Posicionado à direita do avatar na Row 1.
+## Implementação
 
-### 3. Qualificação em estrelas
-- Adicionar nova Row entre o `company` e o `created_at`.
-- Renderizar 5 estrelas usando `Star` do `lucide-react` (`h-3 w-3`).
-- Estrelas preenchidas (`fill-yellow-400 text-yellow-400`) até `lead.qualification` (1-5); restantes vazias (`text-muted-foreground/30`).
-- **Renderizar apenas se `lead.qualification && lead.qualification > 0`** — leads sem qualificação não mostram a linha.
-- Posicionar à esquerda; o tempo relativo (`created_at`) fica alinhado à direita na mesma linha (`flex justify-between items-center`).
+### 1. Novo componente `StarRating` reutilizável
+`src/components/leads/kanban/StarRating.tsx`:
+- Props: `value: number`, `onChange: (n: number) => void`, `size?: 'sm' | 'md'`.
+- Estado local `hoverValue` para preview ao passar o mouse.
+- Renderiza 5 botões `<button>` com `Star` do lucide-react.
+- Cada estrela tem `onMouseEnter`, `onMouseLeave`, `onClick`.
+- Lógica de toggle: se clicar na mesma nota atual, envia `0`.
+
+### 2. Atualizar `KanbanCard.tsx`
+- Import `StarRating` + hook `useUpdateLead` (já existe em `useLeads.ts`).
+- Substituir o bloco atual de renderização das estrelas pelo `<StarRating>`.
+- `onChange` chama `updateLead.mutate({ id: lead.id, qualification: newValue || null })`.
+- **Sempre renderizar a linha das estrelas** (não condicionar a `qualification > 0`), para garantir que o usuário possa qualificar leads ainda sem nota — usar opacidade reduzida (`opacity-0 group-hover:opacity-100 transition-opacity`) quando `qualification === 0` para não poluir visualmente.
+- O elemento pai do card já tem `group` implícito; adicionar a classe `group` se ainda não existir.
+
+### 3. `DragOverlayCard.tsx`
+- **Não alterar** comportamento — durante o arrasto não faz sentido editar. Mantém estrelas como display puro (sem hover/click).
 
 ## Arquivos afetados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/components/leads/kanban/KanbanCard.tsx` | Remover bolinha de prioridade; adicionar botão WhatsApp condicional; adicionar linha de estrelas + tempo lado a lado |
-| `src/components/leads/kanban/DragOverlayCard.tsx` | Espelhar mudanças visuais (sem botão clicável, mas com estrelas) para o overlay durante drag |
+| `src/components/leads/kanban/StarRating.tsx` | **Novo** componente interativo de 1–5 estrelas com hover preview e toggle |
+| `src/components/leads/kanban/KanbanCard.tsx` | Trocar render estático por `StarRating`; sempre renderizar linha (com fade-in no hover quando vazio); chamar `useUpdateLead` |
+
+## Detalhes técnicos
+
+- O `useDraggable` do dnd-kit usa `listeners` no card inteiro. Os botões de estrela precisam de `e.stopPropagation()` no `onClick` **e** `onPointerDown` para evitar que o drag inicie ao clicar na estrela.
+- Mesmo padrão já usado no botão de WhatsApp adicionado anteriormente — apenas estender para os botões de estrela.
+- Toast de sucesso opcional; provavelmente desnecessário pois o feedback visual já é imediato. **Decisão: sem toast** para manter a interação fluida.
 
 ## Resultado
 
-- Cards mais informativos: identifica imediatamente a qualificação do lead sem precisar abrir o drawer.
-- Ação rápida de contato via WhatsApp diretamente do Kanban (apenas para leads com telefone).
-- Visual mais limpo sem a bolinha colorida que gerava dúvidas.
+- Qualificar um lead vira ação de 1 clique direto no Kanban.
+- Cards sem qualificação ganham UI de qualificação apenas no hover, mantendo o visual limpo no estado de repouso.
+- Cards com qualificação permitem ajuste rápido (mudar nota ou limpar) sem abrir o drawer.
 
