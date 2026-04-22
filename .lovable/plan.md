@@ -1,108 +1,64 @@
 
 
-# Filtros mais elegantes na tela de Leads
+# PWA Instalável (Opção 1) — Manifest + Ícones + Meta tags
 
-Repensar o painel de filtros para reduzir ruído visual, melhorar foco e dar feedback claro. Hoje, ao expandir, aparece um "muro" de pílulas heterogêneas (selects, ranges, datas) que confunde — vamos transformar em um **Popover organizado por categorias** com ações rápidas inline.
+Adicionar suporte a instalação ("Adicionar à tela inicial") sem service worker e sem `vite-plugin-pwa`. App abre em modo standalone, mas **não tem funcionamento offline** — o que evita os problemas conhecidos de PWA com a preview da Lovable.
 
-## Princípios
+## O que será implementado
 
-- **Toolbar enxuta** no estado de repouso: search + ações rápidas + botão "Filtros".
-- **Filtros pesados em Popover** (não inline) — não empurra o Kanban.
-- **Quick filters** acessíveis em 1 clique (Etapa, Responsável, Prioridade) sem abrir o painel completo.
-- **Chips ativos** mantêm-se como hoje, mas com agrupamento e tipografia mais leve.
+1. **`public/manifest.webmanifest`** — manifest do app com:
+   - `name`: "CRM"
+   - `short_name`: "CRM"
+   - `description`: "CRM multi-tenant para gestão de leads e vendas"
+   - `start_url`: "/"
+   - `scope`: "/"
+   - `display`: "standalone"
+   - `orientation`: "portrait"
+   - `background_color`: "#ffffff"
+   - `theme_color`: "#3B82F6" (azul do brand já usado no favicon)
+   - `icons`: referências aos ícones gerados (192, 512, 512 maskable)
 
----
+2. **Ícones PWA em `public/`** gerados a partir do mesmo design do `favicon.svg` (retângulo azul `#3B82F6` arredondado com 3 barras brancas):
+   - `public/icon-192.png` (192×192)
+   - `public/icon-512.png` (512×512)
+   - `public/icon-maskable-512.png` (512×512 com safe area para Android)
+   - `public/apple-touch-icon.png` (180×180, para iOS)
 
-## 1. Toolbar redesenhada
+3. **`index.html`** — adicionar no `<head>`:
+   - `<link rel="manifest" href="/manifest.webmanifest" />`
+   - `<link rel="apple-touch-icon" href="/apple-touch-icon.png" />`
+   - `<meta name="theme-color" content="#3B82F6" />`
+   - `<meta name="apple-mobile-web-app-capable" content="yes" />`
+   - `<meta name="apple-mobile-web-app-status-bar-style" content="default" />`
+   - `<meta name="apple-mobile-web-app-title" content="CRM" />`
+   - `<meta name="mobile-web-app-capable" content="yes" />`
 
-```text
-┌──────────────────────────────────────────────────────────────────┐
-│ [🔍 Buscar...]  [Etapa▾] [Resp.▾] [Prioridade▾]  [⚙ Filtros·3]  │
-│                                            [⭐ Salvos] [↻ Limpar]│
-└──────────────────────────────────────────────────────────────────┘
-```
+## O que NÃO será feito (de propósito)
 
-- **Search** continua como hoje (bg-muted/50, sem borda).
-- **Quick filter pills** (Etapa, Responsável, Prioridade): cada um abre um Popover com checklist; quando ativo, ganha bg azul claro + número (ex: `Etapa · 2`).
-- **Botão "Filtros"**: abre Popover lateral com TODOS os filtros (incluindo os quick), organizado por seções.
-- **Ações** (Salvos, Limpar) vão para o canto direito — só Limpar aparece se há filtros ativos. Salvar fica dentro do Popover principal de filtros.
-
-## 2. Popover "Todos os filtros" (substitui Collapsible inline)
-
-Largura fixa (~420px), aberto à direita do botão. Layout em **seções com headers**:
-
-```text
-┌─ Filtros ─────────────────────── [×] ┐
-│                                       │
-│ ▸ ESSENCIAIS                          │
-│   Etapa            [Selecionar...  ▾] │
-│   Responsável      [Selecionar...  ▾] │
-│   Prioridade       [Selecionar...  ▾] │
-│   Qualificação     [Selecionar...  ▾] │
-│                                       │
-│ ▸ ORIGEM & CLASSIFICAÇÃO              │
-│   Fonte            [Selecionar...  ▾] │
-│   Tags             [Selecionar...  ▾] │
-│                                       │
-│ ▸ TEMPO                               │
-│   Criação          [De ──── Até    📅]│
-│   Última atividade [De ──── Até    📅]│
-│   Tempo na etapa   [Qualquer       ▾] │
-│                                       │
-│ ▸ VALOR                               │
-│   Faixa            [R$ Min ── R$ Max] │
-│                                       │
-│ ▸ CAMPOS PERSONALIZADOS               │
-│   (campos do usuário)                 │
-│                                       │
-├───────────────────────────────────────┤
-│ [Limpar tudo]    [⭐ Salvar] [Aplicar]│
-└───────────────────────────────────────┘
-```
-
-- **Seções colapsáveis** (`Collapsible` por seção); "Essenciais" abre por padrão.
-- Cada filtro vira **linha**: label à esquerda em `text-xs text-muted-foreground`, controle full-width à direita — alinhamento limpo.
-- Footer fixo com **3 ações**: Limpar tudo (ghost esquerda), Salvar (ghost), Aplicar (primário direita).
-- Aplicar fecha o Popover; mudanças são staged dentro do popover (estado local) e só commitadas no Aplicar — evita re-render de listão a cada clique.
-
-## 3. Chips ativos refinados
-
-- **Agrupar por categoria** quando >5 chips: `Etapa: Negociação, Proposta` em vez de 2 chips separados.
-- Chip ganha **ponto colorido** quando relevante (cor da etapa, cor da prioridade) antes do texto.
-- Botão **"Limpar tudo"** aparece à direita da linha de chips se houver 3+ ativos.
-
-## 4. Quick filter pills (novo)
-
-Componente `QuickFilterPill` reutilizável:
-- Trigger: pill arredondado com label + badge de contagem.
-- Estado ativo: `bg-primary/10 text-primary border-primary/20`.
-- Conteúdo: `Command` (busca + lista de checkboxes), com botão "Limpar" no rodapé.
-
-## 5. Persistência e UX
-
-- **Filtros salvos** ganham destaque: dropdown atual fica visível como botão `⭐` no toolbar, abrindo lista com nome do filtro + ações (aplicar / excluir).
-- **Filtro aplicado vindo de "Salvos"**: mostrar pequeno indicador no toolbar `Aplicado: "Leads quentes" [×]` — clicar X reverte.
-
-## 6. Responsividade
-
-- Em `< md`: search ocupa 100%; quick pills ficam em scroll horizontal abaixo; botão "Filtros" abre `Sheet` (drawer lateral) em vez de Popover.
-
----
+- **Sem `vite-plugin-pwa`** — não precisa de dependência nova.
+- **Sem service worker** — evita problemas de cache na preview da Lovable.
+- **Sem funcionamento offline** — requer service worker (Opção 2).
+- **Sem prompt de instalação customizado** (`beforeinstallprompt`) — navegador mostra o prompt nativo (ícone na barra do Chrome / "Adicionar à tela inicial" no menu do Safari).
 
 ## Arquivos afetados
 
-| Arquivo | Mudança |
+| Arquivo | Ação |
 |---|---|
-| `src/components/leads/filters/LeadFilterBar.tsx` | Reestruturar toolbar; remover Collapsible inline; adicionar quick pills; integrar novo Popover |
-| `src/components/leads/filters/QuickFilterPill.tsx` *(novo)* | Componente reutilizável de pill com Popover de Command list |
-| `src/components/leads/filters/AdvancedFiltersPopover.tsx` *(novo)* | Popover com seções, estado staged, footer de ações (Aplicar/Salvar/Limpar) |
-| `src/components/leads/filters/SavedFiltersDropdown.tsx` | Trocar trigger por ícone `⭐` discreto + indicador de filtro salvo aplicado |
-| `src/hooks/useLeadFilters.ts` | Expor método `applyMany(partial)` para commit em lote vindo do popover |
+| `public/manifest.webmanifest` | **Novo** — manifest do app |
+| `public/icon-192.png` | **Novo** — ícone 192×192 |
+| `public/icon-512.png` | **Novo** — ícone 512×512 |
+| `public/icon-maskable-512.png` | **Novo** — ícone maskable 512×512 |
+| `public/apple-touch-icon.png` | **Novo** — ícone iOS 180×180 |
+| `index.html` | Adicionar `<link rel="manifest">`, apple-touch-icon, theme-color e meta tags mobile |
 
 ## Resultado
 
-- Toolbar respira (1 linha em desktop padrão).
-- Filtros frequentes acessíveis em 1 clique sem expandir um painel grande.
-- Filtros avançados em estrutura organizada, fácil de escanear.
-- Sem layout shift no Kanban ao abrir filtros.
+- No Chrome desktop/Android: ícone de "instalar" aparece na barra; abre em janela própria sem chrome do navegador.
+- No Safari iOS: opção "Adicionar à Tela de Início" funciona com ícone correto e abre standalone.
+- App identificado pelo SO com nome "CRM", ícone azul e theme color azul na status bar Android.
+- Sem regressão na preview da Lovable (nenhum service worker registrado).
+
+## Observação
+
+Para ver a instalação funcionando de verdade, é preciso testar na **URL publicada** (`https://org-forge-base.lovable.app`), não na preview do editor. Navegadores só mostram o prompt de instalação em contextos top-level (não em iframe).
 
