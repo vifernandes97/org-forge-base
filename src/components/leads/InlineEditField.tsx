@@ -33,7 +33,7 @@ interface SelectFieldProps extends BaseProps {
 export type InlineEditFieldProps = TextFieldProps | CurrencyFieldProps | SelectFieldProps;
 
 export function InlineEditField(props: InlineEditFieldProps) {
-  const { type, onSave, placeholder = 'Adicionar...', icon, className } = props;
+  const { type, onSave, placeholder = 'Adicionar...', icon, className, label } = props;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
@@ -72,12 +72,18 @@ export function InlineEditField(props: InlineEditFieldProps) {
     }
   };
 
-  const { label } = props;
+  // Reusable label fragment for all modes (only rendered when label is set)
+  const LabelNode = label ? (
+    <span className="w-28 shrink-0 text-xs font-medium text-muted-foreground truncate" title={label}>
+      {label}
+    </span>
+  ) : null;
 
+  // Tooltip wrapper kept for truncated label accessibility
   const wrapWithTooltip = (node: JSX.Element) => {
     if (!label) return node;
     return (
-      <Tooltip delayDuration={300}>
+      <Tooltip delayDuration={500}>
         <TooltipTrigger asChild>{node}</TooltipTrigger>
         <TooltipContent side="right">{label}</TooltipContent>
       </Tooltip>
@@ -92,29 +98,32 @@ export function InlineEditField(props: InlineEditFieldProps) {
     return wrapWithTooltip(
       <div className={cn('group flex items-center gap-3 text-sm', className)}>
         {icon && <span className="text-muted-foreground shrink-0">{icon}</span>}
-        <Select
-          value={props.value || '__none__'}
-          onValueChange={async (v) => {
-            const val = v === '__none__' ? '' : v;
-            setSaving(true);
-            try { await onSave(val); } finally { setSaving(false); }
-          }}
-          disabled={saving}
-        >
-          <SelectTrigger className="h-auto border-none shadow-none px-0 py-0.5 hover:bg-accent/50 rounded transition-colors focus:ring-1 text-sm font-normal">
-            <SelectValue placeholder={placeholder}>
-              {currentLabel || <span className="text-muted-foreground">{placeholder}</span>}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__none__">
-              <span className="text-muted-foreground">{placeholder}</span>
-            </SelectItem>
-            {opts.map(o => (
-              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {LabelNode}
+        <div className="flex-1 min-w-0">
+          <Select
+            value={props.value || '__none__'}
+            onValueChange={async (v) => {
+              const val = v === '__none__' ? '' : v;
+              setSaving(true);
+              try { await onSave(val); } finally { setSaving(false); }
+            }}
+            disabled={saving}
+          >
+            <SelectTrigger className="h-auto w-full border-none shadow-none px-0 py-0.5 hover:bg-accent/50 rounded transition-colors focus:ring-1 text-sm font-normal">
+              <SelectValue placeholder={placeholder}>
+                {currentLabel || <span className="text-muted-foreground">{placeholder}</span>}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">
+                <span className="text-muted-foreground">{placeholder}</span>
+              </SelectItem>
+              {opts.map(o => (
+                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
     );
   }
@@ -139,21 +148,29 @@ export function InlineEditField(props: InlineEditFieldProps) {
         onKeyDown={e => { if (e.key === 'Enter') setEditing(true); }}
       >
         {icon && <span className="text-muted-foreground shrink-0">{icon}</span>}
-        {isEmpty ? (
-          <span className="text-muted-foreground italic">{placeholder}</span>
-        ) : (
-          <span className={cn(type === 'currency' && 'font-medium')}>{displayValue}</span>
-        )}
-        <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0" />
+        {LabelNode}
+        <div className="flex-1 min-w-0 truncate">
+          {isEmpty ? (
+            <span className="text-muted-foreground italic">{placeholder}</span>
+          ) : (
+            <span className={cn(type === 'currency' && 'font-medium')}>{displayValue}</span>
+          )}
+        </div>
+        <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
       </div>
     );
   }
 
-  // Edit mode
+  // Edit mode - textarea
   if (type === 'textarea') {
     return (
       <div className={cn('flex items-start gap-3 text-sm', className)}>
         {icon && <span className="text-muted-foreground shrink-0 mt-2">{icon}</span>}
+        {label && (
+          <span className="w-28 shrink-0 text-xs font-medium text-muted-foreground truncate mt-2" title={label}>
+            {label}
+          </span>
+        )}
         <Textarea
           ref={inputRef as React.RefObject<HTMLTextAreaElement>}
           value={draft}
@@ -161,17 +178,18 @@ export function InlineEditField(props: InlineEditFieldProps) {
           onBlur={handleSave}
           onKeyDown={e => { if (e.key === 'Escape') setEditing(false); }}
           disabled={saving}
-          className="min-h-[60px] text-sm"
+          className="min-h-[60px] text-sm flex-1"
           placeholder={placeholder}
         />
       </div>
     );
   }
 
-  // Text / Currency input
+  // Edit mode - text / currency input
   return (
     <div className={cn('flex items-center gap-3 text-sm', className)}>
       {icon && <span className="text-muted-foreground shrink-0">{icon}</span>}
+      {LabelNode}
       <Input
         ref={inputRef as React.RefObject<HTMLInputElement>}
         type={type === 'currency' ? 'number' : 'text'}
@@ -181,7 +199,7 @@ export function InlineEditField(props: InlineEditFieldProps) {
         onBlur={handleSave}
         onKeyDown={handleKeyDown}
         disabled={saving}
-        className="h-7 text-sm px-2"
+        className="h-7 text-sm px-2 flex-1"
         placeholder={placeholder}
       />
     </div>
