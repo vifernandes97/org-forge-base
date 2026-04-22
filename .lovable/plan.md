@@ -1,49 +1,54 @@
 
 
-# Exibir labels dos campos no drawer do lead
+# Refinar card do Kanban
 
-## Problema
-Hoje os campos do drawer (Email, Telefone, Empresa, Razão Social, Instagram, Valor, Responsável, Fonte, Prioridade, Qualificação e Campos Personalizados) mostram apenas o **ícone** + **valor**. A label só aparece como tooltip ao passar o mouse, o que dificulta identificar o campo de relance — especialmente quando está vazio ou quando o ícone é ambíguo.
+## Mudanças no card
 
-## Solução
-Renderizar a label como texto fixo **à esquerda do valor**, com largura fixa para alinhamento vertical limpo (estilo formulário Bitrix/Pipedrive).
+Remover a bolinha colorida de prioridade e adicionar dois novos elementos: botão de WhatsApp e qualificação em estrelas.
 
-### Layout proposto por linha
+### Novo layout do card
+
 ```text
-[ícone]  Label do campo    Valor editável                    [✏️ on hover]
-         ────────────────  ────────────────────────────────
-         w-32 (128px)      flex-1
+┌─────────────────────────────────────────┐
+│ Razão Social / Nome           [👤] [💬] │  ← Row 1: identificador + avatar + WhatsApp
+│ Nome do contato                         │  ← Row 2: company (se existir)
+│ ★★★★☆                          há 2h   │  ← Row 3: estrelas + tempo
+└─────────────────────────────────────────┘
 ```
 
-- Ícone permanece à esquerda (mantendo identificação visual rápida).
-- **Label fixa** com `w-32 text-muted-foreground text-xs` ao lado do ícone.
-- Valor (ou placeholder em itálico) ocupa o restante.
-- Lápis de edição continua aparecendo no hover, à direita.
-- Tooltip continua disponível para casos truncados, mas a label fica visível por padrão.
+## Detalhes
 
-### Arquivos afetados
+### 1. Remover bolinha de prioridade
+- Apagar o `<span>` com `priorityDotColor` da Row 1.
+- Remover o objeto `priorityDotColor` (não é mais usado).
+- Aplicar a mesma remoção no `DragOverlayCard.tsx` para manter consistência visual durante o arrasto.
+
+### 2. Botão WhatsApp
+- Ícone `MessageCircle` do `lucide-react` (ou `Phone`), tamanho `h-4 w-4`, dentro de um `<button>` com `onClick` que:
+  - Faz `e.stopPropagation()` para não abrir o drawer.
+  - Normaliza `lead.phone` removendo tudo exceto dígitos.
+  - Abre `https://wa.me/{phone}` em nova aba via `window.open(..., '_blank')`.
+- Renderizar **apenas se `lead.phone` existir**.
+- Estilo: `text-muted-foreground hover:text-green-600 transition-colors` para indicar ação.
+- Posicionado à direita do avatar na Row 1.
+
+### 3. Qualificação em estrelas
+- Adicionar nova Row entre o `company` e o `created_at`.
+- Renderizar 5 estrelas usando `Star` do `lucide-react` (`h-3 w-3`).
+- Estrelas preenchidas (`fill-yellow-400 text-yellow-400`) até `lead.qualification` (1-5); restantes vazias (`text-muted-foreground/30`).
+- **Renderizar apenas se `lead.qualification && lead.qualification > 0`** — leads sem qualificação não mostram a linha.
+- Posicionar à esquerda; o tempo relativo (`created_at`) fica alinhado à direita na mesma linha (`flex justify-between items-center`).
+
+## Arquivos afetados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/components/leads/InlineEditField.tsx` | Renderizar `props.label` como `<span>` fixo entre o ícone e o valor (em todos os modos: display, select, text/currency, textarea). Manter tooltip apenas para acessibilidade/truncamento. Ajustar grid para `[ícone] [label w-32] [valor flex-1]`. |
-| `src/components/leads/LeadDetailSheet.tsx` | Garantir que o **título do lead** no header (linha 239) **não** receba label (passar `label={undefined}` — já está). E o campo **Notas** (linha 476) também sem label, pois já tem cabeçalho de seção próprio. |
-
-### Casos especiais
-- **Header (nome do lead)**: sem label, como hoje.
-- **Notas (textarea)**: sem label inline, mantém cabeçalho "NOTAS" da seção.
-- **Funil** (linha 404–409, leitura pura): adicionar label "Funil" no mesmo padrão para consistência visual.
-- **Tempo na etapa** (linha 464–470, leitura pura): adicionar label "Há" ou manter como está (texto já é autoexplicativo); decisão: **manter como está**, pois a frase já contém contexto.
+| `src/components/leads/kanban/KanbanCard.tsx` | Remover bolinha de prioridade; adicionar botão WhatsApp condicional; adicionar linha de estrelas + tempo lado a lado |
+| `src/components/leads/kanban/DragOverlayCard.tsx` | Espelhar mudanças visuais (sem botão clicável, mas com estrelas) para o overlay durante drag |
 
 ## Resultado
-Cada linha do painel esquerdo do drawer mostrará:
 
-```text
-📧  Email           contato@exemplo.com
-📱  Telefone        (11) 99999-0000
-🏢  Empresa         Adicionar empresa...
-🏷️  Fonte           Instagram
-🏷️  Dor Principal   Adicionar dor principal...
-```
-
-Identificação imediata de cada campo, sem depender de hover.
+- Cards mais informativos: identifica imediatamente a qualificação do lead sem precisar abrir o drawer.
+- Ação rápida de contato via WhatsApp diretamente do Kanban (apenas para leads com telefone).
+- Visual mais limpo sem a bolinha colorida que gerava dúvidas.
 
