@@ -38,7 +38,7 @@ export function KanbanCard({ lead, onClick }: KanbanCardProps) {
       {...listeners}
       {...attributes}
       style={style}
-      className={`rounded-lg border bg-card p-3 cursor-grab active:cursor-grabbing transition-shadow space-y-1.5 ${isDragging ? 'opacity-50 shadow-lg' : 'hover:shadow-md'}`}
+      className={`group rounded-lg border bg-card p-3 cursor-grab active:cursor-grabbing transition-shadow space-y-1.5 ${isDragging ? 'opacity-50 shadow-lg' : 'hover:shadow-md'}`}
       onClick={e => { e.stopPropagation(); onClick(); }}
     >
       {/* Row 1: identifier + avatar + WhatsApp */}
