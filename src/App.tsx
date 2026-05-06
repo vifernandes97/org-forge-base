@@ -38,6 +38,7 @@ const App = () => (
               {/* Public */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/invite/:token" element={<AcceptInvitePage />} />
 
               {/* Onboarding — auth required, no org */}
               <Route path="/onboarding" element={<OnboardingRoute><OnboardingPage /></OnboardingRoute>} />
