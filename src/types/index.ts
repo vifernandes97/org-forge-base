@@ -114,7 +114,7 @@ export interface LeadWithRelations extends Lead {
   custom_field_values?: CustomFieldValue[];
 }
 
-export type ActivityType = 'note' | 'call' | 'email' | 'meeting' | 'stage_change' | 'field_update' | 'task_created' | 'task_completed';
+export type ActivityType = 'note' | 'call' | 'email' | 'meeting' | 'stage_change' | 'field_update' | 'task_created' | 'task_completed' | 'webhook_sent' | 'webhook_failed';
 
 export interface LeadActivity {
   id: string;
