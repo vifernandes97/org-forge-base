@@ -8,7 +8,8 @@ import { Copy, Trash2, Ban } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { buildInviteUrl } from '@/services/invites';
+import { buildInviteUrl, logInviteEvent } from '@/services/invites';
+import { useQueryClient } from '@tanstack/react-query';
 
 const ROLE_LABEL: Record<string, string> = {
   owner: 'Proprietário', admin: 'Administrador', member: 'Membro', viewer: 'Visualizador',
@@ -18,9 +19,12 @@ export function InviteLinksList() {
   const { data: invites, isLoading } = useInvites();
   const revoke = useRevokeInvite();
   const del = useDeleteInvite();
+  const qc = useQueryClient();
 
-  const handleCopy = async (token: string) => {
+  const handleCopy = async (id: string, token: string) => {
     await navigator.clipboard.writeText(buildInviteUrl(token));
+    await logInviteEvent(id, 'copied');
+    qc.invalidateQueries({ queryKey: ['invite-logs'] });
     toast.success('Link copiado!');
   };
 
