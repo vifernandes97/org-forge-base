@@ -31,6 +31,22 @@ export async function listInvites(orgId: string): Promise<OrgInvite[]> {
   return data as any;
 }
 
+export async function logInviteEvent(
+  invite_id: string,
+  event: 'created' | 'copied' | 'revoked' | 'deleted',
+  metadata: Record<string, any> = {}
+) {
+  try {
+    await supabase.rpc('record_invite_event', {
+      p_invite_id: invite_id,
+      p_event: event,
+      p_metadata: metadata,
+    });
+  } catch {
+    // best-effort
+  }
+}
+
 export async function createInvite(params: {
   organization_id: string;
   role: OrgRole;
@@ -57,10 +73,16 @@ export async function createInvite(params: {
     .select()
     .single();
   if (error) throw error;
+  await logInviteEvent(data.id, 'created', {
+    expires_at,
+    max_uses: params.max_uses,
+    role: params.role,
+  });
   return data as any;
 }
 
 export async function revokeInvite(id: string) {
+  await logInviteEvent(id, 'revoked');
   const { error } = await supabase
     .from('organization_invites')
     .update({ revoked_at: new Date().toISOString() })
@@ -69,8 +91,41 @@ export async function revokeInvite(id: string) {
 }
 
 export async function deleteInvite(id: string) {
+  // log BEFORE deletion so the invite_id and token preview are still resolvable
+  await logInviteEvent(id, 'deleted');
   const { error } = await supabase.from('organization_invites').delete().eq('id', id);
   if (error) throw error;
+}
+
+export interface InviteLogEntry {
+  id: string;
+  organization_id: string;
+  invite_id: string | null;
+  invite_token_preview: string | null;
+  event_type: 'created' | 'copied' | 'revoked' | 'deleted' | 'accepted' | 'accept_failed';
+  actor_user_id: string | null;
+  actor_email: string | null;
+  role: OrgRole | null;
+  metadata: Record<string, any>;
+  created_at: string;
+}
+
+export async function listInviteLogs(
+  orgId: string,
+  page: number,
+  pageSize = 20,
+  events?: string[]
+): Promise<{ rows: InviteLogEntry[]; count: number }> {
+  let q = supabase
+    .from('organization_invite_logs')
+    .select('*', { count: 'exact' })
+    .eq('organization_id', orgId)
+    .order('created_at', { ascending: false })
+    .range(page * pageSize, page * pageSize + pageSize - 1);
+  if (events && events.length) q = q.in('event_type', events);
+  const { data, error, count } = await q;
+  if (error) throw error;
+  return { rows: (data ?? []) as any, count: count ?? 0 };
 }
 
 export interface InviteInfo {
