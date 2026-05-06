@@ -80,7 +80,15 @@ export default function TeamPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Equipe</h1>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h1 className="text-2xl font-bold">Equipe</h1>
+        {canManage && (
+          <Button onClick={() => setLinkDialogOpen(true)} variant="outline">
+            <Link2 className="h-4 w-4 mr-2" />
+            Gerar link de convite
+          </Button>
+        )}
+      </div>
 
       {/* Members Table */}
       <Card>
