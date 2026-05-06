@@ -1,8 +1,10 @@
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { Header } from './Header';
+import { useAppBadge } from '@/hooks/useAppBadge';
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
+  useAppBadge();
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="flex min-h-screen w-full">

@@ -1,44 +1,39 @@
-# Webhook enviado na timeline de Atividades
+# Badge de notificação no ícone do Dock
 
-Hoje os disparos de webhook ficam apenas em "Webhooks > Logs". Vou registrá-los também na aba **Atividades** do lead, para ficarem visíveis junto com mudanças de etapa, notas, ligações etc.
+Mostrar no ícone do app (Dock do macOS, quando instalado como PWA) o número de leads na **1ª etapa do funil "Comercial"**, atualizando a cada 30s.
 
-## O que será feito
+## Como funciona
 
-### 1. Novo tipo de atividade: `webhook_sent`
+Usa a **Badging API** do navegador (`navigator.setAppBadge(n)` / `clearAppBadge()`), suportada no macOS por Safari 16.4+ e Chrome/Edge quando o app está instalado via "Adicionar ao Dock". O número aparece como bolinha vermelha no ícone, igual a Mail/Mensagens.
 
-- Migração SQL: atualizar o trigger `validate_activity_type` para aceitar `webhook_sent` (e `webhook_failed`).
-- `src/types/index.ts`: adicionar `'webhook_sent' | 'webhook_failed'` ao type `ActivityType`.
-- `ActivityIcon.tsx`: novo ícone (`Webhook` do lucide), cor indigo para sucesso e vermelho para falha.
+## Implementação
 
-### 2. Inserir activity ao disparar webhook
+### 1. Novo hook `src/hooks/useAppBadge.ts`
 
-Em `supabase/functions/fire-webhook/index.ts`, depois de gravar em `webhook_logs`, inserir também em `lead_activities` (apenas quando houver `lead_id` e somente na primeira tentativa, para não duplicar nas retentativas):
+- Recebe `organization.id` do `OrganizationContext`.
+- Resolve uma vez o `stage_id` da 1ª etapa (menor `position`) do funil cujo `name = 'Comercial'` da org.
+- A cada 30s (e ao voltar a aba para visível), executa:
+  ```ts
+  supabase.from('leads').select('id', { count: 'exact', head: true })
+    .eq('organization_id', orgId)
+    .eq('stage_id', stageId)
+    .eq('status', 'open')
+  ```
+- Chama `navigator.setAppBadge(count)` quando >0, ou `clearAppBadge()` quando 0.
+- Try/catch silencioso para navegadores sem suporte (não quebra nada).
+- Limpa o badge ao desmontar / trocar de organização.
 
-- `activity_type`: `webhook_sent` se sucesso, `webhook_failed` se falhou (após esgotar retries — na 3ª tentativa que ainda falhar, ou na 1ª se sucesso).
-- `title`: ex. `Webhook enviado` / `Webhook falhou`
-- `description`: URL do webhook + status HTTP (`POST https://... → 200`) ou erro (`Timeout after 10s`).
-- `metadata`: `{ webhook_url, response_status, attempt_number, stage_id }`.
-- `user_id`: usar o `moved_by.id` presente em `payload.transition.moved_by` quando existir; fallback para o `user_id` do lead (owner).
+### 2. Ativar no `MainLayout.tsx`
 
-Lógica:
-- Se `success === true` e `attempt_number === 1` → registra `webhook_sent`.
-- Se `success === true` e `attempt_number > 1` → registra `webhook_sent` (com nota "após N tentativas").
-- Se `success === false` e `attempt_number === 3` → registra `webhook_failed`.
-- Em falhas intermediárias (1ª/2ª) não registra para evitar ruído (apenas log técnico em Webhooks).
+Chamar `useAppBadge()` dentro do componente para que rode em todas as rotas autenticadas.
 
-Também atualiza `leads.last_activity_at`.
+## Observações
 
-### 3. UI
-
-A `ActivityTimeline` já renderiza qualquer `activity_type` via `ActivityIcon` — basta os 2 novos casos no `config`. Sem alterações estruturais.
+- O badge **só aparece quando o app está instalado** (no seu caso, adicionado ao Dock). No Safari aberto em aba normal a API existe mas não pinta o ícone.
+- Como o critério é "funil Comercial" pelo **nome**, se o funil for renomeado o badge para de funcionar até o nome voltar a ser "Comercial" — me avise se preferir fixar pelo `funnel_id` em uma tela de configuração.
+- Se houver mais de um funil chamado "Comercial" na sua org, usa o mais antigo.
 
 ## Arquivos
 
-- nova migration SQL (atualiza trigger)
-- `src/types/index.ts`
-- `src/components/leads/activities/ActivityIcon.tsx`
-- `supabase/functions/fire-webhook/index.ts`
-
-## Resultado
-
-Ao mover um lead para uma etapa que dispara webhook (manual ou via automação), a timeline do lead passa a mostrar uma linha "Webhook enviado → 200" logo abaixo do "Moveu de X para Y".
+- novo: `src/hooks/useAppBadge.ts`
+- editado: `src/components/layout/MainLayout.tsx` (1 linha: `useAppBadge()`)
