@@ -248,6 +248,7 @@ export default function TeamPage() {
       )}
 
       {canManage && <InviteLinksList />}
+      {canManage && <InviteAuditLog />}
 
       <InviteLinkDialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen} />
     </div>
