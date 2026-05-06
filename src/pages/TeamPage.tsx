@@ -202,47 +202,24 @@ export default function TeamPage() {
         </CardContent>
       </Card>
 
-      {/* Invite Form */}
       {canManage && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <UserPlus className="h-5 w-5" />
-              Adicionar membro
+              <Link2 className="h-5 w-5" />
+              Convidar novo membro
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleInvite} className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1 space-y-1">
-                <Label htmlFor="invite-email">E-mail</Label>
-                <Input
-                  id="invite-email"
-                  type="email"
-                  placeholder="usuario@email.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="w-full sm:w-[160px] space-y-1">
-                <Label htmlFor="invite-role">Role</Label>
-                <Select value={role} onValueChange={v => setRole(v as OrgRole)}>
-                  <SelectTrigger id="invite-role">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="member">Membro</SelectItem>
-                    <SelectItem value="viewer">Visualizador</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-end">
-                <Button type="submit" disabled={invite.isPending}>
-                  {invite.isPending ? 'Adicionando...' : 'Adicionar'}
-                </Button>
-              </div>
-            </form>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Gere um link de convite para enviar manualmente (WhatsApp, e-mail, etc.). Quem abrir o link
+              poderá criar uma conta — ou entrar, se já tiver — e será automaticamente vinculado a esta
+              organização com o papel definido no link.
+            </p>
+            <Button onClick={() => setLinkDialogOpen(true)}>
+              <Link2 className="h-4 w-4 mr-2" />
+              Gerar link de convite
+            </Button>
           </CardContent>
         </Card>
       )}
