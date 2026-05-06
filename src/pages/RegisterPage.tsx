@@ -78,7 +78,7 @@ export default function RegisterPage() {
             </Button>
             <p className="text-sm text-muted-foreground">
               Já tem conta?{' '}
-              <Link to="/login" className="text-primary underline-offset-4 hover:underline">
+              <Link to={inviteToken ? `/login?invite=${inviteToken}` : '/login'} className="text-primary underline-offset-4 hover:underline">
                 Entrar
               </Link>
             </p>
