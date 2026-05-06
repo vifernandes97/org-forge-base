@@ -28,6 +28,7 @@ export default function AcceptInvitePage() {
   const [info, setInfo] = useState<InviteInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(false);
+  const [autoTried, setAutoTried] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -37,8 +38,6 @@ export default function AcceptInvitePage() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  if (!token) return <Navigate to="/" replace />;
-
   const handleAccept = async () => {
     if (!user) {
       navigate(`/login?invite=${token}`);
@@ -46,7 +45,7 @@ export default function AcceptInvitePage() {
     }
     try {
       setAccepting(true);
-      const res = await acceptInvite(token);
+      const res = await acceptInvite(token!);
       await refetch();
       setActiveOrg(res.organization_id);
       toast.success(res.already_member ? 'Você já é membro desta organização.' : 'Bem-vindo à organização!');
@@ -57,6 +56,17 @@ export default function AcceptInvitePage() {
       setAccepting(false);
     }
   };
+
+  // Auto-accept once user is authenticated and invite is valid
+  useEffect(() => {
+    if (!autoTried && !loading && !authLoading && info?.valid && user && !accepting) {
+      setAutoTried(true);
+      handleAccept();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTried, loading, authLoading, info, user, accepting]);
+
+  if (!token) return <Navigate to="/" replace />;
 
   if (loading || authLoading) {
     return (
