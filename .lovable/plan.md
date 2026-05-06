@@ -1,39 +1,58 @@
-# Badge de notificação no ícone do Dock
+# Links de convite compartilháveis
 
-Mostrar no ícone do app (Dock do macOS, quando instalado como PWA) o número de leads na **1ª etapa do funil "Comercial"**, atualizando a cada 30s.
+Permitir que owners/admins gerem **links únicos** que outras pessoas podem usar para entrar na organização. Cada link tem **expiração** e pode ser configurado como **uso único** ou **múltiplos usos**.
 
-## Como funciona
+## Como vai funcionar para o usuário
 
-Usa a **Badging API** do navegador (`navigator.setAppBadge(n)` / `clearAppBadge()`), suportada no macOS por Safari 16.4+ e Chrome/Edge quando o app está instalado via "Adicionar ao Dock". O número aparece como bolinha vermelha no ícone, igual a Mail/Mensagens.
+1. Em **Configurações → Time**, owner/admin clica em **"Gerar link de convite"**.
+2. Escolhe: papel atribuído (`admin`/`member`/`viewer`), validade (1 dia, 7 dias, 30 dias, nunca) e tipo de uso (1 uso ou ilimitado).
+3. Recebe uma URL como `https://app.../invite/<token>` para copiar e compartilhar.
+4. Quem abre o link:
+   - **Não logado** → vai para registro/login com o token preservado, e ao autenticar entra automaticamente na org.
+   - **Logado** → vê tela "Você foi convidado para {Org}" com botão **Aceitar**.
+5. Lista de convites ativos exibe: papel, expira em, usos restantes, criado por, ações **Copiar / Revogar**.
 
-## Implementação
+## Banco de dados (migration)
 
-### 1. Novo hook `src/hooks/useAppBadge.ts`
+Nova tabela `organization_invites`:
 
-- Recebe `organization.id` do `OrganizationContext`.
-- Resolve uma vez o `stage_id` da 1ª etapa (menor `position`) do funil cujo `name = 'Comercial'` da org.
-- A cada 30s (e ao voltar a aba para visível), executa:
-  ```ts
-  supabase.from('leads').select('id', { count: 'exact', head: true })
-    .eq('organization_id', orgId)
-    .eq('stage_id', stageId)
-    .eq('status', 'open')
-  ```
-- Chama `navigator.setAppBadge(count)` quando >0, ou `clearAppBadge()` quando 0.
-- Try/catch silencioso para navegadores sem suporte (não quebra nada).
-- Limpa o badge ao desmontar / trocar de organização.
+| coluna | tipo | nota |
+|---|---|---|
+| id | uuid PK | |
+| organization_id | uuid | |
+| token | text unique | random 32 bytes base64url |
+| role | org_role | papel atribuído ao aceitar |
+| max_uses | int null | null = ilimitado |
+| uses_count | int default 0 | |
+| expires_at | timestamptz null | null = nunca |
+| created_by | uuid | |
+| revoked_at | timestamptz null | |
+| created_at | timestamptz | |
 
-### 2. Ativar no `MainLayout.tsx`
+**RLS**: SELECT/INSERT/UPDATE/DELETE apenas para `owner`/`admin` da org. O aceite usa SECURITY DEFINER (sem RLS).
 
-Chamar `useAppBadge()` dentro do componente para que rode em todas as rotas autenticadas.
+**Funções SECURITY DEFINER**:
+- `get_invite_by_token(p_token)` → retorna dados públicos do convite (org name, role, validade) para a tela de aceite, sem expor a tabela.
+- `accept_invite(p_token)` → valida (não revogado, não expirado, `uses_count < max_uses`), insere em `organization_members` com `accepted_at = now()`, incrementa `uses_count`. Idempotente: se já é membro, retorna sucesso silencioso.
 
-## Observações
+## Frontend
 
-- O badge **só aparece quando o app está instalado** (no seu caso, adicionado ao Dock). No Safari aberto em aba normal a API existe mas não pinta o ícone.
-- Como o critério é "funil Comercial" pelo **nome**, se o funil for renomeado o badge para de funcionar até o nome voltar a ser "Comercial" — me avise se preferir fixar pelo `funnel_id` em uma tela de configuração.
-- Se houver mais de um funil chamado "Comercial" na sua org, usa o mais antigo.
+**Novos arquivos**
+- `src/services/invites.ts` — `listInvites`, `createInvite`, `revokeInvite`, `getInviteByToken`, `acceptInvite`.
+- `src/hooks/useInvites.ts` — queries/mutations.
+- `src/components/team/InviteLinkDialog.tsx` — formulário (papel, expiração, max_uses) + URL gerada com botão copiar.
+- `src/components/team/InviteLinksList.tsx` — tabela de convites ativos.
+- `src/pages/AcceptInvitePage.tsx` — rota `/invite/:token`. Lê token, mostra info da org, botão **Aceitar**. Se não logado, redireciona para `/login?invite=<token>` e `/register?invite=<token>`.
 
-## Arquivos
+**Arquivos modificados**
+- `src/pages/TeamPage.tsx` — adicionar botão "Gerar link" e seção "Links de convite".
+- `src/App.tsx` — rota pública `/invite/:token`.
+- `src/pages/LoginPage.tsx` e `RegisterPage.tsx` — após auth, se houver `?invite=`, redireciona para `/invite/<token>` em vez de `/dashboard`.
+- `src/components/shared/OnboardingRoute.tsx` — se houver token de convite na URL, não força criar org (deixa aceitar primeiro).
 
-- novo: `src/hooks/useAppBadge.ts`
-- editado: `src/components/layout/MainLayout.tsx` (1 linha: `useAppBadge()`)
+## Segurança
+
+- Token nunca exposto em listagens públicas; só quem tem o link consegue resolver via `get_invite_by_token`.
+- `accept_invite` é a única forma de inserir em `organization_members` por essa via (não depende de role pré-existente).
+- Revogação é instantânea (`revoked_at`).
+- Expiração e `max_uses` validados server-side dentro da função.
