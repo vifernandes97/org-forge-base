@@ -1,58 +1,72 @@
-# Links de convite compartilháveis
 
-Permitir que owners/admins gerem **links únicos** que outras pessoas podem usar para entrar na organização. Cada link tem **expiração** e pode ser configurado como **uso único** ou **múltiplos usos**.
+# Auditoria de convites de organização
 
-## Como vai funcionar para o usuário
-
-1. Em **Configurações → Time**, owner/admin clica em **"Gerar link de convite"**.
-2. Escolhe: papel atribuído (`admin`/`member`/`viewer`), validade (1 dia, 7 dias, 30 dias, nunca) e tipo de uso (1 uso ou ilimitado).
-3. Recebe uma URL como `https://app.../invite/<token>` para copiar e compartilhar.
-4. Quem abre o link:
-   - **Não logado** → vai para registro/login com o token preservado, e ao autenticar entra automaticamente na org.
-   - **Logado** → vê tela "Você foi convidado para {Org}" com botão **Aceitar**.
-5. Lista de convites ativos exibe: papel, expira em, usos restantes, criado por, ações **Copiar / Revogar**.
+Registrar e exibir todos os eventos relevantes do ciclo de vida dos links de convite: **geração**, **cópia**, **revogação**, **exclusão** e **aceitação** — com autor, data/hora, papel e contexto (org, IP quando aplicável).
 
 ## Banco de dados (migration)
 
-Nova tabela `organization_invites`:
+Nova tabela `organization_invite_logs`:
 
 | coluna | tipo | nota |
 |---|---|---|
 | id | uuid PK | |
-| organization_id | uuid | |
-| token | text unique | random 32 bytes base64url |
-| role | org_role | papel atribuído ao aceitar |
-| max_uses | int null | null = ilimitado |
-| uses_count | int default 0 | |
-| expires_at | timestamptz null | null = nunca |
-| created_by | uuid | |
-| revoked_at | timestamptz null | |
-| created_at | timestamptz | |
+| organization_id | uuid not null | escopo de RLS |
+| invite_id | uuid null | null se o convite já foi excluído |
+| invite_token_preview | text | últimos 6 chars do token (para identificar sem expor) |
+| event_type | text not null | `created`, `copied`, `revoked`, `deleted`, `accepted`, `accept_failed` |
+| actor_user_id | uuid null | quem disparou (null para aceite anônimo via token inválido) |
+| actor_email | text null | snapshot do email do autor no momento |
+| role | org_role null | papel do convite |
+| metadata | jsonb default '{}' | extras: `reason` em accept_failed, `already_member`, etc. |
+| created_at | timestamptz default now() | |
 
-**RLS**: SELECT/INSERT/UPDATE/DELETE apenas para `owner`/`admin` da org. O aceite usa SECURITY DEFINER (sem RLS).
+Índices: `(organization_id, created_at DESC)`, `(invite_id)`.
 
-**Funções SECURITY DEFINER**:
-- `get_invite_by_token(p_token)` → retorna dados públicos do convite (org name, role, validade) para a tela de aceite, sem expor a tabela.
-- `accept_invite(p_token)` → valida (não revogado, não expirado, `uses_count < max_uses`), insere em `organization_members` com `accepted_at = now()`, incrementa `uses_count`. Idempotente: se já é membro, retorna sucesso silencioso.
+**RLS**: SELECT apenas para `owner`/`admin` da org. INSERT bloqueado para clientes — todos os logs são gravados via funções SECURITY DEFINER.
+
+## Funções SECURITY DEFINER
+
+- **`log_invite_event(p_org_id, p_invite_id, p_token, p_event, p_metadata)`** — função interna para gravar logs. Captura `auth.uid()` e o email via `profiles`.
+- **`accept_invite`** (existente) — adicionar gravação de log `accepted` (com `already_member` no metadata) ao final do fluxo de sucesso.
+- **`get_invite_by_token`** — não loga (consulta de leitura, executada antes do aceite).
+- Aceite com falha (revogado/expirado/esgotado) → o `accept_invite` passará a inserir log `accept_failed` com motivo no `metadata` antes de levantar exceção, usando bloco `EXCEPTION` para não impedir o erro.
 
 ## Frontend
 
-**Novos arquivos**
-- `src/services/invites.ts` — `listInvites`, `createInvite`, `revokeInvite`, `getInviteByToken`, `acceptInvite`.
-- `src/hooks/useInvites.ts` — queries/mutations.
-- `src/components/team/InviteLinkDialog.tsx` — formulário (papel, expiração, max_uses) + URL gerada com botão copiar.
-- `src/components/team/InviteLinksList.tsx` — tabela de convites ativos.
-- `src/pages/AcceptInvitePage.tsx` — rota `/invite/:token`. Lê token, mostra info da org, botão **Aceitar**. Se não logado, redireciona para `/login?invite=<token>` e `/register?invite=<token>`.
+### Geração, revogação e exclusão
+Em `src/services/invites.ts`, após cada operação bem-sucedida (`createInvite`, `revokeInvite`, `deleteInvite`), chamar `supabase.rpc('log_invite_event', ...)` com o `event_type` apropriado. Para `deleteInvite`, gravar o log **antes** do DELETE (porque o `invite_id` ficará órfão; mantemos `invite_token_preview` e `role` no log).
 
-**Arquivos modificados**
-- `src/pages/TeamPage.tsx` — adicionar botão "Gerar link" e seção "Links de convite".
-- `src/App.tsx` — rota pública `/invite/:token`.
-- `src/pages/LoginPage.tsx` e `RegisterPage.tsx` — após auth, se houver `?invite=`, redireciona para `/invite/<token>` em vez de `/dashboard`.
-- `src/components/shared/OnboardingRoute.tsx` — se houver token de convite na URL, não força criar org (deixa aceitar primeiro).
+### Cópia
+Em `InviteLinksList.tsx` → `handleCopy`, após `clipboard.writeText` chamar `logInviteEvent(invite.id, 'copied')`. Adicionar wrapper `logInviteEvent` em `services/invites.ts`.
+
+### Aceitação
+A gravação de `accepted` / `accept_failed` ocorre dentro da função SQL `accept_invite` — não requer mudança no frontend.
+
+### Visualização — nova aba "Histórico" em `TeamPage.tsx`
+- Adicionar `Tabs` na página: **Membros** (atual) | **Links de convite** (atual) | **Histórico de convites** (novo).
+- Novo componente `src/components/team/InviteAuditLog.tsx`:
+  - Tabela: Data/hora, Evento (badge colorida), Autor (avatar + nome), Papel, Token (`••••XXXXXX`), Detalhes.
+  - Paginação simples (20 por página, server-side via `range`).
+  - Filtro por tipo de evento (multi-select) e busca por autor.
+- Novo hook `useInviteAuditLog(page, filters)` em `src/hooks/useInvites.ts`.
+- Novo serviço `listInviteLogs(orgId, page, filters)` em `src/services/invites.ts`.
+- Visível apenas para `owner`/`admin` (a aba é renderizada condicionalmente).
 
 ## Segurança
 
-- Token nunca exposto em listagens públicas; só quem tem o link consegue resolver via `get_invite_by_token`.
-- `accept_invite` é a única forma de inserir em `organization_members` por essa via (não depende de role pré-existente).
-- Revogação é instantânea (`revoked_at`).
-- Expiração e `max_uses` validados server-side dentro da função.
+- Tokens completos nunca são gravados — apenas preview de 6 caracteres.
+- RLS garante que membros comuns não vejam logs.
+- `log_invite_event` valida que `auth.uid()` é membro da org (exceto quando chamado via `accept_invite`, onde o usuário ainda pode não ser membro).
+- A gravação de eventos é best-effort: falhas no log não revertem a operação principal (tratadas com `BEGIN/EXCEPTION` no SQL e `try/catch` silencioso no client).
+
+## Arquivos
+
+**Novos**
+- `supabase/migrations/<timestamp>_invite_audit_log.sql`
+- `src/components/team/InviteAuditLog.tsx`
+
+**Modificados**
+- `src/services/invites.ts` — adicionar `logInviteEvent`, `listInviteLogs`; chamar log em create/revoke/delete.
+- `src/hooks/useInvites.ts` — adicionar `useInviteAuditLog`; invalidar `['invite-logs']` após mutações.
+- `src/components/team/InviteLinksList.tsx` — log de `copied` em `handleCopy`.
+- `src/pages/TeamPage.tsx` — adicionar `Tabs` com a nova aba "Histórico".
