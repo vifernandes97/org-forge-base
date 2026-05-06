@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOrganization } from '@/contexts/OrganizationContext';
-import { listInvites, createInvite, revokeInvite, deleteInvite } from '@/services/invites';
+import { listInvites, createInvite, revokeInvite, deleteInvite, listInviteLogs } from '@/services/invites';
 import type { OrgRole } from '@/types';
 
 export function useInvites() {
