@@ -12,11 +12,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Trash2, UserPlus } from 'lucide-react';
+import { Trash2, UserPlus, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { OrgRole } from '@/types';
+import { InviteLinkDialog } from '@/components/team/InviteLinkDialog';
+import { InviteLinksList } from '@/components/team/InviteLinksList';
 
 const ROLE_LABELS: Record<string, string> = {
   owner: 'Proprietário',
