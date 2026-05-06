@@ -20,6 +20,7 @@ import InboundWebhookEditPage from "@/pages/InboundWebhookEditPage";
 import InboundWebhookLogsPage from "@/pages/InboundWebhookLogsPage";
 import SettingsPage from "@/pages/SettingsPage";
 import AutomationsPage from "@/pages/AutomationsPage";
+import AcceptInvitePage from "@/pages/AcceptInvitePage";
 import NotFound from "@/pages/NotFound";
 
 
