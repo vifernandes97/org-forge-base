@@ -1,64 +1,90 @@
+# Corrigir disparo de webhooks de saída em automações
 
+## Diagnóstico
 
-# PWA Instalável (Opção 1) — Manifest + Ícones + Meta tags
+A automação que você criou (ação **"Enviar webhook"** ao entrar em uma stage) está implementada na trigger SQL `execute_stage_task_automations`, mas ela só **insere uma linha em `webhook_logs` com `error_message = 'pending_dispatch'`** — nenhum processo lê essa fila e chama a edge function `fire-webhook`. Por isso o destino nunca recebe o POST.
 
-Adicionar suporte a instalação ("Adicionar à tela inicial") sem service worker e sem `vite-plugin-pwa`. App abre em modo standalone, mas **não tem funcionamento offline** — o que evita os problemas conhecidos de PWA com a preview da Lovable.
+A edge function `fire-webhook` em si funciona (já é usada quando você arrasta cards no Kanban). Falta apenas conectá-la ao trigger SQL.
 
-## O que será implementado
+## Solução
 
-1. **`public/manifest.webmanifest`** — manifest do app com:
-   - `name`: "CRM"
-   - `short_name`: "CRM"
-   - `description`: "CRM multi-tenant para gestão de leads e vendas"
-   - `start_url`: "/"
-   - `scope`: "/"
-   - `display`: "standalone"
-   - `orientation`: "portrait"
-   - `background_color`: "#ffffff"
-   - `theme_color`: "#3B82F6" (azul do brand já usado no favicon)
-   - `icons`: referências aos ícones gerados (192, 512, 512 maskable)
+Conectar a trigger SQL diretamente à edge function via `pg_net.http_post`, sem depender de cron/fila. Cada vez que uma linha "pendente" é inserida em `webhook_logs`, um trigger AFTER INSERT dispara a chamada HTTP imediatamente.
 
-2. **Ícones PWA em `public/`** gerados a partir do mesmo design do `favicon.svg` (retângulo azul `#3B82F6` arredondado com 3 barras brancas):
-   - `public/icon-192.png` (192×192)
-   - `public/icon-512.png` (512×512)
-   - `public/icon-maskable-512.png` (512×512 com safe area para Android)
-   - `public/apple-touch-icon.png` (180×180, para iOS)
+Vantagens:
+- Zero latência (dispara no mesmo instante da mudança de stage/status).
+- Reaproveita 100% do `fire-webhook` existente (HMAC, retries, timeout, log de resposta).
+- Não exige cron job nem alteração da função `execute_stage_task_automations`.
+- Pega também webhooks pendentes inseridos por outras vias futuras.
 
-3. **`index.html`** — adicionar no `<head>`:
-   - `<link rel="manifest" href="/manifest.webmanifest" />`
-   - `<link rel="apple-touch-icon" href="/apple-touch-icon.png" />`
-   - `<meta name="theme-color" content="#3B82F6" />`
-   - `<meta name="apple-mobile-web-app-capable" content="yes" />`
-   - `<meta name="apple-mobile-web-app-status-bar-style" content="default" />`
-   - `<meta name="apple-mobile-web-app-title" content="CRM" />`
-   - `<meta name="mobile-web-app-capable" content="yes" />`
+## Implementação
 
-## O que NÃO será feito (de propósito)
+### 1. Migração SQL
 
-- **Sem `vite-plugin-pwa`** — não precisa de dependência nova.
-- **Sem service worker** — evita problemas de cache na preview da Lovable.
-- **Sem funcionamento offline** — requer service worker (Opção 2).
-- **Sem prompt de instalação customizado** (`beforeinstallprompt`) — navegador mostra o prompt nativo (ícone na barra do Chrome / "Adicionar à tela inicial" no menu do Safari).
+```sql
+-- Habilitar pg_net (se ainda não estiver)
+create extension if not exists pg_net with schema extensions;
 
-## Arquivos afetados
+-- Função que dispara fire-webhook para a linha recém-inserida
+create or replace function public.dispatch_pending_webhook()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_url text := '<SUPABASE_URL>/functions/v1/fire-webhook';
+  v_anon text := '<SUPABASE_ANON_KEY>';
+begin
+  if NEW.error_message = 'pending_dispatch' and NEW.success = false then
+    perform net.http_post(
+      url := v_url,
+      headers := jsonb_build_object(
+        'Content-Type','application/json',
+        'Authorization','Bearer '||v_anon
+      ),
+      body := jsonb_build_object(
+        'webhook_url', NEW.webhook_url,
+        'payload', NEW.payload,
+        'organization_id', NEW.organization_id,
+        'stage_id', NEW.stage_id,
+        'lead_id', NEW.lead_id
+      )
+    );
+    -- Marca como "dispatched" para o fire-webhook gravar a resposta real em outra linha
+    update webhook_logs
+      set error_message = 'dispatched', attempt_number = 1
+      where id = NEW.id;
+  end if;
+  return null;
+end;
+$$;
 
-| Arquivo | Ação |
+create trigger webhook_logs_dispatch_after_insert
+  after insert on public.webhook_logs
+  for each row execute function public.dispatch_pending_webhook();
+```
+
+A URL e a anon key precisam ser **literais** na função (pg_net não acessa secrets), por isso vou usar a tool de **insert** (não migration) — assim não vaza para remixes.
+
+### 2. Backfill (opcional)
+
+Disparar manualmente os logs `pending_dispatch` que ficaram parados desde quando você testou, para você receber os eventos atrasados. Uma única chamada `net.http_post` por linha pendente.
+
+### 3. Validação
+
+- Criar/usar a automação existente.
+- Mover um lead para a stage trigger.
+- Conferir em **Settings → Webhooks** (logs) se aparece uma nova linha com status 200 e a resposta do destino.
+- Conferir nos logs da edge function `fire-webhook`.
+
+## Arquivos / mudanças
+
+| Arquivo | Mudança |
 |---|---|
-| `public/manifest.webmanifest` | **Novo** — manifest do app |
-| `public/icon-192.png` | **Novo** — ícone 192×192 |
-| `public/icon-512.png` | **Novo** — ícone 512×512 |
-| `public/icon-maskable-512.png` | **Novo** — ícone maskable 512×512 |
-| `public/apple-touch-icon.png` | **Novo** — ícone iOS 180×180 |
-| `index.html` | Adicionar `<link rel="manifest">`, apple-touch-icon, theme-color e meta tags mobile |
+| `supabase/migrations/<novo>.sql` | Habilitar `pg_net`, criar função `dispatch_pending_webhook` e trigger (sem URL/key — placeholder) |
+| **insert tool** (não migration) | Substituir a função pela versão com URL real + anon key reais deste projeto |
+| `supabase/functions/fire-webhook/index.ts` | Pequeno ajuste: aceitar invocação sem JWT de usuário (já roda com service role; só garantir CORS/headers) |
 
-## Resultado
+## Resultado esperado
 
-- No Chrome desktop/Android: ícone de "instalar" aparece na barra; abre em janela própria sem chrome do navegador.
-- No Safari iOS: opção "Adicionar à Tela de Início" funciona com ícone correto e abre standalone.
-- App identificado pelo SO com nome "CRM", ícone azul e theme color azul na status bar Android.
-- Sem regressão na preview da Lovable (nenhum service worker registrado).
-
-## Observação
-
-Para ver a instalação funcionando de verdade, é preciso testar na **URL publicada** (`https://org-forge-base.lovable.app`), não na preview do editor. Navegadores só mostram o prompt de instalação em contextos top-level (não em iframe).
-
+Mover um lead para a stage configurada na automação → POST chega no seu endpoint em <2s, com header `X-CRM-Signature` (HMAC-SHA256) e payload completo do lead. Logs visíveis em `/webhooks`.
