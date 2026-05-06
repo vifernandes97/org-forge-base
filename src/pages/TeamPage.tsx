@@ -245,6 +245,10 @@ export default function TeamPage() {
           </CardContent>
         </Card>
       )}
+
+      {canManage && <InviteLinksList />}
+
+      <InviteLinkDialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen} />
     </div>
   );
 }
