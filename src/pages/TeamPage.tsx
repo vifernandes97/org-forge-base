@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
-import { useTeamMembers, useInviteMember, useUpdateMemberRole, useRemoveMember } from '@/hooks/useTeam';
+import { useTeamMembers, useUpdateMemberRole, useRemoveMember } from '@/hooks/useTeam';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -39,7 +39,6 @@ export default function TeamPage() {
   const { user } = useAuth();
   const { isOwner, isAdmin } = useOrganization();
   const { data: members, isLoading } = useTeamMembers();
-  const invite = useInviteMember();
   const updateRole = useUpdateMemberRole();
   const remove = useRemoveMember();
   const canManage = isOwner || isAdmin;
