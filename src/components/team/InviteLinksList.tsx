@@ -91,7 +91,7 @@ export function InviteLinksList() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         {active && (
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopy(inv.token)} aria-label="Copiar link">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopy(inv.id, inv.token)} aria-label="Copiar link">
                             <Copy className="h-4 w-4" />
                           </Button>
                         )}
