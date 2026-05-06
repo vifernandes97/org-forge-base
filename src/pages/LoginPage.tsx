@@ -21,6 +21,8 @@ type FormData = z.infer<typeof schema>;
 export default function LoginPage() {
   const { signIn } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get('invite');
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -33,7 +35,7 @@ export default function LoginPage() {
     try {
       setLoading(true);
       await signIn(data.email, data.password);
-      navigate('/dashboard');
+      navigate(inviteToken ? `/invite/${inviteToken}` : '/dashboard');
     } catch (err: any) {
       toast({ title: 'Erro ao entrar', description: err.message, variant: 'destructive' });
     } finally {
