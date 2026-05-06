@@ -89,7 +89,7 @@ export default function LoginPage() {
             </Button>
             <p className="text-sm text-muted-foreground">
               Não tem conta?{' '}
-              <Link to="/register" className="text-primary underline-offset-4 hover:underline">
+              <Link to={inviteToken ? `/register?invite=${inviteToken}` : '/register'} className="text-primary underline-offset-4 hover:underline">
                 Criar conta
               </Link>
             </p>
