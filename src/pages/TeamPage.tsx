@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
-import { useTeamMembers, useInviteMember, useUpdateMemberRole, useRemoveMember } from '@/hooks/useTeam';
+import { useTeamMembers, useUpdateMemberRole, useRemoveMember } from '@/hooks/useTeam';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -39,27 +39,11 @@ export default function TeamPage() {
   const { user } = useAuth();
   const { isOwner, isAdmin } = useOrganization();
   const { data: members, isLoading } = useTeamMembers();
-  const invite = useInviteMember();
   const updateRole = useUpdateMemberRole();
   const remove = useRemoveMember();
   const canManage = isOwner || isAdmin;
 
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState<OrgRole>('member');
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
-
-  const handleInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-    try {
-      await invite.mutateAsync({ email: email.trim(), role });
-      toast.success('Membro adicionado com sucesso!');
-      setEmail('');
-      setRole('member');
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao convidar membro');
-    }
-  };
 
   const handleRoleChange = async (memberId: string, newRole: OrgRole) => {
     try {
@@ -202,47 +186,24 @@ export default function TeamPage() {
         </CardContent>
       </Card>
 
-      {/* Invite Form */}
       {canManage && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <UserPlus className="h-5 w-5" />
-              Adicionar membro
+              <Link2 className="h-5 w-5" />
+              Convidar novo membro
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleInvite} className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1 space-y-1">
-                <Label htmlFor="invite-email">E-mail</Label>
-                <Input
-                  id="invite-email"
-                  type="email"
-                  placeholder="usuario@email.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="w-full sm:w-[160px] space-y-1">
-                <Label htmlFor="invite-role">Role</Label>
-                <Select value={role} onValueChange={v => setRole(v as OrgRole)}>
-                  <SelectTrigger id="invite-role">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="member">Membro</SelectItem>
-                    <SelectItem value="viewer">Visualizador</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-end">
-                <Button type="submit" disabled={invite.isPending}>
-                  {invite.isPending ? 'Adicionando...' : 'Adicionar'}
-                </Button>
-              </div>
-            </form>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Gere um link de convite para enviar manualmente (WhatsApp, e-mail, etc.). Quem abrir o link
+              poderá criar uma conta — ou entrar, se já tiver — e será automaticamente vinculado a esta
+              organização com o papel definido no link.
+            </p>
+            <Button onClick={() => setLinkDialogOpen(true)}>
+              <Link2 className="h-4 w-4 mr-2" />
+              Gerar link de convite
+            </Button>
           </CardContent>
         </Card>
       )}

@@ -35,8 +35,14 @@ export default function RegisterPage() {
     try {
       setLoading(true);
       await signUp(data.email, data.password, data.fullName);
-      toast({ title: 'Conta criada!', description: 'Verifique seu email para confirmar.' });
-      navigate(inviteToken ? `/login?invite=${inviteToken}` : '/login');
+      if (inviteToken) {
+        // With auto-confirm enabled, the user is signed in right after signUp.
+        // Go straight to the invite acceptance page.
+        navigate(`/invite/${inviteToken}`);
+      } else {
+        toast({ title: 'Conta criada!', description: 'Você já pode entrar.' });
+        navigate('/login');
+      }
     } catch (err: any) {
       toast({ title: 'Erro ao criar conta', description: err.message, variant: 'destructive' });
     } finally {
