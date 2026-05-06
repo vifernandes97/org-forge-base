@@ -22,6 +22,8 @@ type FormData = z.infer<typeof schema>;
 export default function RegisterPage() {
   const { signUp } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get('invite');
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
@@ -34,7 +36,7 @@ export default function RegisterPage() {
       setLoading(true);
       await signUp(data.email, data.password, data.fullName);
       toast({ title: 'Conta criada!', description: 'Verifique seu email para confirmar.' });
-      navigate('/login');
+      navigate(inviteToken ? `/login?invite=${inviteToken}` : '/login');
     } catch (err: any) {
       toast({ title: 'Erro ao criar conta', description: err.message, variant: 'destructive' });
     } finally {
