@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -22,6 +22,8 @@ type FormData = z.infer<typeof schema>;
 export default function RegisterPage() {
   const { signUp } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get('invite');
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
@@ -34,7 +36,7 @@ export default function RegisterPage() {
       setLoading(true);
       await signUp(data.email, data.password, data.fullName);
       toast({ title: 'Conta criada!', description: 'Verifique seu email para confirmar.' });
-      navigate('/login');
+      navigate(inviteToken ? `/login?invite=${inviteToken}` : '/login');
     } catch (err: any) {
       toast({ title: 'Erro ao criar conta', description: err.message, variant: 'destructive' });
     } finally {
@@ -76,7 +78,7 @@ export default function RegisterPage() {
             </Button>
             <p className="text-sm text-muted-foreground">
               Já tem conta?{' '}
-              <Link to="/login" className="text-primary underline-offset-4 hover:underline">
+              <Link to={inviteToken ? `/login?invite=${inviteToken}` : '/login'} className="text-primary underline-offset-4 hover:underline">
                 Entrar
               </Link>
             </p>

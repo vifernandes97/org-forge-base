@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -21,6 +21,8 @@ type FormData = z.infer<typeof schema>;
 export default function LoginPage() {
   const { signIn } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get('invite');
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -33,7 +35,7 @@ export default function LoginPage() {
     try {
       setLoading(true);
       await signIn(data.email, data.password);
-      navigate('/dashboard');
+      navigate(inviteToken ? `/invite/${inviteToken}` : '/dashboard');
     } catch (err: any) {
       toast({ title: 'Erro ao entrar', description: err.message, variant: 'destructive' });
     } finally {
@@ -87,7 +89,7 @@ export default function LoginPage() {
             </Button>
             <p className="text-sm text-muted-foreground">
               Não tem conta?{' '}
-              <Link to="/register" className="text-primary underline-offset-4 hover:underline">
+              <Link to={inviteToken ? `/register?invite=${inviteToken}` : '/register'} className="text-primary underline-offset-4 hover:underline">
                 Criar conta
               </Link>
             </p>

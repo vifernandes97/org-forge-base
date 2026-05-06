@@ -12,11 +12,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Trash2, UserPlus } from 'lucide-react';
+import { Trash2, UserPlus, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { OrgRole } from '@/types';
+import { InviteLinkDialog } from '@/components/team/InviteLinkDialog';
+import { InviteLinksList } from '@/components/team/InviteLinksList';
 
 const ROLE_LABELS: Record<string, string> = {
   owner: 'Proprietário',
@@ -43,6 +45,7 @@ export default function TeamPage() {
 
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<OrgRole>('member');
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,7 +80,15 @@ export default function TeamPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Equipe</h1>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h1 className="text-2xl font-bold">Equipe</h1>
+        {canManage && (
+          <Button onClick={() => setLinkDialogOpen(true)} variant="outline">
+            <Link2 className="h-4 w-4 mr-2" />
+            Gerar link de convite
+          </Button>
+        )}
+      </div>
 
       {/* Members Table */}
       <Card>
@@ -234,6 +245,10 @@ export default function TeamPage() {
           </CardContent>
         </Card>
       )}
+
+      {canManage && <InviteLinksList />}
+
+      <InviteLinkDialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen} />
     </div>
   );
 }

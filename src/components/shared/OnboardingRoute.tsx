@@ -1,10 +1,12 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 
 export function OnboardingRoute({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const { hasOrg, loading: orgLoading } = useOrganization();
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get('invite');
 
   if (authLoading || orgLoading) {
     return (
@@ -15,6 +17,7 @@ export function OnboardingRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) return <Navigate to="/login" replace />;
+  if (inviteToken) return <Navigate to={`/invite/${inviteToken}`} replace />;
   if (hasOrg) return <Navigate to="/dashboard" replace />;
 
   return <>{children}</>;

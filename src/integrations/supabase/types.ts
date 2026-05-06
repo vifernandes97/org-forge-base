@@ -566,6 +566,45 @@ export type Database = {
           },
         ]
       }
+      organization_invites: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          max_uses: number | null
+          organization_id: string
+          revoked_at: string | null
+          role: Database["public"]["Enums"]["org_role"]
+          token: string
+          uses_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+          organization_id: string
+          revoked_at?: string | null
+          role?: Database["public"]["Enums"]["org_role"]
+          token: string
+          uses_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+          organization_id?: string
+          revoked_at?: string | null
+          role?: Database["public"]["Enums"]["org_role"]
+          token?: string
+          uses_count?: number
+        }
+        Relationships: []
+      }
       organization_members: {
         Row: {
           accepted_at: string | null
@@ -1001,6 +1040,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invite: { Args: { p_token: string }; Returns: Json }
       create_funnel_with_default_stages: {
         Args: { p_description?: string; p_name: string; p_org_id: string }
         Returns: {
@@ -1056,6 +1096,7 @@ export type Database = {
           total_value: number
         }[]
       }
+      get_invite_by_token: { Args: { p_token: string }; Returns: Json }
       get_leads_by_period: {
         Args: {
           p_date_from: string

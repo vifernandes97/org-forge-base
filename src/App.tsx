@@ -20,6 +20,7 @@ import InboundWebhookEditPage from "@/pages/InboundWebhookEditPage";
 import InboundWebhookLogsPage from "@/pages/InboundWebhookLogsPage";
 import SettingsPage from "@/pages/SettingsPage";
 import AutomationsPage from "@/pages/AutomationsPage";
+import AcceptInvitePage from "@/pages/AcceptInvitePage";
 import NotFound from "@/pages/NotFound";
 
 
@@ -37,6 +38,7 @@ const App = () => (
               {/* Public */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/invite/:token" element={<AcceptInvitePage />} />
 
               {/* Onboarding — auth required, no org */}
               <Route path="/onboarding" element={<OnboardingRoute><OnboardingPage /></OnboardingRoute>} />
