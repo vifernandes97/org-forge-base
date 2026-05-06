@@ -44,22 +44,7 @@ export default function TeamPage() {
   const remove = useRemoveMember();
   const canManage = isOwner || isAdmin;
 
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState<OrgRole>('member');
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
-
-  const handleInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-    try {
-      await invite.mutateAsync({ email: email.trim(), role });
-      toast.success('Membro adicionado com sucesso!');
-      setEmail('');
-      setRole('member');
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao convidar membro');
-    }
-  };
 
   const handleRoleChange = async (memberId: string, newRole: OrgRole) => {
     try {
