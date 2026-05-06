@@ -104,6 +104,65 @@ Deno.serve(async (req) => {
       error_message: errorMessage,
     });
 
+    // Log to lead_activities timeline (only on success first time, or final failure)
+    if (lead_id) {
+      const shouldLogActivity =
+        (success && attempt_number === 1) ||
+        (!success && attempt_number >= 3);
+
+      if (shouldLogActivity) {
+        let activityUserId: string | null =
+          payload?.transition?.moved_by?.id || null;
+
+        if (!activityUserId) {
+          const { data: leadRow } = await supabase
+            .from("leads")
+            .select("assigned_to")
+            .eq("id", lead_id)
+            .maybeSingle();
+          activityUserId = leadRow?.assigned_to || null;
+        }
+
+        if (activityUserId) {
+          let host = webhook_url;
+          try {
+            host = new URL(webhook_url).host;
+          } catch {
+            // keep raw
+          }
+
+          const description = success
+            ? `POST ${host} → ${responseStatus}${
+                attempt_number > 1 ? ` (após ${attempt_number} tentativas)` : ""
+              }`
+            : `POST ${host} falhou após ${attempt_number} tentativas${
+                errorMessage ? ` — ${errorMessage}` : responseStatus ? ` (HTTP ${responseStatus})` : ""
+              }`;
+
+          await supabase.from("lead_activities").insert({
+            organization_id,
+            lead_id,
+            user_id: activityUserId,
+            activity_type: success ? "webhook_sent" : "webhook_failed",
+            title: success ? "Webhook enviado" : "Webhook falhou",
+            description,
+            metadata: {
+              webhook_url,
+              response_status: responseStatus,
+              attempt_number,
+              stage_id,
+              error_message: errorMessage,
+            },
+          });
+
+          await supabase
+            .from("leads")
+            .update({ last_activity_at: new Date().toISOString() })
+            .eq("id", lead_id);
+        }
+      }
+    }
+
     // Retry logic: if failed and attempt < 3, re-invoke with short delays
     if (!success && attempt_number < 3) {
       const delays = [1000, 5000, 10000];

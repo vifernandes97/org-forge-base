@@ -1,90 +1,44 @@
-# Corrigir disparo de webhooks de saída em automações
+# Webhook enviado na timeline de Atividades
 
-## Diagnóstico
+Hoje os disparos de webhook ficam apenas em "Webhooks > Logs". Vou registrá-los também na aba **Atividades** do lead, para ficarem visíveis junto com mudanças de etapa, notas, ligações etc.
 
-A automação que você criou (ação **"Enviar webhook"** ao entrar em uma stage) está implementada na trigger SQL `execute_stage_task_automations`, mas ela só **insere uma linha em `webhook_logs` com `error_message = 'pending_dispatch'`** — nenhum processo lê essa fila e chama a edge function `fire-webhook`. Por isso o destino nunca recebe o POST.
+## O que será feito
 
-A edge function `fire-webhook` em si funciona (já é usada quando você arrasta cards no Kanban). Falta apenas conectá-la ao trigger SQL.
+### 1. Novo tipo de atividade: `webhook_sent`
 
-## Solução
+- Migração SQL: atualizar o trigger `validate_activity_type` para aceitar `webhook_sent` (e `webhook_failed`).
+- `src/types/index.ts`: adicionar `'webhook_sent' | 'webhook_failed'` ao type `ActivityType`.
+- `ActivityIcon.tsx`: novo ícone (`Webhook` do lucide), cor indigo para sucesso e vermelho para falha.
 
-Conectar a trigger SQL diretamente à edge function via `pg_net.http_post`, sem depender de cron/fila. Cada vez que uma linha "pendente" é inserida em `webhook_logs`, um trigger AFTER INSERT dispara a chamada HTTP imediatamente.
+### 2. Inserir activity ao disparar webhook
 
-Vantagens:
-- Zero latência (dispara no mesmo instante da mudança de stage/status).
-- Reaproveita 100% do `fire-webhook` existente (HMAC, retries, timeout, log de resposta).
-- Não exige cron job nem alteração da função `execute_stage_task_automations`.
-- Pega também webhooks pendentes inseridos por outras vias futuras.
+Em `supabase/functions/fire-webhook/index.ts`, depois de gravar em `webhook_logs`, inserir também em `lead_activities` (apenas quando houver `lead_id` e somente na primeira tentativa, para não duplicar nas retentativas):
 
-## Implementação
+- `activity_type`: `webhook_sent` se sucesso, `webhook_failed` se falhou (após esgotar retries — na 3ª tentativa que ainda falhar, ou na 1ª se sucesso).
+- `title`: ex. `Webhook enviado` / `Webhook falhou`
+- `description`: URL do webhook + status HTTP (`POST https://... → 200`) ou erro (`Timeout after 10s`).
+- `metadata`: `{ webhook_url, response_status, attempt_number, stage_id }`.
+- `user_id`: usar o `moved_by.id` presente em `payload.transition.moved_by` quando existir; fallback para o `user_id` do lead (owner).
 
-### 1. Migração SQL
+Lógica:
+- Se `success === true` e `attempt_number === 1` → registra `webhook_sent`.
+- Se `success === true` e `attempt_number > 1` → registra `webhook_sent` (com nota "após N tentativas").
+- Se `success === false` e `attempt_number === 3` → registra `webhook_failed`.
+- Em falhas intermediárias (1ª/2ª) não registra para evitar ruído (apenas log técnico em Webhooks).
 
-```sql
--- Habilitar pg_net (se ainda não estiver)
-create extension if not exists pg_net with schema extensions;
+Também atualiza `leads.last_activity_at`.
 
--- Função que dispara fire-webhook para a linha recém-inserida
-create or replace function public.dispatch_pending_webhook()
-returns trigger
-language plpgsql
-security definer
-set search_path = public, extensions
-as $$
-declare
-  v_url text := '<SUPABASE_URL>/functions/v1/fire-webhook';
-  v_anon text := '<SUPABASE_ANON_KEY>';
-begin
-  if NEW.error_message = 'pending_dispatch' and NEW.success = false then
-    perform net.http_post(
-      url := v_url,
-      headers := jsonb_build_object(
-        'Content-Type','application/json',
-        'Authorization','Bearer '||v_anon
-      ),
-      body := jsonb_build_object(
-        'webhook_url', NEW.webhook_url,
-        'payload', NEW.payload,
-        'organization_id', NEW.organization_id,
-        'stage_id', NEW.stage_id,
-        'lead_id', NEW.lead_id
-      )
-    );
-    -- Marca como "dispatched" para o fire-webhook gravar a resposta real em outra linha
-    update webhook_logs
-      set error_message = 'dispatched', attempt_number = 1
-      where id = NEW.id;
-  end if;
-  return null;
-end;
-$$;
+### 3. UI
 
-create trigger webhook_logs_dispatch_after_insert
-  after insert on public.webhook_logs
-  for each row execute function public.dispatch_pending_webhook();
-```
+A `ActivityTimeline` já renderiza qualquer `activity_type` via `ActivityIcon` — basta os 2 novos casos no `config`. Sem alterações estruturais.
 
-A URL e a anon key precisam ser **literais** na função (pg_net não acessa secrets), por isso vou usar a tool de **insert** (não migration) — assim não vaza para remixes.
+## Arquivos
 
-### 2. Backfill (opcional)
+- nova migration SQL (atualiza trigger)
+- `src/types/index.ts`
+- `src/components/leads/activities/ActivityIcon.tsx`
+- `supabase/functions/fire-webhook/index.ts`
 
-Disparar manualmente os logs `pending_dispatch` que ficaram parados desde quando você testou, para você receber os eventos atrasados. Uma única chamada `net.http_post` por linha pendente.
+## Resultado
 
-### 3. Validação
-
-- Criar/usar a automação existente.
-- Mover um lead para a stage trigger.
-- Conferir em **Settings → Webhooks** (logs) se aparece uma nova linha com status 200 e a resposta do destino.
-- Conferir nos logs da edge function `fire-webhook`.
-
-## Arquivos / mudanças
-
-| Arquivo | Mudança |
-|---|---|
-| `supabase/migrations/<novo>.sql` | Habilitar `pg_net`, criar função `dispatch_pending_webhook` e trigger (sem URL/key — placeholder) |
-| **insert tool** (não migration) | Substituir a função pela versão com URL real + anon key reais deste projeto |
-| `supabase/functions/fire-webhook/index.ts` | Pequeno ajuste: aceitar invocação sem JWT de usuário (já roda com service role; só garantir CORS/headers) |
-
-## Resultado esperado
-
-Mover um lead para a stage configurada na automação → POST chega no seu endpoint em <2s, com header `X-CRM-Signature` (HMAC-SHA256) e payload completo do lead. Logs visíveis em `/webhooks`.
+Ao mover um lead para uma etapa que dispara webhook (manual ou via automação), a timeline do lead passa a mostrar uma linha "Webhook enviado → 200" logo abaixo do "Moveu de X para Y".
