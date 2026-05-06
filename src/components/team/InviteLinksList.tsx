@@ -8,7 +8,8 @@ import { Copy, Trash2, Ban } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { buildInviteUrl } from '@/services/invites';
+import { buildInviteUrl, logInviteEvent } from '@/services/invites';
+import { useQueryClient } from '@tanstack/react-query';
 
 const ROLE_LABEL: Record<string, string> = {
   owner: 'Proprietário', admin: 'Administrador', member: 'Membro', viewer: 'Visualizador',
@@ -18,9 +19,12 @@ export function InviteLinksList() {
   const { data: invites, isLoading } = useInvites();
   const revoke = useRevokeInvite();
   const del = useDeleteInvite();
+  const qc = useQueryClient();
 
-  const handleCopy = async (token: string) => {
+  const handleCopy = async (id: string, token: string) => {
     await navigator.clipboard.writeText(buildInviteUrl(token));
+    await logInviteEvent(id, 'copied');
+    qc.invalidateQueries({ queryKey: ['invite-logs'] });
     toast.success('Link copiado!');
   };
 
@@ -87,7 +91,7 @@ export function InviteLinksList() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         {active && (
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopy(inv.token)} aria-label="Copiar link">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopy(inv.id, inv.token)} aria-label="Copiar link">
                             <Copy className="h-4 w-4" />
                           </Button>
                         )}

@@ -566,6 +566,45 @@ export type Database = {
           },
         ]
       }
+      organization_invite_logs: {
+        Row: {
+          actor_email: string | null
+          actor_user_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          invite_id: string | null
+          invite_token_preview: string | null
+          metadata: Json
+          organization_id: string
+          role: Database["public"]["Enums"]["org_role"] | null
+        }
+        Insert: {
+          actor_email?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          invite_id?: string | null
+          invite_token_preview?: string | null
+          metadata?: Json
+          organization_id: string
+          role?: Database["public"]["Enums"]["org_role"] | null
+        }
+        Update: {
+          actor_email?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          invite_id?: string | null
+          invite_token_preview?: string | null
+          metadata?: Json
+          organization_id?: string
+          role?: Database["public"]["Enums"]["org_role"] | null
+        }
+        Relationships: []
+      }
       organization_invites: {
         Row: {
           created_at: string
@@ -1128,6 +1167,21 @@ export type Database = {
       }
       get_user_org_ids: { Args: never; Returns: string[] }
       get_user_org_role: { Args: { org_id: string }; Returns: string }
+      log_invite_event: {
+        Args: {
+          p_event: string
+          p_invite_id: string
+          p_metadata?: Json
+          p_org_id: string
+          p_role: Database["public"]["Enums"]["org_role"]
+          p_token: string
+        }
+        Returns: undefined
+      }
+      record_invite_event: {
+        Args: { p_event: string; p_invite_id: string; p_metadata?: Json }
+        Returns: undefined
+      }
       reorder_custom_fields: { Args: { p_fields: Json }; Returns: undefined }
       reorder_stages: { Args: { p_stages: Json }; Returns: undefined }
     }

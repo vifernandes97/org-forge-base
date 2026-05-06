@@ -19,6 +19,7 @@ import { ptBR } from 'date-fns/locale';
 import type { OrgRole } from '@/types';
 import { InviteLinkDialog } from '@/components/team/InviteLinkDialog';
 import { InviteLinksList } from '@/components/team/InviteLinksList';
+import { InviteAuditLog } from '@/components/team/InviteAuditLog';
 
 const ROLE_LABELS: Record<string, string> = {
   owner: 'Proprietário',
@@ -247,6 +248,7 @@ export default function TeamPage() {
       )}
 
       {canManage && <InviteLinksList />}
+      {canManage && <InviteAuditLog />}
 
       <InviteLinkDialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen} />
     </div>
