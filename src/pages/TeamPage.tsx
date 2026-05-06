@@ -45,6 +45,7 @@ export default function TeamPage() {
 
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<OrgRole>('member');
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
