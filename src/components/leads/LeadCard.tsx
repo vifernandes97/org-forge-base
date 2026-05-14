@@ -22,8 +22,16 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
           {lead.status && lead.status !== 'open' && <StatusBadge status={lead.status} />}
         </div>
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          {lead.name && lead.company_name && lead.name !== lead.company_name && (
+            <span className="truncate">{lead.name}</span>
+          )}
           {lead.company && <span className="truncate">{lead.company}</span>}
           {lead.stage && (
+            <Badge variant="outline" className="text-xs" style={{ borderColor: lead.stage.color, color: lead.stage.color }}>
+              {lead.stage.name}
+            </Badge>
+          )}
+        </div>
             <Badge variant="outline" className="text-xs" style={{ borderColor: lead.stage.color, color: lead.stage.color }}>
               {lead.stage.name}
             </Badge>
