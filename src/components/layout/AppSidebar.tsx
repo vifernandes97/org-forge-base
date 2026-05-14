@@ -1,4 +1,3 @@
-import { useRef } from 'react';
 import { LayoutDashboard, Settings, GitBranch, Contact, CheckSquare, Zap } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import {
@@ -10,12 +9,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from '@/components/ui/sidebar';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useTaskBadgeCounts } from '@/hooks/useTasks';
 import { Badge } from '@/components/ui/badge';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 const mainNav = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
