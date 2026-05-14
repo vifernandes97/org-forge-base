@@ -12,7 +12,7 @@ function normalizeFieldName(name: string): string {
 }
 
 const FIELD_ALIASES: Record<string, string[]> = {
-  name: ["name", "nome", "fullname", "nomecompleto", "yourname"],
+  name: ["name", "nome", "fullname", "nomecompleto", "yourname", "contato", "nomecontato", "contactname", "nomedocontato"],
   email: ["email", "youremail", "emailaddress"],
   phone: ["phone", "telefone", "tel", "yourphone", "whatsapp", "celular"],
   company: ["company", "empresa", "companyname"],
