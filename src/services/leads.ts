@@ -15,8 +15,21 @@ function applyFilters(query: any, filters?: LeadFilters) {
     query = query.eq('status', 'open').is('archived_at', null);
   }
   if (filters.search) {
-    const s = `%${filters.search}%`;
-    query = query.or(`name.ilike.${s},email.ilike.${s},company.ilike.${s},phone.ilike.${s}`);
+    const raw = filters.search.trim();
+    const s = `%${raw}%`;
+    const orParts = [
+      `name.ilike.${s}`,
+      `email.ilike.${s}`,
+      `company.ilike.${s}`,
+      `company_name.ilike.${s}`,
+      `phone.ilike.${s}`,
+    ];
+    // Digit-only search: match phone ignoring formatting (parentheses, spaces, dashes)
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length >= 3) {
+      orParts.push(`phone.ilike.%${digits}%`);
+    }
+    query = query.or(orParts.join(','));
   }
   if (filters.stage_ids?.length) {
     query = query.in('stage_id', filters.stage_ids);
