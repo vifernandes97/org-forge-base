@@ -86,7 +86,7 @@ export default function InboundWebhookLogsPage() {
                       <TableHead>Data/Hora</TableHead>
                       <TableHead>Webhook</TableHead>
                       <TableHead>Ação</TableHead>
-                      <TableHead>Lead</TableHead>
+                      <TableHead>Negócio</TableHead>
                       <TableHead>IP</TableHead>
                       <TableHead></TableHead>
                     </TableRow>

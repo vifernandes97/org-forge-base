@@ -146,7 +146,7 @@ export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template
     ? <ArrowRightLeft className="h-4 w-4 text-violet-500" />
     : <CheckSquare className="h-4 w-4 text-primary" />;
 
-  const actionLabel = isWebhook ? 'Webhook' : isMoveLead ? 'Mover Lead' : 'Tarefa';
+  const actionLabel = isWebhook ? 'Webhook' : isMoveLead ? 'Mover Negócio' : 'Tarefa';
   const actionBg = isWebhook ? 'bg-emerald-500/5' : isMoveLead ? 'bg-violet-500/5' : 'bg-primary/5';
 
   return (
@@ -184,12 +184,12 @@ export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template
                       <SelectContent>
                         <SelectItem value="stage_enter">
                           <span className="flex items-center gap-2">
-                            <GitBranch className="h-3.5 w-3.5" /> Lead entra em etapa
+                            <GitBranch className="h-3.5 w-3.5" /> Negócio entra em etapa
                           </span>
                         </SelectItem>
                         <SelectItem value="status_change">
                           <span className="flex items-center gap-2">
-                            <ArrowRightLeft className="h-3.5 w-3.5" /> Lead muda de status
+                            <ArrowRightLeft className="h-3.5 w-3.5" /> Negócio muda de status
                           </span>
                         </SelectItem>
                       </SelectContent>
@@ -227,7 +227,7 @@ export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template
                 ) : (
                   <FormField control={form.control} name="trigger_status" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs">Status do lead</FormLabel>
+                      <FormLabel className="text-xs">Status do negócio</FormLabel>
                       <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
                         <SelectContent>
@@ -276,7 +276,7 @@ export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template
                         </SelectItem>
                         <SelectItem value="move_lead">
                           <span className="flex items-center gap-2">
-                            <ArrowRightLeft className="h-3.5 w-3.5" /> Mover Lead de Funil
+                            <ArrowRightLeft className="h-3.5 w-3.5" /> Mover Negócio de Funil
                           </span>
                         </SelectItem>
                       </SelectContent>
@@ -290,7 +290,7 @@ export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template
                       {isWebhook ? 'Nome da automação' : isMoveLead ? 'Nome da automação' : 'Título da tarefa'}
                     </FormLabel>
                     <FormControl>
-                      <Input className="h-8 text-xs" placeholder={isWebhook ? 'Ex: Notificar ERP' : isMoveLead ? 'Ex: Mover para Pós-venda' : 'Ex: Ligar para o lead'} {...field} />
+                      <Input className="h-8 text-xs" placeholder={isWebhook ? 'Ex: Notificar ERP' : isMoveLead ? 'Ex: Mover para Pós-venda' : 'Ex: Ligar para o negócio'} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -395,7 +395,7 @@ export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template
                   <FormField control={form.control} name="assign_to_lead_owner" render={({ field }) => (
                     <FormItem className="flex items-center gap-2 pt-5">
                       <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                      <FormLabel className="text-xs !mt-0">Atribuir ao responsável do lead</FormLabel>
+                      <FormLabel className="text-xs !mt-0">Atribuir ao responsável do negócio</FormLabel>
                     </FormItem>
                   )} />
                 </div>

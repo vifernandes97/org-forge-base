@@ -119,7 +119,7 @@ export default function OrganizationPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Ao excluir a organização, todos os dados (leads, funis, tarefas, membros) serão permanentemente removidos.
+              Ao excluir a organização, todos os dados (negócios, funis, tarefas, membros) serão permanentemente removidos.
             </p>
             <AlertDialog>
               <AlertDialogTrigger asChild>

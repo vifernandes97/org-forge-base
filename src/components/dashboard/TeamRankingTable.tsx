@@ -26,7 +26,7 @@ export default function TeamRankingTable({ data, isLoading }: TeamRankingTablePr
             <TableHeader>
               <TableRow>
                 <TableHead>Responsável</TableHead>
-                <TableHead className="text-right">Leads</TableHead>
+                <TableHead className="text-right">Negócios</TableHead>
                 <TableHead className="text-right">Convertidos</TableHead>
                 <TableHead className="text-right">Valor Total</TableHead>
                 <TableHead className="text-right">Conversão</TableHead>

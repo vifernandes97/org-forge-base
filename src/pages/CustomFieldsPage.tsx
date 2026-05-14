@@ -43,7 +43,7 @@ export default function CustomFieldsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Campos Personalizados</h1>
-          <p className="text-muted-foreground">Defina os campos extras para seus leads.</p>
+          <p className="text-muted-foreground">Defina os campos extras para seus negócios.</p>
         </div>
         {canEdit && (
           <CustomFieldDialog

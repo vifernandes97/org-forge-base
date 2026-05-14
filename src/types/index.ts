@@ -107,11 +107,23 @@ export interface Lead {
   qualification: number | null;
 }
 
+export interface Contact {
+  id: string;
+  organization_id: string;
+  lead_id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface LeadWithRelations extends Lead {
   stage?: Stage;
   funnel?: Funnel;
   assigned_profile?: Profile;
   custom_field_values?: CustomFieldValue[];
+  contact?: Contact;
 }
 
 export type ActivityType = 'note' | 'call' | 'email' | 'meeting' | 'stage_change' | 'field_update' | 'task_created' | 'task_completed' | 'webhook_sent' | 'webhook_failed';

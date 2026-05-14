@@ -93,7 +93,7 @@ export default function AutomationsPage() {
             Automações
           </h1>
           <p className="text-muted-foreground text-sm">
-            Configure ações automáticas quando leads entram em etapas ou mudam de status.
+            Configure ações automáticas quando negócios entram em etapas ou mudam de status.
           </p>
         </div>
         <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
@@ -115,7 +115,7 @@ export default function AutomationsPage() {
           </div>
           <h3 className="font-semibold text-lg">Nenhuma automação configurada</h3>
           <p className="text-muted-foreground text-sm mt-1 max-w-sm">
-            Crie automações para gerar tarefas, disparar webhooks ou mover leads automaticamente.
+            Crie automações para gerar tarefas, disparar webhooks ou mover negócios automaticamente.
           </p>
           <Button className="mt-4" onClick={() => { setEditing(null); setDialogOpen(true); }}>
             <Plus className="h-4 w-4 mr-1.5" />

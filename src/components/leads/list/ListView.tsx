@@ -267,7 +267,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
             {leads.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={visibleCount} className="text-center text-muted-foreground py-8">
-                  Nenhum lead encontrado neste funil.
+                  Nenhum negócio encontrado neste funil.
                 </TableCell>
               </TableRow>
             ) : (

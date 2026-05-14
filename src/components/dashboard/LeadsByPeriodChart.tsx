@@ -14,7 +14,7 @@ interface LeadsByPeriodChartProps {
 
 export default function LeadsByPeriodChart({ data, dateFrom, dateTo, isLoading }: LeadsByPeriodChartProps) {
   if (isLoading) {
-    return <Card><CardHeader><CardTitle>Leads por Período</CardTitle></CardHeader><CardContent><Skeleton className="h-[300px] w-full" /></CardContent></Card>;
+    return <Card><CardHeader><CardTitle>Negócios por Período</CardTitle></CardHeader><CardContent><Skeleton className="h-[300px] w-full" /></CardContent></Card>;
   }
 
   const days = differenceInDays(new Date(dateTo), new Date(dateFrom));
@@ -27,7 +27,7 @@ export default function LeadsByPeriodChart({ data, dateFrom, dateTo, isLoading }
 
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">Leads por Período</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-base">Negócios por Período</CardTitle></CardHeader>
       <CardContent>
         {chartData.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">Nenhum dado no período</p>
@@ -44,7 +44,7 @@ export default function LeadsByPeriodChart({ data, dateFrom, dateTo, isLoading }
               <XAxis dataKey="date" tick={{ fontSize: 11 }} />
               <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
               <Tooltip />
-              <Area type="monotone" dataKey="leads" stroke="hsl(217, 91%, 60%)" fill="url(#gradientBlue)" strokeWidth={2} name="Leads" />
+              <Area type="monotone" dataKey="leads" stroke="hsl(217, 91%, 60%)" fill="url(#gradientBlue)" strokeWidth={2} name="Negócios" />
             </AreaChart>
           </ResponsiveContainer>
         )}
