@@ -206,13 +206,13 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
               lead_id: lead.id,
               user_id: user.id,
               activity_type: 'field_update',
-              title: `Atualizou informações do lead`,
+              title: `Atualizou informações do negócio`,
               metadata: { changes },
             });
           }
         }
 
-        toast.success('Lead atualizado!');
+        toast.success('Negócio atualizado!');
       } else {
         await createLead.mutateAsync({
           lead: {
@@ -235,11 +235,11 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
           },
           customFields: customFieldsData,
         });
-        toast.success('Lead criado!');
+        toast.success('Negócio criado!');
       }
       onOpenChange(false);
     } catch (err: any) {
-      toast.error(err.message || 'Erro ao salvar lead');
+      toast.error(err.message || 'Erro ao salvar negócio');
     }
   };
 
@@ -442,7 +442,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
 
             <div className="space-y-1.5">
               <Label>Notas</Label>
-              <Textarea {...form.register('notes')} placeholder="Observações sobre o lead..." rows={3} />
+              <Textarea {...form.register('notes')} placeholder="Observações sobre o negócio..." rows={3} />
             </div>
 
             {/* Custom Fields */}
