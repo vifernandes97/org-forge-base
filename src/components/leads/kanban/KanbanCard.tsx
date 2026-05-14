@@ -94,7 +94,12 @@ export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
         )}
       </div>
 
-      {/* Row 2: company */}
+      {/* Row 2: contact name (when distinct from title) */}
+      {lead.name && lead.name !== (lead.company_name || lead.name) && (
+        <p className="text-xs text-muted-foreground truncate">{lead.name}</p>
+      )}
+
+      {/* Row 3: company */}
       {lead.company && (
         <p className="text-xs text-muted-foreground truncate">{lead.company}</p>
       )}
