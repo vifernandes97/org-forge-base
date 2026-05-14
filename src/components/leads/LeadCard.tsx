@@ -32,11 +32,6 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
             </Badge>
           )}
         </div>
-            <Badge variant="outline" className="text-xs" style={{ borderColor: lead.stage.color, color: lead.stage.color }}>
-              {lead.stage.name}
-            </Badge>
-          )}
-        </div>
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
