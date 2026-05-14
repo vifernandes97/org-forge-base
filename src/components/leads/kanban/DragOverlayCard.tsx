@@ -37,6 +37,9 @@ export function DragOverlayCard({ lead }: { lead: LeadWithRelations }) {
           </Avatar>
         )}
       </div>
+      {lead.name && lead.company_name && lead.name !== lead.company_name && (
+        <p className="text-xs text-muted-foreground truncate">{lead.name}</p>
+      )}
       {lead.company && (
         <p className="text-xs text-muted-foreground truncate">{lead.company}</p>
       )}
