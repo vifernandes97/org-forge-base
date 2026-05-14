@@ -114,7 +114,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
     if (!leadId) return;
     try {
       await deleteLead.mutateAsync(leadId);
-      toast.success('Lead excluído!');
+      toast.success('Negócio excluído!');
       onClose();
     } catch (err: any) {
       toast.error(err.message || 'Erro ao excluir');
@@ -131,11 +131,11 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
         lead_id: leadId,
         user_id: user.id,
         activity_type: 'note',
-        title: 'Lead arquivado',
+        title: 'Negócio arquivado',
         description: `Motivo: ${reason?.label || 'N/A'}`,
         metadata: { source: 'archive', reason_id: selectedReasonId, reason_label: reason?.label },
       });
-      toast.success('Lead arquivado!');
+      toast.success('Negócio arquivado!');
       setArchiveDialogOpen(false);
       setSelectedReasonId('');
       onClose();
@@ -153,9 +153,9 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
         lead_id: leadId,
         user_id: user.id,
         activity_type: 'note',
-        title: 'Lead desarquivado',
+        title: 'Negócio desarquivado',
       });
-      toast.success('Lead desarquivado!');
+      toast.success('Negócio desarquivado!');
     } catch (err: any) {
       toast.error(err.message || 'Erro ao desarquivar');
     }
@@ -172,18 +172,18 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
           lead_id: leadId,
           user_id: user.id,
           activity_type: 'note',
-          title: 'Lead marcado como Ganho',
+          title: 'Negócio marcado como Ganho',
         });
-        toast.success('Lead marcado como Ganho!');
+        toast.success('Negócio marcado como Ganho!');
       } else {
         await createActivity({
           organization_id: organization.id,
           lead_id: leadId,
           user_id: user.id,
           activity_type: 'note',
-          title: 'Lead reaberto',
+          title: 'Negócio reaberto',
         });
-        toast.success('Lead reaberto!');
+        toast.success('Negócio reaberto!');
       }
     } catch (err: any) {
       toast.error(err.message || 'Erro ao atualizar status');
@@ -224,7 +224,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                 <div className="bg-muted border-b px-6 py-3 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Archive className="h-4 w-4" />
-                    <span>Este lead está arquivado.</span>
+                    <span>Este negócio está arquivado.</span>
                   </div>
                   <Button variant="outline" size="sm" onClick={handleUnarchive} disabled={unarchiveLeadMut.isPending}>
                     <ArchiveRestore className="h-3.5 w-3.5 mr-1" /> Desarquivar
@@ -240,7 +240,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                       type="text"
                       value={typedLead.company_name || typedLead.name}
                       icon={undefined}
-                      placeholder="Nome do lead"
+                      placeholder="Nome do negócio"
                       onSave={(v) => handleInlineSave('name', v)}
                       className="text-xl font-semibold leading-tight"
                     />
@@ -257,22 +257,22 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                       </Button>
                     )}
                     {!isArchived && (
-                      <Button variant="ghost" size="icon" onClick={() => setArchiveDialogOpen(true)} aria-label="Arquivar lead">
+                      <Button variant="ghost" size="icon" onClick={() => setArchiveDialogOpen(true)} aria-label="Arquivar negócio">
                         <Archive className="h-4 w-4" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)} aria-label="Editar lead">
+                    <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)} aria-label="Editar negócio">
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" aria-label="Excluir lead">
+                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" aria-label="Excluir negócio">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir lead?</AlertDialogTitle>
+                          <AlertDialogTitle>Excluir negócio?</AlertDialogTitle>
                           <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -561,7 +561,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
       <AlertDialog open={archiveDialogOpen} onOpenChange={v => { setArchiveDialogOpen(v); if (!v) setSelectedReasonId(''); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Arquivar lead</AlertDialogTitle>
+            <AlertDialogTitle>Arquivar negócio</AlertDialogTitle>
             <AlertDialogDescription>Selecione o motivo do arquivamento.</AlertDialogDescription>
           </AlertDialogHeader>
           <Select value={selectedReasonId || '__placeholder__'} onValueChange={v => setSelectedReasonId(v === '__placeholder__' ? '' : v)}>
