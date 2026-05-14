@@ -354,6 +354,8 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                   <div className="space-y-2">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Negócio</p>
                     <InlineEditField
+                      type="text"
+                      label="Empresa"
                       value={typedLead.company || ''}
                       icon={<Building2 className="h-4 w-4" />}
                       placeholder="Adicionar empresa..."
