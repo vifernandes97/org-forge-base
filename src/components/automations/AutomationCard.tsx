@@ -59,7 +59,7 @@ export function AutomationCard({ template, stage, funnel, targetFunnel, targetSt
     ? 'bg-violet-500/10 text-violet-500'
     : 'bg-primary/10 text-primary';
 
-  const actionLabel = isWebhook ? 'Webhook' : isMoveLead ? 'Mover Lead' : 'Criar Tarefa';
+  const actionLabel = isWebhook ? 'Webhook' : isMoveLead ? 'Mover Negócio' : 'Criar Tarefa';
 
   return (
     <div className="group relative rounded-xl border bg-card p-0 overflow-hidden transition-shadow hover:shadow-md">
@@ -74,7 +74,7 @@ export function AutomationCard({ template, stage, funnel, targetFunnel, targetSt
           </div>
           {isStatusChange ? (
             <>
-              <p className="text-sm font-medium">Lead muda para status</p>
+              <p className="text-sm font-medium">Negócio muda para status</p>
               <div className="mt-1.5">
                 <Badge className={`text-[10px] text-white ${statusColors[template.trigger_status || ''] || 'bg-gray-500'}`}>
                   {statusLabels[template.trigger_status || ''] || template.trigger_status}
@@ -83,7 +83,7 @@ export function AutomationCard({ template, stage, funnel, targetFunnel, targetSt
             </>
           ) : (
             <>
-              <p className="text-sm font-medium">Lead entra na etapa</p>
+              <p className="text-sm font-medium">Negócio entra na etapa</p>
               <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
                 {funnel && (
                   <Badge variant="outline" className="text-[10px]">{funnel.name}</Badge>

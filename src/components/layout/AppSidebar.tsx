@@ -19,7 +19,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 const mainNav = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
-  { title: 'Leads', url: '/leads', icon: Contact },
+  { title: 'Negócios', url: '/leads', icon: Contact },
   { title: 'Tarefas', url: '/tasks', icon: CheckSquare },
 ];
 

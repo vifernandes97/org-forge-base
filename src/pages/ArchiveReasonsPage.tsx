@@ -72,7 +72,7 @@ export default function ArchiveReasonsPage() {
             <Archive className="h-6 w-6" /> Motivos de Arquivamento
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Gerencie os motivos disponíveis ao arquivar um lead.
+            Gerencie os motivos disponíveis ao arquivar um negócio.
           </p>
         </div>
         <Button onClick={() => setDialogOpen(true)}>
@@ -122,7 +122,7 @@ export default function ArchiveReasonsPage() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Excluir motivo?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Leads que usam este motivo manterão o registro, mas o motivo não estará mais disponível.
+                      Negócios que usam este motivo manterão o registro, mas o motivo não estará mais disponível.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>

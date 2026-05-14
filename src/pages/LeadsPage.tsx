@@ -86,7 +86,7 @@ export default function LeadsPage() {
     try {
       const leads = await getLeadsByFunnel(selectedFunnelId, filters);
       if (!leads.length) {
-        toast.info('Nenhum lead encontrado para exportar.');
+        toast.info('Nenhum negócio encontrado para exportar.');
         return;
       }
       const rows = leads.map(l => ({
@@ -137,7 +137,7 @@ export default function LeadsPage() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           {/* Title + funnel breadcrumb + counter */}
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-2xl font-bold tracking-tight">Leads</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Negócios</h1>
             {selectedFunnelId && (
               <span className="text-sm text-muted-foreground">·&nbsp;{totalCount}</span>
             )}
@@ -220,7 +220,7 @@ export default function LeadsPage() {
             {canCreate && (
               <Button onClick={() => setCreateOpen(true)} size="sm">
                 <Plus className="mr-1.5 h-4 w-4" />
-                Novo Lead
+                Novo Negócio
               </Button>
             )}
           </div>
@@ -278,7 +278,7 @@ export default function LeadsPage() {
             <div className="space-y-1">
               <p className="font-medium">Nenhum funil configurado</p>
               <p className="text-sm text-muted-foreground">
-                {funnelsLoading ? 'Carregando funis...' : 'Configure seu primeiro funil para começar a gerenciar seus leads.'}
+                {funnelsLoading ? 'Carregando funis...' : 'Configure seu primeiro funil para começar a gerenciar seus negócios.'}
               </p>
             </div>
             {!funnelsLoading && (

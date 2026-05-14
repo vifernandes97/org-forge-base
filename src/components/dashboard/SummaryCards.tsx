@@ -29,16 +29,16 @@ export default function SummaryCards({ summary, pendingTasks, overdueTasks, qual
   const conversionRate = newLeads > 0 ? ((summary?.conversion_count ?? 0) / newLeads) * 100 : 0;
 
   const cards = [
-    { title: 'Total de Leads', value: String(summary?.total_leads ?? 0), icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+    { title: 'Total de Negócios', value: String(summary?.total_leads ?? 0), icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
     {
-      title: 'Novos Leads', value: String(newLeads), icon: UserPlus, color: 'text-emerald-500', bg: 'bg-emerald-500/10',
+      title: 'Novos Negócios', value: String(newLeads), icon: UserPlus, color: 'text-emerald-500', bg: 'bg-emerald-500/10',
       badge: variation !== 0 ? { value: `${variation > 0 ? '+' : ''}${variation.toFixed(0)}%`, positive: variation > 0 } : undefined,
     },
     { title: 'Valor no Pipeline', value: formatCurrency(summary?.pipeline_value ?? 0), icon: DollarSign, color: 'text-primary', bg: 'bg-primary/10' },
     { title: 'Taxa de Conversão', value: `${conversionRate.toFixed(1)}%`, icon: TrendingUp, color: 'text-violet-500', bg: 'bg-violet-500/10' },
     { title: 'Tarefas Pendentes', value: String(pendingTasks ?? 0), icon: ClipboardList, color: (pendingTasks ?? 0) > 0 ? 'text-yellow-500' : 'text-muted-foreground', bg: (pendingTasks ?? 0) > 0 ? 'bg-yellow-500/10' : 'bg-muted' },
     { title: 'Tarefas Atrasadas', value: String(overdueTasks ?? 0), icon: AlertTriangle, color: (overdueTasks ?? 0) > 0 ? 'text-destructive' : 'text-muted-foreground', bg: (overdueTasks ?? 0) > 0 ? 'bg-destructive/10' : 'bg-muted' },
-    { title: 'Leads Qualificados', value: `${(qualifiedRate?.rate ?? 0).toFixed(1)}%`, icon: Star, color: 'text-amber-500', bg: 'bg-amber-500/10', subtitle: qualifiedRate ? `${qualifiedRate.qualified}/${qualifiedRate.total}` : undefined },
+    { title: 'Negócios Qualificados', value: `${(qualifiedRate?.rate ?? 0).toFixed(1)}%`, icon: Star, color: 'text-amber-500', bg: 'bg-amber-500/10', subtitle: qualifiedRate ? `${qualifiedRate.qualified}/${qualifiedRate.total}` : undefined },
   ];
 
   return (

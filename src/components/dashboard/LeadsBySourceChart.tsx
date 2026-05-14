@@ -12,14 +12,14 @@ interface LeadsBySourceChartProps {
 
 export default function LeadsBySourceChart({ data, isLoading }: LeadsBySourceChartProps) {
   if (isLoading) {
-    return <Card><CardHeader><CardTitle>Leads por Fonte</CardTitle></CardHeader><CardContent><Skeleton className="h-[300px] w-full" /></CardContent></Card>;
+    return <Card><CardHeader><CardTitle>Negócios por Fonte</CardTitle></CardHeader><CardContent><Skeleton className="h-[300px] w-full" /></CardContent></Card>;
   }
 
   const total = (data ?? []).reduce((s, d) => s + d.count, 0);
 
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">Leads por Fonte</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-base">Negócios por Fonte</CardTitle></CardHeader>
       <CardContent>
         {!data?.length ? (
           <p className="text-sm text-muted-foreground text-center py-8">Nenhum dado no período</p>
@@ -31,7 +31,7 @@ export default function LeadsBySourceChart({ data, isLoading }: LeadsBySourceCha
                   <Cell key={i} fill={COLORS[i % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value: number) => [`${value} (${((value / total) * 100).toFixed(0)}%)`, 'Leads']} />
+              <Tooltip formatter={(value: number) => [`${value} (${((value / total) * 100).toFixed(0)}%)`, 'Negócios']} />
               <Legend />
             </PieChart>
           </ResponsiveContainer>

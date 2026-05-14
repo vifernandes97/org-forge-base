@@ -211,11 +211,11 @@ export default function InboundWebhookEditPage() {
             <RadioGroup value={duplicateStrategy} onValueChange={setDuplicateStrategy} className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="update" id="strat-update" />
-                <Label htmlFor="strat-update" className="font-normal">Atualizar lead existente <span className="text-muted-foreground">(recomendado)</span></Label>
+                <Label htmlFor="strat-update" className="font-normal">Atualizar negócio existente <span className="text-muted-foreground">(recomendado)</span></Label>
               </div>
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="create_new" id="strat-new" />
-                <Label htmlFor="strat-new" className="font-normal">Criar novo lead sempre</Label>
+                <Label htmlFor="strat-new" className="font-normal">Criar novo negócio sempre</Label>
               </div>
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="ignore" id="strat-ignore" />

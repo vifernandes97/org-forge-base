@@ -27,7 +27,7 @@ export default function FunnelChart({ data, isLoading }: FunnelChartProps) {
             <BarChart data={sorted} layout="vertical" margin={{ left: 0, right: 40 }}>
               <XAxis type="number" hide />
               <YAxis type="category" dataKey="stage_name" width={110} tick={{ fontSize: 12 }} />
-              <Tooltip formatter={(value: number) => [`${value} leads (${((value / maxCount) * 100).toFixed(0)}%)`, 'Leads']} />
+              <Tooltip formatter={(value: number) => [`${value} negócios (${((value / maxCount) * 100).toFixed(0)}%)`, 'Negócios']} />
               <Bar dataKey="lead_count" radius={[0, 4, 4, 0]} barSize={28}>
                 {sorted.map((entry) => (
                   <Cell key={entry.stage_id} fill={entry.stage_color} />

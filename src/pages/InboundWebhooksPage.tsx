@@ -60,7 +60,7 @@ export default function InboundWebhooksPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Webhooks de Entrada</h1>
-          <p className="text-muted-foreground">Capture leads automaticamente a partir de formulários externos.</p>
+          <p className="text-muted-foreground">Capture negócios automaticamente a partir de formulários externos.</p>
         </div>
         <Button onClick={handleCreate} disabled={createMutation.isPending}>
           <Plus className="h-4 w-4 mr-2" />Novo Webhook
@@ -78,7 +78,7 @@ export default function InboundWebhooksPage() {
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <ArrowDownToLine className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">Nenhum webhook de entrada configurado</h3>
-            <p className="text-muted-foreground mb-4">Crie um webhook para receber leads de formulários Elementor, Typeform e outros.</p>
+            <p className="text-muted-foreground mb-4">Crie um webhook para receber negócios de formulários Elementor, Typeform e outros.</p>
             <Button onClick={handleCreate} disabled={createMutation.isPending}>
               <Plus className="h-4 w-4 mr-2" />Criar primeiro webhook
             </Button>

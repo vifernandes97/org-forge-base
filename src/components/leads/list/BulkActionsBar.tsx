@@ -26,33 +26,33 @@ export function BulkActionsBar({ selectedIds, stages, onClear }: BulkActionsBarP
   const handleMove = async (stageId: string) => {
     try {
       await bulkMove.mutateAsync({ leadIds: selectedIds, stageId });
-      toast.success(`${selectedIds.length} leads movidos`);
+      toast.success(`${selectedIds.length} negócios movidos`);
       onClear();
-    } catch { toast.error('Erro ao mover leads'); }
+    } catch { toast.error('Erro ao mover negócios'); }
   };
 
   const handleAssign = async (userId: string) => {
     try {
       await bulkAssign.mutateAsync({ leadIds: selectedIds, assignedTo: userId === 'none' ? null : userId });
-      toast.success(`${selectedIds.length} leads atribuídos`);
+      toast.success(`${selectedIds.length} negócios atribuídos`);
       onClear();
-    } catch { toast.error('Erro ao atribuir leads'); }
+    } catch { toast.error('Erro ao atribuir negócios'); }
   };
 
   const handleArchive = async (reasonId: string) => {
     try {
       await bulkArchive.mutateAsync({ leadIds: selectedIds, reasonId });
-      toast.success(`${selectedIds.length} leads arquivados`);
+      toast.success(`${selectedIds.length} negócios arquivados`);
       onClear();
-    } catch { toast.error('Erro ao arquivar leads'); }
+    } catch { toast.error('Erro ao arquivar negócios'); }
   };
 
   const handleDelete = async () => {
     try {
       await bulkDelete.mutateAsync(selectedIds);
-      toast.success(`${selectedIds.length} leads excluídos`);
+      toast.success(`${selectedIds.length} negócios excluídos`);
       onClear();
-    } catch { toast.error('Erro ao excluir leads'); }
+    } catch { toast.error('Erro ao excluir negócios'); }
   };
 
   return (
@@ -114,7 +114,7 @@ export function BulkActionsBar({ selectedIds, stages, onClear }: BulkActionsBarP
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir {selectedIds.length} leads?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir {selectedIds.length} negócios?</AlertDialogTitle>
             <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
