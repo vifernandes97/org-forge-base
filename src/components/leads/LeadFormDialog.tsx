@@ -249,53 +249,65 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] p-0">
         <DialogHeader className="px-6 pt-6">
-          <DialogTitle>{isEditing ? 'Editar Lead' : 'Novo Lead'}</DialogTitle>
+          <DialogTitle>{isEditing ? 'Editar Negócio' : 'Novo Negócio'}</DialogTitle>
         </DialogHeader>
 
         <ScrollArea className="max-h-[calc(90vh-140px)] px-6">
-          <form id="lead-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pb-4">
-            {/* Basic fields */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Nome *</Label>
-                <Input {...form.register('name')} placeholder="Nome do lead" />
-                {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
+          <form id="lead-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pb-4">
+            {/* Contato */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Contato</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Nome *</Label>
+                  <Input {...form.register('name')} placeholder="Nome do contato" />
+                  {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Email</Label>
+                  <Input {...form.register('email')} type="email" placeholder="email@exemplo.com" />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Telefone</Label>
+                  <Controller
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <Input
+                        value={field.value}
+                        placeholder="(00) 00000-0000"
+                        onChange={e => {
+                          let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+                          if (v.length > 6) v = `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7)}`;
+                          else if (v.length > 2) v = `(${v.slice(0, 2)}) ${v.slice(2)}`;
+                          else if (v.length > 0) v = `(${v}`;
+                          field.onChange(v);
+                        }}
+                      />
+                    )}
+                  />
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label>Email</Label>
-                <Input {...form.register('email')} type="email" placeholder="email@exemplo.com" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Telefone</Label>
-                <Controller
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <Input
-                      value={field.value}
-                      placeholder="(00) 00000-0000"
-                      onChange={e => {
-                        let v = e.target.value.replace(/\D/g, '').slice(0, 11);
-                        if (v.length > 6) v = `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7)}`;
-                        else if (v.length > 2) v = `(${v.slice(0, 2)}) ${v.slice(2)}`;
-                        else if (v.length > 0) v = `(${v}`;
-                        field.onChange(v);
-                      }}
-                    />
-                  )}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Empresa</Label>
-                <Input {...form.register('company')} placeholder="Nome da empresa" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Razão Social</Label>
-                <Input {...form.register('company_name')} placeholder="Razão social da empresa" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Instagram</Label>
-                <Input {...form.register('company_instagram')} placeholder="@empresa" />
+            </div>
+
+            <Separator />
+
+            {/* Negócio */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Negócio</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Empresa</Label>
+                  <Input {...form.register('company')} placeholder="Nome da empresa" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Razão Social</Label>
+                  <Input {...form.register('company_name')} placeholder="Razão social da empresa" />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Instagram</Label>
+                  <Input {...form.register('company_instagram')} placeholder="@empresa" />
+                </div>
               </div>
             </div>
 
