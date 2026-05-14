@@ -321,6 +321,14 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Contato</p>
                     <InlineEditField
                       type="text"
+                      label="Nome"
+                      value={typedLead.name || ''}
+                      icon={<User className="h-4 w-4" />}
+                      placeholder="Adicionar nome..."
+                      onSave={(v) => handleInlineSave('name', v)}
+                    />
+                    <InlineEditField
+                      type="text"
                       label="Email"
                       value={typedLead.email || ''}
                       icon={<Mail className="h-4 w-4" />}
