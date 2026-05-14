@@ -327,6 +327,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                       placeholder="Adicionar nome..."
                       onSave={(v) => handleInlineSave('name', v)}
                     />
+                    <InlineEditField
                       type="text"
                       label="Email"
                       value={typedLead.email || ''}
