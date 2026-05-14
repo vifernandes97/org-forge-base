@@ -238,7 +238,7 @@ export function AdvancedFiltersPopover({
         </div>
 
         {/* Body */}
-        <ScrollArea className="max-h-[60vh]">
+        <ScrollArea className="h-[60vh]">
           <div className="px-4 py-2 divide-y divide-border">
             <Section title="Essenciais" defaultOpen count={sectionCounts.essentials}>
               <FilterRow label="Etapa">
