@@ -104,7 +104,7 @@ export default function LeadsPage() {
         Status: l.status,
         'Criado em': format(new Date(l.created_at), 'dd/MM/yyyy HH:mm'),
       }));
-      downloadCSV(rows, `leads_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+      downloadCSV(rows, `negocios_${format(new Date(), 'yyyy-MM-dd')}.csv`);
       toast.success('CSV exportado com sucesso!');
     } catch {
       toast.error('Erro ao exportar CSV.');
