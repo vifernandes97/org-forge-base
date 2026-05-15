@@ -20,6 +20,7 @@ import { useCustomFields } from '@/hooks/useCustomFields';
 import { useTeamMembers } from '@/hooks/useTeam';
 import { useStages } from '@/hooks/useStages';
 import { InlineEditField } from './InlineEditField';
+import { CustomFieldInlineEdit } from './CustomFieldInlineEdit';
 import { StagePipeline } from './StagePipeline';
 
 import { LeadFormDialog } from './LeadFormDialog';
@@ -516,6 +517,17 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                                 options={opts}
                                 icon={<Tag className="h-4 w-4" />}
                                 placeholder={`Adicionar ${def.field_label.toLowerCase()}...`}
+                                onSave={(v) => handleCustomFieldSave(def.id, v)}
+                              />
+                            );
+                          }
+
+                          if (fieldType === 'multi_select' || fieldType === 'date' || fieldType === 'checkbox') {
+                            return (
+                              <CustomFieldInlineEdit
+                                key={def.id}
+                                def={def}
+                                value={currentValue}
                                 onSave={(v) => handleCustomFieldSave(def.id, v)}
                               />
                             );
