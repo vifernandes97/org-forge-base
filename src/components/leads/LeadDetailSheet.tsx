@@ -521,6 +521,17 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                             );
                           }
 
+                          if (fieldType === 'multi_select' || fieldType === 'date' || fieldType === 'checkbox') {
+                            return (
+                              <CustomFieldInlineEdit
+                                key={def.id}
+                                def={def}
+                                value={currentValue}
+                                onSave={(v) => handleCustomFieldSave(def.id, v)}
+                              />
+                            );
+                          }
+
                           return (
                             <InlineEditField
                               key={def.id}
