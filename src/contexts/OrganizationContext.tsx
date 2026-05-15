@@ -23,22 +23,25 @@ const ACTIVE_ORG_KEY = 'crm_active_org_id';
 
 export function OrganizationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const userId = user?.id ?? null;
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [memberships, setMemberships] = useState<{ org_id: string; role: OrgRole }[]>([]);
   const [activeOrgId, setActiveOrgId] = useState<string | null>(
     () => localStorage.getItem(ACTIVE_ORG_KEY)
   );
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
-  const fetchOrgs = useCallback(async () => {
-    if (!user) {
+  const fetchOrgs = useCallback(async (showLoading = true) => {
+    if (!userId) {
       setOrganizations([]);
       setMemberships([]);
       setLoading(false);
+      setInitialized(true);
       return;
     }
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const data = await getUserOrganizations();
       const orgs = data.map(d => d.organizations);
       const membList = data.map(d => ({ org_id: d.organization_id, role: d.role as OrgRole }));
@@ -60,10 +63,11 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       console.error('Failed to fetch organizations:', err);
     } finally {
       setLoading(false);
+      setInitialized(true);
     }
-  }, [user]);
+  }, [userId]);
 
-  useEffect(() => { fetchOrgs(); }, [fetchOrgs]);
+  useEffect(() => { fetchOrgs(!initialized); }, [fetchOrgs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Dynamic document title
   useEffect(() => {

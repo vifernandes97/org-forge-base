@@ -1,24 +1,32 @@
 ## Problema
 
-No `LeadDetailSheet`, a renderização dos campos personalizados só trata os tipos `select` e `text` de forma específica. Todos os demais tipos (`multi_select`, `date`, `checkbox`, `number`, `currency`, `url`, `email`, `phone`) caem no fallback `InlineEditField type="text"`, mostrando um input de texto livre — por isso o campo "Objeção" aparece como string e as opções cadastradas não aparecem.
+Quando você abre um modal (detalhe do negócio, formulário etc.) em `/leads`, troca de aba no navegador e volta, o modal aparece fechado. O motivo é que toda a árvore da aplicação é desmontada e remontada ao voltar para a aba — perdendo o estado local que controla o modal aberto (`selectedLeadId`, `editOpen`, etc.).
 
-## Solução
+## Causa raiz
 
-Tratar todos os tipos de campos personalizados no painel de detalhes do lead, usando o `CustomFieldRenderer` já existente (que sabe renderizar `multi_select`, `date`, `checkbox`, etc.) para os tipos que o `InlineEditField` não cobre.
+Ao retornar a aba, o Supabase Auth dispara automaticamente um evento `TOKEN_REFRESHED`:
 
-### Mudanças
+1. `AuthContext.onAuthStateChange` chama `setSession`/`setUser` com **novas referências** de objeto, mesmo quando o usuário é o mesmo.
+2. `OrganizationContext` tem `useCallback` com dependência `[user]` (objeto), então `fetchOrgs` é recriado.
+3. O `useEffect(() => { fetchOrgs() }, [fetchOrgs])` dispara, e `fetchOrgs` chama `setLoading(true)`.
+4. `PrivateRoute` observa `orgLoading` e renderiza o spinner de tela cheia.
+5. Toda a árvore (incluindo `LeadsPage`, `KanbanView`/`ListView` e o `<Sheet>`) é **desmontada**. O estado local `selectedLeadId` é perdido.
+6. Quando termina, a árvore remonta com `selectedLeadId = null` → modal fechado.
 
-**`src/components/leads/LeadDetailSheet.tsx`** (bloco "Campos Personalizados", ~linhas 496–538):
+## Correção
 
-1. Manter `InlineEditField` para `text`, `number`, `currency`, `url`, `email`, `phone`, `select` (estendendo `InlineEditField` ou apenas mapeando para o tipo `text`/`select`/`currency` existente).
-2. Para `multi_select`, `date` e `checkbox`, criar um pequeno wrapper de "campo editável via popover" que:
-   - Mostra o valor formatado (badges para multi_select, data formatada, "Sim/Não" para checkbox) com o ícone `Tag` e label, no mesmo padrão visual do `InlineEditField`.
-   - Ao clicar, abre um `Popover` contendo `<CustomFieldRenderer field={def} value={currentValue} onChange={...} />`.
-   - Salva via `handleCustomFieldSave(def.id, value)` ao fechar o popover ou em um botão "Salvar" dentro dele.
-3. Para `multi_select`, garantir parsing seguro: o valor é armazenado como JSON string (`"[...]"`); exibir como badges quando vazio ou inválido sem quebrar.
+Trocar a dependência por um identificador estável e evitar o "loading global" em refetches silenciosos.
 
-Não há mudanças de schema, hooks ou serviços — `useUpsertCustomFieldValue` e `CustomFieldRenderer` já suportam todos os tipos.
+### `src/contexts/OrganizationContext.tsx`
+- Trocar a dependência do `useCallback` de `[user]` para `[user?.id]`, para não recriar `fetchOrgs` quando só a referência do objeto user muda (token refresh).
+- Não chamar `setLoading(true)` em refetches subsequentes — apenas no carregamento inicial. Usar uma flag `initialized` ou só setar loading se ainda não há dados carregados.
 
-### Resultado
+### `src/contexts/AuthContext.tsx` (defensivo)
+- No callback de `onAuthStateChange`, evitar atualizar o estado quando o `user.id` é o mesmo do anterior (apenas atualizar `session` se necessário) — assim eventos `TOKEN_REFRESHED` não causam re-renders desnecessários em consumidores que só usam `user`.
 
-O campo "Objeção" (multi_select) passa a mostrar as opções cadastradas como badges selecionáveis, exatamente como no formulário de criação, e os demais tipos personalizados também ficam usáveis no drawer do lead.
+### Verificação
+Após o ajuste:
+- Abrir um lead em `/leads` → trocar de aba → voltar → o sheet permanece aberto.
+- O mesmo deve valer para `LeadFormDialog`, `TaskFormDialog`, diálogos de arquivamento etc., já que todos usam estado local que só era perdido devido à desmontagem da árvore.
+
+Sem alterações em backend, schema ou na lógica dos modais — apenas estabilização dos contextos de Auth e Organization.

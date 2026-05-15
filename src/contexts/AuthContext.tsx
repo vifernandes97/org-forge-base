@@ -21,9 +21,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Set up listener BEFORE getting session
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+      // Only update user reference if the user id actually changed,
+      // so TOKEN_REFRESHED events don't cause downstream re-renders/unmounts.
+      setUser(prev => {
+        const next = newSession?.user ?? null;
+        if (prev?.id === next?.id) return prev;
+        return next;
+      });
       setLoading(false);
     });
 
