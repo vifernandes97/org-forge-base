@@ -20,6 +20,7 @@ import { useCustomFields } from '@/hooks/useCustomFields';
 import { useTeamMembers } from '@/hooks/useTeam';
 import { useStages } from '@/hooks/useStages';
 import { InlineEditField } from './InlineEditField';
+import { CustomFieldInlineEdit } from './CustomFieldInlineEdit';
 import { StagePipeline } from './StagePipeline';
 
 import { LeadFormDialog } from './LeadFormDialog';
