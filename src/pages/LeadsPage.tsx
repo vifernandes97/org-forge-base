@@ -266,6 +266,15 @@ export default function LeadsPage() {
           />
         )}
 
+        {/* Archived summary */}
+        {selectedFunnelId && currentStatusFilter === 'archived' && (
+          <ArchivedSummaryPanel
+            funnelId={selectedFunnelId}
+            applyMany={applyMany}
+            currentReasonIds={filters.archive_reason_ids}
+          />
+        )}
+
         {/* Content */}
         {selectedFunnelId ? (
           viewMode === 'kanban' ? (
