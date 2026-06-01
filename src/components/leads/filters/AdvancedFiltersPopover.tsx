@@ -144,6 +144,7 @@ export function AdvancedFiltersPopover({
 
   const sectionCounts = useMemo(() => {
     const essentials =
+      (draft.status_filter && draft.status_filter !== 'open' ? 1 : 0) +
       (draft.stage_ids?.length || 0) +
       (draft.assigned_to?.length || 0) +
       (draft.priorities?.length || 0) +
@@ -165,6 +166,7 @@ export function AdvancedFiltersPopover({
   const handleApply = () => {
     // Build a partial that explicitly clears removed keys
     const allKeys: (keyof LeadFilters)[] = [
+      'status_filter',
       'stage_ids',
       'assigned_to',
       'priorities',
@@ -185,12 +187,13 @@ export function AdvancedFiltersPopover({
     for (const k of allKeys) {
       (partial as any)[k] = (draft as any)[k];
     }
+    if (!partial.status_filter) partial.status_filter = 'open';
     applyMany(partial);
     setOpen(false);
   };
 
   const handleClear = () => {
-    setDraft({ search: filters.search, status_filter: filters.status_filter });
+    setDraft({ search: filters.search, status_filter: 'open' });
   };
 
   return (
@@ -241,6 +244,23 @@ export function AdvancedFiltersPopover({
         <ScrollArea className="h-[60vh]">
           <div className="px-4 py-2 divide-y divide-border">
             <Section title="Essenciais" defaultOpen count={sectionCounts.essentials}>
+              <FilterRow label="Status">
+                <Select
+                  value={draft.status_filter || 'open'}
+                  onValueChange={(v) =>
+                    setDraftField('status_filter', v as 'open' | 'won' | 'archived')
+                  }
+                >
+                  <SelectTrigger className="h-8 text-xs flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">Ativos</SelectItem>
+                    <SelectItem value="won">Ganhos</SelectItem>
+                    <SelectItem value="archived">Arquivados</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FilterRow>
               <FilterRow label="Etapa">
                 <FilterMultiSelect
                   label="Selecionar etapas"

@@ -1,8 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useFunnels } from '@/hooks/useFunnels';
 import { useLeadFilters } from '@/hooks/useLeadFilters';
-import { useLeadsByFunnel } from '@/hooks/useLeads';
 import { LeadFormDialog } from '@/components/leads/LeadFormDialog';
 import { KanbanView } from '@/components/leads/kanban/KanbanView';
 import { ListView } from '@/components/leads/list/ListView';
@@ -16,7 +15,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -61,25 +59,6 @@ export default function LeadsPage() {
   const [exporting, setExporting] = useState(false);
 
   const currentStatusFilter = filters.status_filter || 'open';
-
-  // Status counts (independent of status_filter to populate tabs)
-  const filtersForCount = useMemo(() => {
-    const { status_filter, ...rest } = filters;
-    return rest;
-  }, [filters]);
-  const { data: allLeadsForCount } = useLeadsByFunnel(selectedFunnelId, filtersForCount);
-
-  const statusCounts = useMemo(() => {
-    const counts = { open: 0, won: 0, archived: 0 };
-    (allLeadsForCount || []).forEach((l: any) => {
-      if (l.archived_at) counts.archived++;
-      else if (l.status === 'won') counts.won++;
-      else counts.open++;
-    });
-    return counts;
-  }, [allLeadsForCount]);
-
-  const totalCount = statusCounts[currentStatusFilter as keyof typeof statusCounts] ?? 0;
 
   const handleExportCSV = async () => {
     if (!selectedFunnelId) return;
@@ -139,9 +118,6 @@ export default function LeadsPage() {
           {/* Title + funnel breadcrumb + counter */}
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-bold tracking-tight">Negócios</h1>
-            {selectedFunnelId && (
-              <span className="text-sm text-muted-foreground">·&nbsp;{totalCount}</span>
-            )}
             {!funnelsLoading && funnels && funnels.length > 0 && (
               <>
                 <span className="text-muted-foreground/50 mx-1">/</span>
@@ -226,31 +202,6 @@ export default function LeadsPage() {
             )}
           </div>
         </div>
-
-        {/* Status Tabs - editorial style */}
-        <Tabs
-          value={currentStatusFilter}
-          onValueChange={(v) => setFilter('status_filter', v as 'open' | 'won' | 'archived')}
-        >
-          <TabsList className="h-auto bg-transparent p-0 gap-6 border-b border-border rounded-none w-full justify-start">
-            {[
-              { value: 'open', label: 'Ativos', count: statusCounts.open },
-              { value: 'won', label: 'Ganhos', count: statusCounts.won },
-              { value: 'archived', label: 'Arquivados', count: statusCounts.archived },
-            ].map(t => (
-              <TabsTrigger
-                key={t.value}
-                value={t.value}
-                className="relative h-auto px-0 pb-2.5 pt-1 rounded-none bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-medium data-[state=active]:text-foreground text-muted-foreground after:absolute after:left-0 after:right-0 after:-bottom-px after:h-0.5 after:bg-primary after:opacity-0 data-[state=active]:after:opacity-100 transition-colors"
-              >
-                <span>{t.label}</span>
-                <span className="ml-1.5 text-xs text-muted-foreground/80 tabular-nums">
-                  {t.count}
-                </span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
 
         {/* Filter Bar */}
         {selectedFunnelId && (
