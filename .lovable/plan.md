@@ -1,32 +1,54 @@
-## Problema
+# Análise de motivos de arquivamento em /leads
 
-Quando você abre um modal (detalhe do negócio, formulário etc.) em `/leads`, troca de aba no navegador e volta, o modal aparece fechado. O motivo é que toda a árvore da aplicação é desmontada e remontada ao voltar para a aba — perdendo o estado local que controla o modal aberto (`selectedLeadId`, `editOpen`, etc.).
+## Objetivo
+Permitir visualizar, em um período selecionado, quantos negócios foram arquivados por cada motivo (ex.: "5 por motivo X, 10 por motivo Y").
 
-## Causa raiz
+## Onde
+Aba **Arquivados** em `/leads` (já existe via `useLeadFilters` com `status_filter`). Adicionar um painel resumo acima da lista/kanban quando a aba ativa for "Arquivados".
 
-Ao retornar a aba, o Supabase Auth dispara automaticamente um evento `TOKEN_REFRESHED`:
+## UX
 
-1. `AuthContext.onAuthStateChange` chama `setSession`/`setUser` com **novas referências** de objeto, mesmo quando o usuário é o mesmo.
-2. `OrganizationContext` tem `useCallback` com dependência `[user]` (objeto), então `fetchOrgs` é recriado.
-3. O `useEffect(() => { fetchOrgs() }, [fetchOrgs])` dispara, e `fetchOrgs` chama `setLoading(true)`.
-4. `PrivateRoute` observa `orgLoading` e renderiza o spinner de tela cheia.
-5. Toda a árvore (incluindo `LeadsPage`, `KanbanView`/`ListView` e o `<Sheet>`) é **desmontada**. O estado local `selectedLeadId` é perdido.
-6. Quando termina, a árvore remonta com `selectedLeadId = null` → modal fechado.
+1. **Painel "Resumo de arquivamento"** (colapsável, aberto por padrão na aba Arquivados):
+   - Seletor de período no topo: presets (Últimos 7d, 30d, 90d, Este mês, Mês passado, Personalizado) + date range custom.
+   - Cards/linhas com cada motivo: label do motivo, contagem absoluta, % do total e barra de progresso proporcional.
+   - Card extra "Sem motivo informado" para leads arquivados sem `archive_reason_id`.
+   - Total geral de arquivados no período em destaque.
+   - Botão "Aplicar como filtro" em cada motivo → seta `archive_reason_ids=[id]` no filtro atual e atualiza a listagem abaixo.
 
-## Correção
+2. **Integração com filtros existentes**:
+   - O período do painel é independente do filtro `created_at` da lista (arquivamento ≠ criação). Usa-se `archived_at`.
+   - Respeita o funil selecionado (`funnel` no URL) e demais filtros de escopo (responsável, tags) se ativos — para coerência com a lista exibida.
 
-Trocar a dependência por um identificador estável e evitar o "loading global" em refetches silenciosos.
+## Implementação técnica
 
-### `src/contexts/OrganizationContext.tsx`
-- Trocar a dependência do `useCallback` de `[user]` para `[user?.id]`, para não recriar `fetchOrgs` quando só a referência do objeto user muda (token refresh).
-- Não chamar `setLoading(true)` em refetches subsequentes — apenas no carregamento inicial. Usar uma flag `initialized` ou só setar loading se ainda não há dados carregados.
+### Backend
+- Nova função RPC `get_archive_reasons_summary(p_org_id uuid, p_funnel_id uuid, p_date_from timestamptz, p_date_to timestamptz)`:
+  - `SECURITY DEFINER`, valida membership igual às outras RPCs de dashboard.
+  - Retorna `(archive_reason_id uuid, label text, count bigint)` agrupando `leads` onde `status = 'inactive'` e `archived_at BETWEEN from AND to`.
+  - Inclui linha com `archive_reason_id = NULL` / `label = 'Sem motivo'`.
+  - `LEFT JOIN archive_reasons` para trazer o label atual.
 
-### `src/contexts/AuthContext.tsx` (defensivo)
-- No callback de `onAuthStateChange`, evitar atualizar o estado quando o `user.id` é o mesmo do anterior (apenas atualizar `session` se necessário) — assim eventos `TOKEN_REFRESHED` não causam re-renders desnecessários em consumidores que só usam `user`.
+### Frontend
+- `src/services/leads.ts`: nova função `getArchiveReasonsSummary(orgId, { funnelId, from, to })` chamando o RPC.
+- `src/hooks/useArchivedSummary.ts`: hook com React Query, key `['archived-summary', orgId, funnelId, from, to]`.
+- `src/components/leads/ArchivedSummaryPanel.tsx`: novo componente
+  - Date range picker (reaproveita `FilterDateRange`).
+  - Lista de motivos com barras (componente leve, sem nova dep).
+  - Botão "Aplicar como filtro" → usa `applyMany({ archive_reason_ids: [id] })` do `useLeadFilters`.
+- `src/pages/LeadsPage.tsx`: renderizar `<ArchivedSummaryPanel>` somente quando `status_filter === 'inactive'` (aba Arquivados).
 
-### Verificação
-Após o ajuste:
-- Abrir um lead em `/leads` → trocar de aba → voltar → o sheet permanece aberto.
-- O mesmo deve valer para `LeadFormDialog`, `TaskFormDialog`, diálogos de arquivamento etc., já que todos usam estado local que só era perdido devido à desmontagem da árvore.
+### Estado e URL
+- Período do painel guardado em estado local + URL params próprios (`arch_from`, `arch_to`) para permitir compartilhar a visão.
+- Default: últimos 30 dias.
 
-Sem alterações em backend, schema ou na lógica dos modais — apenas estabilização dos contextos de Auth e Organization.
+## Fora do escopo
+- Exportar resumo (pode ser feito depois reaproveitando `exportCsv`).
+- Gráfico temporal (linha por dia) — somente totais por motivo nesta entrega.
+- Alterar a aba "Ativos"/"Ganhos".
+
+## Critérios de aceite
+- Na aba Arquivados aparece o painel com contagem por motivo no período selecionado.
+- Mudar o período recalcula sem recarregar a página.
+- Clicar em "Aplicar como filtro" em um motivo filtra a lista abaixo por aquele motivo.
+- Leads sem motivo aparecem em "Sem motivo".
+- Respeita RLS / organização atual.

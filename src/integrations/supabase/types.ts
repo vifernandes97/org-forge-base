@@ -1148,6 +1148,19 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      get_archive_reasons_summary: {
+        Args: {
+          p_date_from: string
+          p_date_to: string
+          p_funnel_id: string
+          p_org_id: string
+        }
+        Returns: {
+          archive_reason_id: string
+          count: number
+          label: string
+        }[]
+      }
       get_dashboard_summary: {
         Args: {
           p_date_from: string
