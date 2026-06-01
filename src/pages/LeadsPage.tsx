@@ -203,31 +203,6 @@ export default function LeadsPage() {
           </div>
         </div>
 
-        {/* Status Tabs - editorial style */}
-        <Tabs
-          value={currentStatusFilter}
-          onValueChange={(v) => setFilter('status_filter', v as 'open' | 'won' | 'archived')}
-        >
-          <TabsList className="h-auto bg-transparent p-0 gap-6 border-b border-border rounded-none w-full justify-start">
-            {[
-              { value: 'open', label: 'Ativos', count: statusCounts.open },
-              { value: 'won', label: 'Ganhos', count: statusCounts.won },
-              { value: 'archived', label: 'Arquivados', count: statusCounts.archived },
-            ].map(t => (
-              <TabsTrigger
-                key={t.value}
-                value={t.value}
-                className="relative h-auto px-0 pb-2.5 pt-1 rounded-none bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:font-medium data-[state=active]:text-foreground text-muted-foreground after:absolute after:left-0 after:right-0 after:-bottom-px after:h-0.5 after:bg-primary after:opacity-0 data-[state=active]:after:opacity-100 transition-colors"
-              >
-                <span>{t.label}</span>
-                <span className="ml-1.5 text-xs text-muted-foreground/80 tabular-nums">
-                  {t.count}
-                </span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-
         {/* Filter Bar */}
         {selectedFunnelId && (
           <LeadFilterBar
