@@ -40,7 +40,8 @@ function computeRange(preset: Preset, custom: { from?: Date; to?: Date }): { fro
 }
 
 export function ArchivedSummaryPanel({ funnelId, applyMany, currentReasonIds }: Props) {
-  const { currentOrg } = useOrganization();
+  const { organization } = useOrganization();
+  const currentOrg = organization;
   const [preset, setPreset] = useState<Preset>('30d');
   const [customFrom, setCustomFrom] = useState<Date | undefined>();
   const [customTo, setCustomTo] = useState<Date | undefined>();
