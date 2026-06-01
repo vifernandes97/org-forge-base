@@ -270,8 +270,8 @@ export default function LeadsPage() {
         {selectedFunnelId && currentStatusFilter === 'archived' && (
           <ArchivedSummaryPanel
             funnelId={selectedFunnelId}
+            filters={filters}
             applyMany={applyMany}
-            currentReasonIds={filters.archive_reason_ids}
           />
         )}
 

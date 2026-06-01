@@ -1150,6 +1150,7 @@ export type Database = {
       }
       get_archive_reasons_summary: {
         Args: {
+          p_assigned_to?: string[]
           p_date_from: string
           p_date_to: string
           p_funnel_id: string
