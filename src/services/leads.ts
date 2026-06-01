@@ -305,14 +305,16 @@ export interface ArchiveReasonSummaryRow {
 export async function getArchiveReasonsSummary(
   orgId: string,
   funnelId: string | null,
-  from: string,
-  to: string
+  from: string | null,
+  to: string | null,
+  assignedTo?: string[] | null
 ): Promise<ArchiveReasonSummaryRow[]> {
   const { data, error } = await supabase.rpc('get_archive_reasons_summary' as any, {
     p_org_id: orgId,
     p_funnel_id: funnelId,
     p_date_from: from,
     p_date_to: to,
+    p_assigned_to: assignedTo && assignedTo.length ? assignedTo : null,
   });
   if (error) throw error;
   return (data || []).map((r: any) => ({
