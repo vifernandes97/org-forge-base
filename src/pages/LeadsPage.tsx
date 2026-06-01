@@ -118,9 +118,6 @@ export default function LeadsPage() {
           {/* Title + funnel breadcrumb + counter */}
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-bold tracking-tight">Negócios</h1>
-            {selectedFunnelId && (
-              <span className="text-sm text-muted-foreground">·&nbsp;{totalCount}</span>
-            )}
             {!funnelsLoading && funnels && funnels.length > 0 && (
               <>
                 <span className="text-muted-foreground/50 mx-1">/</span>
