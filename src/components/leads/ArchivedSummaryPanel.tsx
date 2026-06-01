@@ -1,108 +1,54 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { format, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns';
-import { Calendar as CalendarIcon, Filter, Loader2, Archive } from 'lucide-react';
+import { format } from 'date-fns';
+import { Filter, Loader2, Archive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { getArchiveReasonsSummary } from '@/services/leads';
 import type { LeadFilters } from '@/types';
 import { cn } from '@/lib/utils';
 
-type Preset = '7d' | '30d' | '90d' | 'this_month' | 'last_month' | 'custom';
-
 interface Props {
   funnelId: string | null;
+  filters: LeadFilters;
   applyMany: (partial: Partial<LeadFilters>) => void;
-  currentReasonIds?: string[];
 }
 
-function computeRange(preset: Preset, custom: { from?: Date; to?: Date }): { from: Date; to: Date } {
-  const now = new Date();
-  switch (preset) {
-    case '7d': return { from: startOfDay(subDays(now, 6)), to: endOfDay(now) };
-    case '30d': return { from: startOfDay(subDays(now, 29)), to: endOfDay(now) };
-    case '90d': return { from: startOfDay(subDays(now, 89)), to: endOfDay(now) };
-    case 'this_month': return { from: startOfMonth(now), to: endOfDay(now) };
-    case 'last_month': {
-      const prev = subMonths(now, 1);
-      return { from: startOfMonth(prev), to: endOfMonth(prev) };
-    }
-    case 'custom':
-      return {
-        from: custom.from ? startOfDay(custom.from) : startOfDay(subDays(now, 29)),
-        to: custom.to ? endOfDay(custom.to) : endOfDay(now),
-      };
-  }
-}
-
-export function ArchivedSummaryPanel({ funnelId, applyMany, currentReasonIds }: Props) {
+export function ArchivedSummaryPanel({ funnelId, filters, applyMany }: Props) {
   const { organization } = useOrganization();
   const currentOrg = organization;
-  const [preset, setPreset] = useState<Preset>('30d');
-  const [customFrom, setCustomFrom] = useState<Date | undefined>();
-  const [customTo, setCustomTo] = useState<Date | undefined>();
 
-  const range = useMemo(() => computeRange(preset, { from: customFrom, to: customTo }), [preset, customFrom, customTo]);
+  const from = filters.created_at_from || null;
+  const to = filters.created_at_to || null;
+  const assignedTo = filters.assigned_to?.filter(id => id !== '__none__') ?? null;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['archive-reasons-summary', currentOrg?.id, funnelId, range.from.toISOString(), range.to.toISOString()],
-    queryFn: () => getArchiveReasonsSummary(currentOrg!.id, funnelId, range.from.toISOString(), range.to.toISOString()),
+    queryKey: ['archive-reasons-summary', currentOrg?.id, funnelId, from, to, assignedTo?.join(',') ?? ''],
+    queryFn: () => getArchiveReasonsSummary(currentOrg!.id, funnelId, from, to, assignedTo),
     enabled: !!currentOrg?.id,
   });
 
   const total = useMemo(() => (data || []).reduce((acc, r) => acc + r.count, 0), [data]);
   const max = useMemo(() => Math.max(1, ...(data || []).map(r => r.count)), [data]);
 
-  const selectedId = currentReasonIds?.[0];
+  const selectedId = filters.archive_reason_ids?.[0];
+
+  const periodLabel = useMemo(() => {
+    if (!from && !to) return 'todos';
+    const f = from ? format(new Date(from), 'dd/MM/yy') : '…';
+    const t = to ? format(new Date(to), 'dd/MM/yy') : '…';
+    return `${f} – ${t}`;
+  }, [from, to]);
 
   return (
     <Card className="p-4 space-y-3">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Archive className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-semibold">Resumo de arquivamento</h3>
-          <span className="text-xs text-muted-foreground tabular-nums">· {total} no período</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select value={preset} onValueChange={(v) => setPreset(v as Preset)}>
-            <SelectTrigger className="h-8 w-[170px] text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7d">Últimos 7 dias</SelectItem>
-              <SelectItem value="30d">Últimos 30 dias</SelectItem>
-              <SelectItem value="90d">Últimos 90 dias</SelectItem>
-              <SelectItem value="this_month">Este mês</SelectItem>
-              <SelectItem value="last_month">Mês passado</SelectItem>
-              <SelectItem value="custom">Personalizado</SelectItem>
-            </SelectContent>
-          </Select>
-          {preset === 'custom' && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs">
-                  <CalendarIcon className="h-3.5 w-3.5 mr-1.5" />
-                  {customFrom && customTo
-                    ? `${format(customFrom, 'dd/MM')} – ${format(customTo, 'dd/MM')}`
-                    : 'Selecionar datas'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="range"
-                  selected={{ from: customFrom, to: customTo }}
-                  onSelect={(r) => { setCustomFrom(r?.from); setCustomTo(r?.to); }}
-                  numberOfMonths={2}
-                  className={cn('p-3 pointer-events-auto')}
-                />
-              </PopoverContent>
-            </Popover>
-          )}
-        </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Archive className="h-4 w-4 text-muted-foreground" />
+        <h3 className="text-sm font-semibold">Resumo de arquivamento</h3>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          · {total} no período · {periodLabel}
+        </span>
       </div>
 
       {isLoading ? (
@@ -111,7 +57,7 @@ export function ArchivedSummaryPanel({ funnelId, applyMany, currentReasonIds }: 
         </div>
       ) : total === 0 ? (
         <p className="text-xs text-muted-foreground py-3 text-center">
-          Nenhum negócio arquivado no período selecionado.
+          Nenhum negócio arquivado no recorte atual.
         </p>
       ) : (
         <ul className="space-y-2">
@@ -154,7 +100,7 @@ export function ArchivedSummaryPanel({ funnelId, applyMany, currentReasonIds }: 
         </ul>
       )}
 
-      {currentReasonIds?.length ? (
+      {filters.archive_reason_ids?.length ? (
         <div className="flex items-center justify-end pt-1">
           <Button
             variant="ghost"
