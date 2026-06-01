@@ -96,7 +96,7 @@ export function useLeadFilters() {
   }, [handleSearchChange]);
 
   const clearFilters = useCallback(() => {
-    setFiltersState({});
+    setFiltersState({ status_filter: 'open' });
     setSearchInput('');
   }, []);
 
