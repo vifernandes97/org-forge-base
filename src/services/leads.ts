@@ -295,3 +295,29 @@ export async function unarchiveLead(id: string) {
   if (error) throw error;
   return data as any;
 }
+
+export interface ArchiveReasonSummaryRow {
+  archive_reason_id: string | null;
+  label: string;
+  count: number;
+}
+
+export async function getArchiveReasonsSummary(
+  orgId: string,
+  funnelId: string | null,
+  from: string,
+  to: string
+): Promise<ArchiveReasonSummaryRow[]> {
+  const { data, error } = await supabase.rpc('get_archive_reasons_summary' as any, {
+    p_org_id: orgId,
+    p_funnel_id: funnelId,
+    p_date_from: from,
+    p_date_to: to,
+  });
+  if (error) throw error;
+  return (data || []).map((r: any) => ({
+    archive_reason_id: r.archive_reason_id,
+    label: r.label,
+    count: Number(r.count),
+  }));
+}
