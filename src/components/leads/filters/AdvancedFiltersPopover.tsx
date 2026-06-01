@@ -144,6 +144,7 @@ export function AdvancedFiltersPopover({
 
   const sectionCounts = useMemo(() => {
     const essentials =
+      (draft.status_filter && draft.status_filter !== 'open' ? 1 : 0) +
       (draft.stage_ids?.length || 0) +
       (draft.assigned_to?.length || 0) +
       (draft.priorities?.length || 0) +
