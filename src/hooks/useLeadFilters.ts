@@ -139,6 +139,7 @@ export function useLeadFilters() {
     if (filters.stage_time) count++;
     if (filters.qualifications?.length) count++;
     if (filters.archive_reason_ids?.length) count++;
+    if (filters.status_filter && filters.status_filter !== 'open') count++;
     if (filters.custom_fields && Object.keys(filters.custom_fields).length > 0) count += Object.keys(filters.custom_fields).length;
     return count;
   }, [filters]);
