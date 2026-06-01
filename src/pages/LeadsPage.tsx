@@ -7,6 +7,7 @@ import { LeadFormDialog } from '@/components/leads/LeadFormDialog';
 import { KanbanView } from '@/components/leads/kanban/KanbanView';
 import { ListView } from '@/components/leads/list/ListView';
 import { LeadFilterBar } from '@/components/leads/filters/LeadFilterBar';
+import { ArchivedSummaryPanel } from '@/components/leads/ArchivedSummaryPanel';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
