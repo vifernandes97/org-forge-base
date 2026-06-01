@@ -60,25 +60,6 @@ export default function LeadsPage() {
 
   const currentStatusFilter = filters.status_filter || 'open';
 
-  // Status counts (independent of status_filter to populate tabs)
-  const filtersForCount = useMemo(() => {
-    const { status_filter, ...rest } = filters;
-    return rest;
-  }, [filters]);
-  const { data: allLeadsForCount } = useLeadsByFunnel(selectedFunnelId, filtersForCount);
-
-  const statusCounts = useMemo(() => {
-    const counts = { open: 0, won: 0, archived: 0 };
-    (allLeadsForCount || []).forEach((l: any) => {
-      if (l.archived_at) counts.archived++;
-      else if (l.status === 'won') counts.won++;
-      else counts.open++;
-    });
-    return counts;
-  }, [allLeadsForCount]);
-
-  const totalCount = statusCounts[currentStatusFilter as keyof typeof statusCounts] ?? 0;
-
   const handleExportCSV = async () => {
     if (!selectedFunnelId) return;
     setExporting(true);
