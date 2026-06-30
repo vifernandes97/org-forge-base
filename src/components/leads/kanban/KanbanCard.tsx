@@ -115,17 +115,19 @@ export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
         {slaExceeded ? (
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 dark:text-amber-500 font-medium">
+              <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-500 font-medium">
                 <Clock className="h-2.5 w-2.5" />
                 {formatStageTime(lead.created_at)}
+                <span className="text-muted-foreground font-normal">· {new Date(lead.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
               </span>
             </TooltipTrigger>
             <TooltipContent>Acima do SLA da etapa</TooltipContent>
           </Tooltip>
         ) : (
-          <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
             <Clock className="h-2.5 w-2.5" />
             {formatStageTime(lead.created_at)}
+            <span>· {new Date(lead.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
           </span>
         )}
       </div>
