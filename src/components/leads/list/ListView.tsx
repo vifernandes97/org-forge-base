@@ -458,7 +458,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
 
 
       {/* Pagination */}
-      <div className="flex items-center justify-between py-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between py-2">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>Exibindo {leads.length} de {totalCount}</span>
           <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setPage(0); }}>
