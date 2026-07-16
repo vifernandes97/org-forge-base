@@ -49,9 +49,15 @@ export default function LeadsPage() {
   const canCreate = isOwner || isAdmin || isMember;
   const { filters, searchInput, setFilter, clearFilters, applyFilters, applyMany, activeFilterCount } = useLeadFilters();
 
-  const [viewMode, setViewMode] = useState<ViewMode>(() =>
-    (localStorage.getItem(LS_VIEW_KEY) as ViewMode) || 'kanban'
-  );
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const stored = localStorage.getItem(LS_VIEW_KEY) as ViewMode | null;
+    if (stored) return stored;
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+      return 'list';
+    }
+    return 'kanban';
+  });
+
   const [selectedFunnelId, setSelectedFunnelId] = useState<string>(() =>
     localStorage.getItem(LS_FUNNEL_KEY) || ''
   );
