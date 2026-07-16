@@ -235,7 +235,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
         </div>
       </div>
 
-      <div className="rounded-lg border overflow-auto">
+      <div className="rounded-lg border overflow-auto hidden md:block">
         <Table>
           <TableHeader>
             <TableRow>
