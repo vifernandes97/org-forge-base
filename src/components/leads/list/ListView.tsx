@@ -188,10 +188,11 @@ export function ListView({ funnelId, filters }: ListViewProps) {
         <div className="ml-auto">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5">
+              <Button variant="outline" size="sm" className="gap-1.5 hidden md:inline-flex">
                 <SlidersHorizontal className="h-4 w-4" />
                 Colunas
               </Button>
+
             </PopoverTrigger>
             <PopoverContent align="end" className="w-56 p-2 max-h-[400px] overflow-y-auto">
               <p className="text-xs font-medium text-muted-foreground mb-2 px-2">Colunas visíveis</p>
@@ -234,7 +235,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
         </div>
       </div>
 
-      <div className="rounded-lg border overflow-auto">
+      <div className="rounded-lg border overflow-auto hidden md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -377,8 +378,87 @@ export function ListView({ funnelId, filters }: ListViewProps) {
         </Table>
       </div>
 
+      {/* Mobile card list */}
+      <div className="md:hidden space-y-2">
+        {leads.length === 0 ? (
+          <div className="rounded-lg border p-6 text-center text-sm text-muted-foreground">
+            Nenhum negócio encontrado neste funil.
+          </div>
+        ) : (
+          leads.map((lead: any) => (
+            <div
+              key={lead.id}
+              className="rounded-lg border bg-card p-3 cursor-pointer hover:bg-accent/50 active:bg-accent transition-colors"
+              onClick={() => setSelectedLeadId(lead.id)}
+            >
+              <div className="flex items-start gap-2">
+                <div onClick={e => e.stopPropagation()} className="pt-0.5">
+                  <Checkbox
+                    checked={selectedIds.includes(lead.id)}
+                    onCheckedChange={() => toggleSelect(lead.id)}
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-medium text-sm truncate">
+                      {lead.company_name || lead.name}
+                    </p>
+                    {lead.stage && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] shrink-0 px-1.5 py-0"
+                        style={{ borderColor: lead.stage.color, color: lead.stage.color }}
+                      >
+                        {lead.stage.name}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
+                    {[lead.company, lead.value > 0 ? `R$ ${Number(lead.value).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}` : null]
+                      .filter(Boolean)
+                      .join(' · ') || '—'}
+                  </p>
+                  <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {lead.assigned_profile ? (
+                        <>
+                          <Avatar className="h-5 w-5 shrink-0">
+                            <AvatarFallback className="text-[9px]">
+                              {lead.assigned_profile.full_name?.[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs text-muted-foreground truncate">
+                            {lead.assigned_profile.full_name}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Sem responsável</span>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">
+                      {formatDistanceToNow(new Date(lead.last_activity_at), { addSuffix: true, locale: ptBR })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                    <PriorityBadge priority={lead.priority} />
+                    <StatusBadge status={lead.status || 'open'} />
+                    {(lead.tags || []).slice(0, 2).map((t: string) => (
+                      <Badge key={t} variant="secondary" className="text-[10px] px-1.5 py-0">{t}</Badge>
+                    ))}
+                    {(lead.tags || []).length > 2 && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">+{lead.tags.length - 2}</Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+
       {/* Pagination */}
-      <div className="flex items-center justify-between py-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between py-2">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>Exibindo {leads.length} de {totalCount}</span>
           <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setPage(0); }}>
