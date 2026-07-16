@@ -188,10 +188,11 @@ export function ListView({ funnelId, filters }: ListViewProps) {
         <div className="ml-auto">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5">
+              <Button variant="outline" size="sm" className="gap-1.5 hidden md:inline-flex">
                 <SlidersHorizontal className="h-4 w-4" />
                 Colunas
               </Button>
+
             </PopoverTrigger>
             <PopoverContent align="end" className="w-56 p-2 max-h-[400px] overflow-y-auto">
               <p className="text-xs font-medium text-muted-foreground mb-2 px-2">Colunas visíveis</p>
