@@ -72,6 +72,23 @@ export default function DashboardFilters({
         </SelectContent>
       </Select>
 
+      {periodKey === 'month' && (
+        <Select value={targetMonth} onValueChange={onTargetMonthChange}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Selecione o mês" />
+          </SelectTrigger>
+          <SelectContent className="max-h-[300px]">
+            {monthOptions.map(o => (
+              <SelectItem key={o.value} value={o.value} disabled={o.disabled}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+
+
+
       {periodKey === 'custom' && (
         <div className="flex items-center gap-2">
           <Popover>
