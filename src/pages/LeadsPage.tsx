@@ -118,7 +118,7 @@ export default function LeadsPage() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="space-y-4">
+      <div className="space-y-4 min-w-0 w-full">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           {/* Title + funnel breadcrumb + counter */}
