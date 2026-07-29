@@ -154,7 +154,7 @@ export function KanbanView({ funnelId, filters }: KanbanViewProps) {
 
   if (stagesLoading || leadsLoading) {
     return (
-      <div className="flex gap-3 overflow-x-auto pb-4">
+      <div className="flex gap-3 overflow-x-auto pb-4 w-full min-w-0">
         {[1, 2, 3, 4].map(i => (
           <div
             key={i}
