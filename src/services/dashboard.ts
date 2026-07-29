@@ -58,10 +58,14 @@ export async function getLeadsByPeriod(
   return (data ?? []) as unknown as PeriodData[];
 }
 
-export async function getFunnelMetrics(orgId: string, funnelId: string): Promise<FunnelMetric[]> {
+export async function getFunnelMetrics(
+  orgId: string, funnelId: string, dateFrom?: string, dateTo?: string
+): Promise<FunnelMetric[]> {
   const { data, error } = await supabase.rpc('get_funnel_metrics', {
     p_org_id: orgId,
     p_funnel_id: funnelId,
+    p_date_from: dateFrom ?? null,
+    p_date_to: dateTo ?? null,
   });
   if (error) throw error;
   return (data ?? []) as unknown as FunnelMetric[];

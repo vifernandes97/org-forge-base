@@ -30,7 +30,7 @@ export default function DashboardPage() {
 
   const summary = useDashboardSummary(period, funnelId);
   const leadsByPeriod = useLeadsByPeriod(period, funnelId);
-  const funnelMetrics = useFunnelMetrics(funnelChartId);
+  const funnelMetrics = useFunnelMetrics(funnelChartId, period);
   const leadsBySource = useLeadsBySource(period, funnelId);
   const teamRanking = useTeamRanking(period, funnelId);
   const { pending, overdue } = useTaskCounts();
