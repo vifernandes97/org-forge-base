@@ -21,7 +21,118 @@ async function hmacSign(payload: string, secret: string): Promise<string> {
     .join("");
 }
 
+function parseCustomValue(raw: unknown) {
+  if (typeof raw !== "string") return raw ?? null;
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return raw;
+    }
+  }
+  return raw;
+}
+
+/**
+ * Enriches the outbound payload with the full lead record, human readable
+ * stage/funnel names and the organization's custom fields (keyed by label).
+ * Runs BEFORE the HMAC signature so the signed body matches what is sent.
+ */
+async function enrichPayload(
+  supabase: any,
+  payload: any,
+  ctx: { organization_id: string; stage_id?: string | null; lead_id?: string | null }
+) {
+  if (!payload || typeof payload !== "object") return payload;
+
+  const nested = payload.lead && typeof payload.lead === "object";
+  const leadId =
+    ctx.lead_id || payload.lead_id || (nested ? payload.lead?.id : null);
+  if (!leadId) return payload;
+
+  try {
+    const { data: lead } = await supabase
+      .from("leads")
+      .select("*")
+      .eq("id", leadId)
+      .maybeSingle();
+
+    if (!lead) return payload;
+
+    const stageId = payload.stage_id ?? lead.stage_id ?? ctx.stage_id ?? null;
+    const previousStageId = payload.previous_stage_id ?? null;
+    const funnelId = payload.funnel_id ?? lead.funnel_id ?? null;
+
+    const stageIds = [stageId, previousStageId].filter(Boolean);
+    const [stagesRes, funnelRes, valuesRes] = await Promise.all([
+      stageIds.length
+        ? supabase.from("stages").select("id, name").in("id", stageIds)
+        : Promise.resolve({ data: [] }),
+      funnelId
+        ? supabase.from("funnels").select("id, name").eq("id", funnelId).maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase
+        .from("custom_field_values")
+        .select("value, custom_field_definitions!inner(field_label, organization_id)")
+        .eq("lead_id", leadId),
+    ]);
+
+    const stageMap = new Map<string, string>(
+      (stagesRes.data || []).map((s: any) => [s.id, s.name])
+    );
+
+    const customFields: Record<string, unknown> = {};
+    for (const row of valuesRes.data || []) {
+      const def = (row as any).custom_field_definitions;
+      if (!def) continue;
+      if (def.organization_id !== lead.organization_id) continue;
+      customFields[def.field_label] = parseCustomValue((row as any).value);
+    }
+
+    const enrichment = {
+      stage_name: stageId ? stageMap.get(stageId) ?? null : null,
+      previous_stage_name: previousStageId
+        ? stageMap.get(previousStageId) ?? null
+        : null,
+      funnel_name: (funnelRes as any).data?.name ?? null,
+      custom_fields: customFields,
+    };
+
+    if (nested) {
+      return {
+        ...payload,
+        lead: { ...lead, ...payload.lead, custom_fields: customFields },
+        transition: {
+          ...payload.transition,
+          previous_stage: {
+            ...(payload.transition?.previous_stage || {}),
+            name:
+              payload.transition?.previous_stage?.name ??
+              enrichment.previous_stage_name,
+          },
+          new_stage: {
+            ...(payload.transition?.new_stage || {}),
+            name: payload.transition?.new_stage?.name ?? enrichment.stage_name,
+          },
+          funnel: {
+            ...(payload.transition?.funnel || {}),
+            name: payload.transition?.funnel?.name ?? enrichment.funnel_name,
+          },
+        },
+      };
+    }
+
+    // Flat payload: full lead record first, existing keys win (backwards compat)
+    return { ...lead, ...enrichment, ...payload };
+  } catch (err) {
+    console.error("enrichPayload failed:", err);
+    return payload;
+  }
+}
+
 Deno.serve(async (req) => {
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
