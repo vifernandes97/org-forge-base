@@ -100,12 +100,12 @@ export function useLeadsByPeriod(period: DashboardPeriod, funnelId: string | nul
   });
 }
 
-export function useFunnelMetrics(funnelId: string | null) {
+export function useFunnelMetrics(funnelId: string | null, period?: DashboardPeriod) {
   const { organization } = useOrganization();
   const orgId = organization?.id;
   return useQuery({
-    queryKey: ['dashboard-funnel-metrics', orgId, funnelId],
-    queryFn: () => dashboardService.getFunnelMetrics(orgId!, funnelId!),
+    queryKey: ['dashboard-funnel-metrics', orgId, funnelId, period?.dateFrom, period?.dateTo],
+    queryFn: () => dashboardService.getFunnelMetrics(orgId!, funnelId!, period?.dateFrom, period?.dateTo),
     enabled: !!orgId && !!funnelId,
   });
 }
