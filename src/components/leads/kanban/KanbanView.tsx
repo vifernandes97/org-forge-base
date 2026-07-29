@@ -188,7 +188,7 @@ export function KanbanView({ funnelId, filters }: KanbanViewProps) {
         onDragEnd={handleDragEnd}
       >
         <div
-          className="flex gap-3 overflow-x-auto pb-4 h-[calc(100vh-220px)]"
+          className="flex gap-3 overflow-x-auto pb-4 h-[calc(100vh-220px)] w-full min-w-0"
           style={{
             maskImage:
               'linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%)',
