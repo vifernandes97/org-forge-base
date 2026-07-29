@@ -1171,17 +1171,34 @@ export type Database = {
         }
         Returns: Json
       }
-      get_funnel_metrics: {
-        Args: { p_funnel_id: string; p_org_id: string }
-        Returns: {
-          lead_count: number
-          stage_color: string
-          stage_id: string
-          stage_name: string
-          stage_position: number
-          total_value: number
-        }[]
-      }
+      get_funnel_metrics:
+        | {
+            Args: { p_funnel_id: string; p_org_id: string }
+            Returns: {
+              lead_count: number
+              stage_color: string
+              stage_id: string
+              stage_name: string
+              stage_position: number
+              total_value: number
+            }[]
+          }
+        | {
+            Args: {
+              p_date_from?: string
+              p_date_to?: string
+              p_funnel_id: string
+              p_org_id: string
+            }
+            Returns: {
+              lead_count: number
+              stage_color: string
+              stage_id: string
+              stage_name: string
+              stage_position: number
+              total_value: number
+            }[]
+          }
       get_invite_by_token: { Args: { p_token: string }; Returns: Json }
       get_leads_by_period: {
         Args: {
