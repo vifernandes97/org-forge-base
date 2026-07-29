@@ -15,9 +15,27 @@ const PERIOD_OPTIONS: { value: PeriodKey; label: string }[] = [
   { value: '90d', label: 'Últimos 90 dias' },
   { value: 'this_month', label: 'Este mês' },
   { value: 'last_month', label: 'Mês passado' },
+  { value: 'month', label: 'Mês específico' },
   { value: 'this_year', label: 'Este ano' },
   { value: 'custom', label: 'Personalizado' },
 ];
+
+function buildMonthOptions() {
+  const now = new Date();
+  const opts: { value: string; label: string; disabled: boolean }[] = [];
+  for (const year of [now.getFullYear(), now.getFullYear() - 1]) {
+    for (let m = 11; m >= 0; m--) {
+      const d = new Date(year, m, 1);
+      const label = format(d, 'MMMM yyyy', { locale: ptBR });
+      opts.push({
+        value: `${year}-${String(m + 1).padStart(2, '0')}`,
+        label: label.charAt(0).toUpperCase() + label.slice(1),
+        disabled: year === now.getFullYear() && m > now.getMonth(),
+      });
+    }
+  }
+  return opts;
+}
 
 interface DashboardFiltersProps {
   periodKey: PeriodKey;
@@ -28,13 +46,18 @@ interface DashboardFiltersProps {
   customTo?: Date;
   onCustomFromChange: (d: Date | undefined) => void;
   onCustomToChange: (d: Date | undefined) => void;
+  targetMonth: string;
+  onTargetMonthChange: (m: string) => void;
 }
 
 export default function DashboardFilters({
   periodKey, onPeriodChange, funnelId, onFunnelChange,
   customFrom, customTo, onCustomFromChange, onCustomToChange,
+  targetMonth, onTargetMonthChange,
 }: DashboardFiltersProps) {
   const { data: funnels } = useFunnels();
+  const monthOptions = buildMonthOptions();
+
 
   return (
     <div className="flex flex-wrap items-center gap-3">
