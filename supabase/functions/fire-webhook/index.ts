@@ -214,7 +214,7 @@ Deno.serve(async (req) => {
       stage_id,
       lead_id: lead_id || null,
       webhook_url,
-      payload,
+      payload: enrichedPayload,
       response_status: responseStatus,
       response_body: responseBody?.substring(0, 5000),
       success,
