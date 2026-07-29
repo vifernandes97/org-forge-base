@@ -58,8 +58,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    const body = JSON.stringify(payload);
+    const enrichedPayload = await enrichPayload(supabase, payload, {
+      organization_id,
+      stage_id,
+      lead_id,
+    });
+
+    const body = JSON.stringify(enrichedPayload);
     const signature = await hmacSign(body, serviceRoleKey);
+
 
     let success = false;
     let responseStatus: number | null = null;
