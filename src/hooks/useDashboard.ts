@@ -4,7 +4,7 @@ import { subDays, startOfMonth, endOfMonth, subMonths, startOfYear, differenceIn
 import { useOrganization } from '@/contexts/OrganizationContext';
 import * as dashboardService from '@/services/dashboard';
 
-export type PeriodKey = '7d' | '30d' | '90d' | 'this_month' | 'last_month' | 'this_year' | 'custom';
+export type PeriodKey = '7d' | '30d' | '90d' | 'this_month' | 'last_month' | 'month' | 'this_year' | 'custom';
 
 export interface DashboardPeriod {
   key: PeriodKey;
@@ -12,7 +12,20 @@ export interface DashboardPeriod {
   dateTo: string;
 }
 
-function computePeriod(key: PeriodKey, customFrom?: Date, customTo?: Date): { dateFrom: string; dateTo: string } {
+function parseMonth(targetMonth?: string): Date {
+  if (targetMonth) {
+    const [y, m] = targetMonth.split('-').map(Number);
+    if (y && m) return new Date(y, m - 1, 1);
+  }
+  return startOfMonth(new Date());
+}
+
+function computePeriod(
+  key: PeriodKey,
+  customFrom?: Date,
+  customTo?: Date,
+  targetMonth?: string
+): { dateFrom: string; dateTo: string } {
   const now = new Date();
   switch (key) {
     case '7d': return { dateFrom: subDays(now, 7).toISOString(), dateTo: now.toISOString() };
@@ -23,6 +36,10 @@ function computePeriod(key: PeriodKey, customFrom?: Date, customTo?: Date): { da
       const prev = subMonths(now, 1);
       return { dateFrom: startOfMonth(prev).toISOString(), dateTo: endOfMonth(prev).toISOString() };
     }
+    case 'month': {
+      const target = parseMonth(targetMonth);
+      return { dateFrom: startOfMonth(target).toISOString(), dateTo: endOfMonth(target).toISOString() };
+    }
     case 'this_year': return { dateFrom: startOfYear(now).toISOString(), dateTo: now.toISOString() };
     case 'custom': return {
       dateFrom: (customFrom ?? subDays(now, 30)).toISOString(),
@@ -31,18 +48,29 @@ function computePeriod(key: PeriodKey, customFrom?: Date, customTo?: Date): { da
   }
 }
 
+function currentMonthKey(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export function useDashboardPeriod() {
   const [periodKey, setPeriodKey] = useState<PeriodKey>('30d');
   const [customFrom, setCustomFrom] = useState<Date | undefined>();
   const [customTo, setCustomTo] = useState<Date | undefined>();
+  const [targetMonth, setTargetMonth] = useState<string>(currentMonthKey());
 
   const period = useMemo<DashboardPeriod>(() => {
-    const { dateFrom, dateTo } = computePeriod(periodKey, customFrom, customTo);
+    const { dateFrom, dateTo } = computePeriod(periodKey, customFrom, customTo, targetMonth);
     return { key: periodKey, dateFrom, dateTo };
-  }, [periodKey, customFrom, customTo]);
+  }, [periodKey, customFrom, customTo, targetMonth]);
 
-  return { period, periodKey, setPeriodKey, customFrom, customTo, setCustomFrom, setCustomTo };
+  return {
+    period, periodKey, setPeriodKey,
+    customFrom, customTo, setCustomFrom, setCustomTo,
+    targetMonth, setTargetMonth,
+  };
 }
+
 
 function getInterval(dateFrom: string, dateTo: string): string {
   const days = differenceInDays(new Date(dateTo), new Date(dateFrom));
