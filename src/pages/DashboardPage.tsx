@@ -55,6 +55,8 @@ export default function DashboardPage() {
           customTo={customTo}
           onCustomFromChange={setCustomFrom}
           onCustomToChange={setCustomTo}
+          targetMonth={targetMonth}
+          onTargetMonthChange={setTargetMonth}
         />
       </div>
 
