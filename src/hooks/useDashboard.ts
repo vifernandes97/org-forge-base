@@ -92,7 +92,7 @@ export function useDashboardSummary(period: DashboardPeriod, funnelId: string | 
 export function useLeadsByPeriod(period: DashboardPeriod, funnelId: string | null) {
   const { organization } = useOrganization();
   const orgId = organization?.id;
-  const interval = getInterval(period.dateFrom, period.dateTo);
+  const interval = period.key === 'month' ? 'day' : getInterval(period.dateFrom, period.dateTo);
   return useQuery({
     queryKey: ['dashboard-leads-period', orgId, funnelId, period.dateFrom, period.dateTo, interval],
     queryFn: () => dashboardService.getLeadsByPeriod(orgId!, funnelId, period.dateFrom, period.dateTo, interval),
