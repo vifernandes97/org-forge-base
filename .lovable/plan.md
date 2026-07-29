@@ -1,47 +1,38 @@
 ## Objetivo
 
-Melhorar a experiência visual da **List View de Leads no mobile** (hoje uma tabela com 10+ colunas que ficam espremidas e exigem scroll horizontal desconfortável em 390px).
+Fazer o webhook de saída (`lead.stage_changed` e demais eventos de lead) enviar o registro completo do negócio, nomes legíveis de etapa/funil e os campos personalizados da organização — tudo antes da assinatura HMAC.
 
-## O que muda
+## Onde alterar
 
-Ajustes puramente visuais em `src/components/leads/list/ListView.tsx`. Nenhuma mudança em dados, filtros, ordenação ou lógica.
+Todo o enriquecimento fica em um único ponto: `supabase/functions/fire-webhook/index.ts`. É por onde passam os dois caminhos de disparo (automação via trigger no banco e movimentação no Kanban), então nada precisa mudar no banco nem no frontend.
 
-### 1. Layout responsivo com breakpoint
-- **Desktop (≥ md)**: mantém a tabela atual, sem alterações.
-- **Mobile (< md)**: substitui a `<Table>` por uma **lista de cards verticais**, um por lead.
+## Como funciona hoje
 
-### 2. Card mobile do lead (design)
-Cada card compacto exibe apenas o essencial, aproveitando os dados que já vêm do hook:
+O payload chega pronto do gatilho, com apenas um subconjunto de campos (`lead_id`, `stage_id`, `previous_stage_id`, `funnel_id`, nome, email, telefone, valor, tags...). A função apenas serializa, assina com HMAC e faz o POST.
 
-```text
-┌─────────────────────────────────────┐
-│ ☐  Nome/Razão Social      [Etapa]   │
-│    Empresa · R$ 1.200               │
-│    ─────────────────────────────    │
-│    👤 Responsável   ⏱ há 2h         │
-│    [Prioridade] [Status]            │
-└─────────────────────────────────────┘
-```
+## Mudanças
 
-- Checkbox de seleção alinhado à esquerda.
-- Título em `font-medium` (company_name || name), truncado.
-- Badge da etapa à direita (mesma cor da coluna).
-- Linha secundária: empresa + valor em `text-xs text-muted-foreground`.
-- Rodapé: avatar do responsável, tempo relativo da última atividade, badges de prioridade e status.
-- Clique no card abre o `LeadDetailSheet` (mesmo comportamento da linha).
+1. **Etapa de enriquecimento** logo após o parse do corpo da requisição e **antes** de `JSON.stringify` + cálculo da assinatura, usando o client de service role que já existe.
 
-### 3. Barra de topo no mobile
-- Botão **Colunas** fica oculto no mobile (`hidden md:inline-flex`) — não faz sentido em layout de cards.
-- `BulkActionsBar` continua funcionando (mesma lógica de `selectedIds`).
+2. **Registro completo do negócio**: busca a linha inteira do negócio pelo `lead_id` e faz merge de todas as colunas no corpo. Os campos atuais têm precedência (retrocompatibilidade total: `lead_id`, `lead_name`, `event`, `timestamp` não são sobrescritos). Assim entram automaticamente `created_at`, `updated_at`, `notes`, `status`, `priority`, `qualification`, `company_name`, `company_instagram`, `archived_at`, `archive_reason_id`, `last_activity_at`, `stage_entered_at` etc.
 
-### 4. Paginação no mobile
-- Empilha em duas linhas: contador + selector de page size em cima, botões de navegação embaixo, para não estourar a largura.
-- Usa `flex-col gap-2 sm:flex-row sm:justify-between`.
+3. **Nomes de etapa e funil**:
+   - Uma única consulta em `stages` com `.in('id', [stage_id, previous_stage_id])` → `stage_name` e `previous_stage_name`.
+   - Uma consulta em `funnels` → `funnel_name`.
+   - Se o ID for nulo ou não encontrado, o campo `_name` correspondente vai como `null`, sem quebrar o disparo.
 
-### 5. Detalhes técnicos
-- Sem novos componentes/arquivos; tudo dentro de `ListView.tsx` para manter escopo mínimo.
-- Uso de `hidden md:block` / `md:hidden` para alternar entre tabela e lista de cards.
-- Zero mudanças em: hooks (`useLeadsList`), tipos, filtros, `BulkActionsBar`, `LeadDetailSheet`.
+4. **Campos personalizados**: o modelo é relacional — `custom_field_values` (`lead_id`, `field_definition_id`, `value`) + `custom_field_definitions` (`field_label`, `organization_id`). A função busca os valores do negócio com join na definição, filtra pela organização do negócio e monta `custom_fields` com **chave = rótulo legível** (ex.: `"Objeção"`, `"Tipo de negócio"`). Campos do tipo múltipla escolha são entregues como lista quando o valor armazenado for JSON. Sem valores preenchidos → `custom_fields: {}`.
 
-## Arquivos alterados
-- `src/components/leads/list/ListView.tsx`
+5. **Compatibilidade com o payload do Kanban**: esse caminho envia um formato aninhado (`lead`, `transition`). O enriquecimento detecta a forma do corpo e aplica os mesmos dados no lugar correto, mantendo a estrutura existente intacta.
+
+6. **Tolerância a falhas**: qualquer erro nas consultas de enriquecimento é registrado e ignorado — o webhook segue com o corpo original em vez de falhar.
+
+7. **Assinatura**: a string assinada passa a ser o corpo final já enriquecido, garantindo que a verificação do lado do n8n continue válida.
+
+## Validação
+
+Após implementar, disparo um webhook de teste apontando para um endpoint de inspeção e confirmo no corpo recebido: todas as colunas do negócio, `stage_name` / `previous_stage_name` / `funnel_name` corretos e `custom_fields` com rótulos legíveis.
+
+## Fora do escopo
+
+URL de destino, headers existentes e lógica de disparo/retry permanecem como estão.
