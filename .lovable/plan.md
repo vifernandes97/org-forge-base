@@ -1,26 +1,23 @@
-## Objetivo
+## Problema
 
-Permitir escolher um **mês-alvo específico** no dashboard (ex.: Março/2026) e ver todos os KPIs e gráficos daquele mês isolado, com base na **data de criação** do negócio.
+Na tela `/leads` a página inteira rola horizontalmente em vez de apenas o quadro Kanban. Os botões do topo direito (visão, exportar, novo negócio) saem da área visível até o usuário arrastar tudo para o lado.
 
-## Mudanças
+## Causa
 
-### 1. `src/hooks/useDashboard.ts`
-- Novo valor em `PeriodKey`: `'month'`.
-- Novo estado `targetMonth` (string `YYYY-MM`), default = mês atual.
-- Em `computePeriod`, o caso `'month'` retorna `startOfMonth(mês-alvo)` até `endOfMonth(mês-alvo)`, sempre em cima de `created_at` (mesmo campo já usado hoje pelos RPCs do dashboard).
-- `targetMonth` entra na dependência do `useMemo`, então as queries já invalidam sozinhas pela mudança de `dateFrom`/`dateTo`.
+O Kanban já usa `overflow-x-auto` (`src/components/leads/kanban/KanbanView.tsx`), mas o contêiner pai não limita a largura: em `src/components/layout/MainLayout.tsx` a coluna de conteúdo (`flex flex-1 flex-col` + `<main class="flex-1 p-4 sm:p-6">`) não tem `min-width: 0`. Por padrão, um item flex não encolhe abaixo do tamanho do conteúdo, então as colunas de 300px do Kanban esticam o layout inteiro, incluindo o cabeçalho.
 
-### 2. `src/components/dashboard/DashboardFilters.tsx`
-- Nova opção "Mês específico" na lista de períodos.
-- Quando selecionada, aparece ao lado um segundo select com os meses disponíveis: os 12 meses do ano corrente + os 12 do ano anterior, rotulados em português (ex.: "Março 2026"), do mais recente para o mais antigo. Meses futuros do ano corrente ficam desabilitados.
-- Novas props `targetMonth` e `onTargetMonthChange`.
+## Solução
 
-### 3. `src/pages/DashboardPage.tsx`
-- Repassa `targetMonth` / `onTargetMonthChange` do hook para o componente de filtros.
-- Onde o período é exibido em texto (subtítulos de cards), o rótulo passa a mostrar o mês escolhido (ex.: "Março 2026") em vez de "Últimos 30 dias".
+1. `src/components/layout/MainLayout.tsx`
+   - Adicionar `min-w-0` (e `w-full`) na coluna de conteúdo e `min-w-0 overflow-x-hidden` no `<main>`, para que o conteúdo respeite a largura disponível ao lado da sidebar.
+2. `src/pages/LeadsPage.tsx`
+   - Garantir `min-w-0` no wrapper principal da página, para que header e board não sejam esticados pelo conteúdo largo.
+3. `src/components/leads/kanban/KanbanView.tsx`
+   - Manter/reforçar `overflow-x-auto` com `min-w-0 w-full` nos dois contêineres de colunas (linhas ~157 e ~191), garantindo que a barra de rolagem horizontal apareça dentro do board.
 
-## Detalhes técnicos
+## Verificação
 
-- A comparação com período anterior já existente em `get_dashboard_summary` continua funcionando: com mês fechado, o período anterior passa a ser exatamente o mês anterior — comportamento correto e desejável.
-- O intervalo do gráfico de negócios por período (`getInterval`) resolve para `day` num mês (< 30 dias) ou `week` (31 dias); vou forçar `day` quando o período for um mês-alvo, para o gráfico mostrar a evolução diária dentro do mês.
-- Nenhuma mudança de banco de dados ou RPC é necessária — só datas diferentes nos parâmetros já existentes.
+Abrir `/leads` no preview (desktop e mobile) via Playwright, conferir que:
+- o cabeçalho e os botões ficam fixos e visíveis,
+- a rolagem horizontal ocorre somente dentro do Kanban,
+- a visão em lista continua correta.
