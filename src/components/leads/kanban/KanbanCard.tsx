@@ -42,6 +42,21 @@ export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
       ? 'hsl(25, 95%, 55%)'
       : undefined;
 
+  const { data: customFields } = useCustomFields();
+  const businessType = (() => {
+    const norm = (s?: string | null) =>
+      (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z]/g, '');
+    const def = customFields?.find(f => norm(f.field_name) === 'tipodenegocio' || norm(f.field_label) === 'tipodenegocio');
+    if (!def) return null;
+    const v = lead.custom_field_values?.find(cv => cv.field_definition_id === def.id)?.value;
+    if (!v) return null;
+    try {
+      const parsed = JSON.parse(v);
+      if (Array.isArray(parsed)) return parsed.join(', ') || null;
+    } catch { /* plain string */ }
+    return v;
+  })();
+
   const assigneeColors = avatarColorFromId(lead.assigned_to);
   const tags = lead.tags || [];
   const visibleTags = tags.slice(0, 2);
