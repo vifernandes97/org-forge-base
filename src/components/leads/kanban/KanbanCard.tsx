@@ -4,6 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { formatStageTime } from '@/lib/formatStageTime';
 import { avatarColorFromId } from '@/lib/avatarColor';
 import { useUpdateLead } from '@/hooks/useLeads';
+import { useCustomFields } from '@/hooks/useCustomFields';
 import { StarRating } from './StarRating';
 import { Clock } from 'lucide-react';
 import type { LeadWithRelations } from '@/types';
