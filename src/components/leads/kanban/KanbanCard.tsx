@@ -4,6 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { formatStageTime } from '@/lib/formatStageTime';
 import { avatarColorFromId } from '@/lib/avatarColor';
 import { useUpdateLead } from '@/hooks/useLeads';
+import { useCustomFields } from '@/hooks/useCustomFields';
 import { StarRating } from './StarRating';
 import { Clock } from 'lucide-react';
 import type { LeadWithRelations } from '@/types';
@@ -40,6 +41,21 @@ export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
       : lead.priority === 'high'
       ? 'hsl(25, 95%, 55%)'
       : undefined;
+
+  const { data: customFields } = useCustomFields();
+  const businessType = (() => {
+    const norm = (s?: string | null) =>
+      (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z]/g, '');
+    const def = customFields?.find(f => norm(f.field_name) === 'tipodenegocio' || norm(f.field_label) === 'tipodenegocio');
+    if (!def) return null;
+    const v = lead.custom_field_values?.find(cv => cv.field_definition_id === def.id)?.value;
+    if (!v) return null;
+    try {
+      const parsed = JSON.parse(v);
+      if (Array.isArray(parsed)) return parsed.join(', ') || null;
+    } catch { /* plain string */ }
+    return v;
+  })();
 
   const assigneeColors = avatarColorFromId(lead.assigned_to);
   const tags = lead.tags || [];
@@ -99,12 +115,23 @@ export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
         <p className="text-xs text-muted-foreground truncate">{lead.name}</p>
       )}
 
-      {/* Row 3: company */}
-      {lead.company && (
-        <p className="text-xs text-muted-foreground truncate">{lead.company}</p>
+      {/* Row 3: business type (custom field) */}
+      {businessType && (
+        <p className="text-xs text-muted-foreground truncate">{businessType}</p>
       )}
 
-      {/* Row 3: stars + relative time */}
+      {/* Row 4: whatsapp / phone */}
+      {lead.phone && (
+        <button
+          type="button"
+          onClick={handleWhatsApp}
+          className="block text-xs text-muted-foreground hover:text-green-600 transition-colors truncate text-left"
+        >
+          {lead.phone}
+        </button>
+      )}
+
+      {/* Row 5: stars + relative time */}
       <div className="flex items-center justify-between gap-2">
         <div className={qualification > 0 ? '' : 'opacity-0 group-hover:opacity-100 transition-opacity'}>
           <StarRating
@@ -118,7 +145,7 @@ export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
               <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-500 font-medium">
                 <Clock className="h-2.5 w-2.5" />
                 {formatStageTime(lead.created_at)}
-                <span className="text-muted-foreground font-normal">· {new Date(lead.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+
               </span>
             </TooltipTrigger>
             <TooltipContent>Acima do SLA da etapa</TooltipContent>
@@ -127,7 +154,7 @@ export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
           <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
             <Clock className="h-2.5 w-2.5" />
             {formatStageTime(lead.created_at)}
-            <span>· {new Date(lead.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+
           </span>
         )}
       </div>
