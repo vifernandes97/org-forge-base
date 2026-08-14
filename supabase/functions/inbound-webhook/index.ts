@@ -364,10 +364,30 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Re-entry: move back to the first stage of the funnel and reactivate
+      const previousStageId = existingLead.stage_id;
+      const movedStage = previousStageId !== firstStage.id;
+      if (movedStage) {
+        changes.push({ field: "stage_id", old_value: previousStageId, new_value: firstStage.id });
+        updateData.funnel_id = funnelId;
+        updateData.stage_id = firstStage.id;
+        updateData.stage_entered_at = new Date().toISOString();
+      }
+      if (existingLead.archived_at) {
+        changes.push({ field: "archived_at", old_value: existingLead.archived_at, new_value: null });
+        updateData.archived_at = null;
+        updateData.archive_reason_id = null;
+      }
+      if (existingLead.status !== "open") {
+        changes.push({ field: "status", old_value: existingLead.status, new_value: "open" });
+        updateData.status = "open";
+      }
+
       if (Object.keys(updateData).length > 0) {
         updateData.last_activity_at = new Date().toISOString();
         await supabase.from("leads").update(updateData).eq("id", existingLead.id);
       }
+
 
       // Update custom fields
       for (const [cfName, cfValue] of Object.entries(mappedCustomFields)) {
