@@ -1,23 +1,33 @@
-## Problema
+# Reentrada de negócio existente volta para a etapa inicial
 
-Na tela `/leads` a página inteira rola horizontalmente em vez de apenas o quadro Kanban. Os botões do topo direito (visão, exportar, novo negócio) saem da área visível até o usuário arrastar tudo para o lado.
+## Situação atual (verificada)
 
-## Causa
+Na função de webhook de entrada, quando um negócio já existe (encontrado pelo e-mail) e a estratégia é "atualizar":
+- os dados são atualizados (nome, e-mail, telefone, empresa, valor, tags, campos personalizados);
+- a etapa **não** é alterada — o negócio permanece onde estava no funil;
+- negócios arquivados ou marcados como ganhos continuam nesse estado, ou seja, uma nova entrada não os traz de volta ao fluxo ativo.
 
-O Kanban já usa `overflow-x-auto` (`src/components/leads/kanban/KanbanView.tsx`), mas o contêiner pai não limita a largura: em `src/components/layout/MainLayout.tsx` a coluna de conteúdo (`flex flex-1 flex-col` + `<main class="flex-1 p-4 sm:p-6">`) não tem `min-width: 0`. Por padrão, um item flex não encolhe abaixo do tamanho do conteúdo, então as colunas de 300px do Kanban esticam o layout inteiro, incluindo o cabeçalho.
+## O que será feito
 
-## Solução
+Quando uma nova entrada corresponder a um negócio já existente (estratégia "atualizar"):
 
-1. `src/components/layout/MainLayout.tsx`
-   - Adicionar `min-w-0` (e `w-full`) na coluna de conteúdo e `min-w-0 overflow-x-hidden` no `<main>`, para que o conteúdo respeite a largura disponível ao lado da sidebar.
-2. `src/pages/LeadsPage.tsx`
-   - Garantir `min-w-0` no wrapper principal da página, para que header e board não sejam esticados pelo conteúdo largo.
-3. `src/components/leads/kanban/KanbanView.tsx`
-   - Manter/reforçar `overflow-x-auto` com `min-w-0 w-full` nos dois contêineres de colunas (linhas ~157 e ~191), garantindo que a barra de rolagem horizontal apareça dentro do board.
+1. Mover o negócio para a **primeira etapa do funil configurado no webhook** (etapa de novo negócio), reiniciando o tempo na etapa.
+2. Se estiver arquivado, desarquivar: limpar data e motivo de arquivamento e voltar o status para "em andamento".
+3. Se estiver marcado como ganho, voltar o status para "em andamento".
+4. Registrar na linha do tempo do negócio uma atividade de "reentrada" informando a etapa de origem e a volta para a etapa inicial, além das alterações de campos.
+5. O registro de log do webhook continua marcando a ação como "atualizado", agora incluindo a mudança de etapa entre as alterações.
 
-## Verificação
+Isso mantém o histórico e as atividades do negócio original (sem duplicar o registro) e faz com que ele reapareça no topo do funil.
 
-Abrir `/leads` no preview (desktop e mobile) via Playwright, conferir que:
-- o cabeçalho e os botões ficam fixos e visíveis,
-- a rolagem horizontal ocorre somente dentro do Kanban,
-- a visão em lista continua correta.
+## Observações
+
+- A identificação de duplicado continua por **e-mail**. Se quiser também considerar telefone, posso incluir — diga e ajusto.
+- A estratégia "ignorar" e "criar novo" seguem inalteradas; o comportamento novo vale para webhooks com a estratégia "atualizar".
+
+## Detalhes técnicos
+
+- Arquivo: `supabase/functions/inbound-webhook/index.ts`, bloco `=== UPDATE strategy ===`.
+- No `updateData`: definir `stage_id = firstStage.id` e `stage_entered_at = now()` quando `existingLead.stage_id !== firstStage.id`; definir `archived_at = null`, `archive_reason_id = null`, `status = 'open'` quando arquivado/ganho.
+- Trigger existente de mudança de etapa continua disparando os webhooks de saída/automações normalmente.
+- Nova atividade `stage_change` (ou `field_update` com descrição de reentrada) inserida em `lead_activities`.
+- Redeploy da função após a alteração.
