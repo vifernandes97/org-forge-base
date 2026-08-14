@@ -425,18 +425,42 @@ Deno.serve(async (req) => {
       }
 
       // Log activity
+      const actorId = webhook.default_assigned_to || existingLead.assigned_to || (await getAnyOrgUser(supabase, webhook.organization_id));
+      if (movedStage) {
+        const { data: prevStage } = await supabase
+          .from("stages")
+          .select("name")
+          .eq("id", previousStageId)
+          .maybeSingle();
+        await supabase.from("lead_activities").insert({
+          organization_id: webhook.organization_id,
+          lead_id: existingLead.id,
+          user_id: actorId,
+          activity_type: "stage_change",
+          title: "Reentrada via formulário",
+          description: `Negócio retornou de "${prevStage?.name || "etapa anterior"}" para "${firstStage.name}"`,
+          metadata: {
+            source: "inbound_webhook",
+            webhook_name: webhook.name,
+            reentry: true,
+            from_stage_id: previousStageId,
+            to_stage_id: firstStage.id,
+          },
+        });
+      }
       if (changes.length > 0) {
         const changeDesc = changes.map((c) => `${c.field}: "${c.old_value || ""}" → "${c.new_value}"`).join("; ");
         await supabase.from("lead_activities").insert({
           organization_id: webhook.organization_id,
           lead_id: existingLead.id,
-          user_id: webhook.default_assigned_to || existingLead.assigned_to || (await getAnyOrgUser(supabase, webhook.organization_id)),
+          user_id: actorId,
           activity_type: "field_update",
           title: "Lead atualizado via formulário",
           description: changeDesc,
           metadata: { source: "inbound_webhook", webhook_name: webhook.name, changes },
         });
       }
+
 
       await logInbound(supabase, webhook, existingLead.id, "updated", rawPayload, mappedData, changes.length > 0 ? changes : null, null, ipAddress);
 
