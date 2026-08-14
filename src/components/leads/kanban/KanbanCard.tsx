@@ -100,12 +100,23 @@ export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
         <p className="text-xs text-muted-foreground truncate">{lead.name}</p>
       )}
 
-      {/* Row 3: company */}
-      {lead.company && (
-        <p className="text-xs text-muted-foreground truncate">{lead.company}</p>
+      {/* Row 3: business type (custom field) */}
+      {businessType && (
+        <p className="text-xs text-muted-foreground truncate">{businessType}</p>
       )}
 
-      {/* Row 3: stars + relative time */}
+      {/* Row 4: whatsapp / phone */}
+      {lead.phone && (
+        <button
+          type="button"
+          onClick={handleWhatsApp}
+          className="block text-xs text-muted-foreground hover:text-green-600 transition-colors truncate text-left"
+        >
+          {lead.phone}
+        </button>
+      )}
+
+      {/* Row 5: stars + relative time */}
       <div className="flex items-center justify-between gap-2">
         <div className={qualification > 0 ? '' : 'opacity-0 group-hover:opacity-100 transition-opacity'}>
           <StarRating
