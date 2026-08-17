@@ -119,7 +119,12 @@ async function enrichPayload(
     if (nested) {
       return {
         ...payload,
-        lead: { ...lead, ...payload.lead, custom_fields: customFields },
+        lead: {
+          ...lead,
+          ...payload.lead,
+          custom_fields: customFields,
+          custom_fields_by_name: customFieldsByName,
+        },
         transition: {
           ...payload.transition,
           previous_stage: {
