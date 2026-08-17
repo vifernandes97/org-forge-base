@@ -65,7 +65,7 @@ async function enrichPayload(
     const funnelId = payload.funnel_id ?? lead.funnel_id ?? null;
 
     const stageIds = [stageId, previousStageId].filter(Boolean);
-    const [stagesRes, funnelRes, valuesRes] = await Promise.all([
+    const [stagesRes, funnelRes, valuesRes, defsRes] = await Promise.all([
       stageIds.length
         ? supabase.from("stages").select("id, name").in("id", stageIds)
         : Promise.resolve({ data: [] }),
@@ -74,20 +74,35 @@ async function enrichPayload(
         : Promise.resolve({ data: null }),
       supabase
         .from("custom_field_values")
-        .select("value, custom_field_definitions!inner(field_label, organization_id)")
+        .select("value, field_definition_id")
         .eq("lead_id", leadId),
+      supabase
+        .from("custom_field_definitions")
+        .select("id, field_name, field_label, is_active, position")
+        .eq("organization_id", lead.organization_id)
+        .order("position"),
     ]);
 
     const stageMap = new Map<string, string>(
       (stagesRes.data || []).map((s: any) => [s.id, s.name])
     );
 
+    const valueMap = new Map<string, unknown>(
+      (valuesRes.data || []).map((v: any) => [
+        v.field_definition_id,
+        parseCustomValue(v.value),
+      ])
+    );
+
+    // Always include every active custom field of the org (null when empty),
+    // so downstream consumers get a stable payload shape.
     const customFields: Record<string, unknown> = {};
-    for (const row of valuesRes.data || []) {
-      const def = (row as any).custom_field_definitions;
-      if (!def) continue;
-      if (def.organization_id !== lead.organization_id) continue;
-      customFields[def.field_label] = parseCustomValue((row as any).value);
+    const customFieldsByName: Record<string, unknown> = {};
+    for (const def of (defsRes as any).data || []) {
+      if (def.is_active === false) continue;
+      const value = valueMap.has(def.id) ? valueMap.get(def.id) : null;
+      customFields[def.field_label] = value ?? null;
+      customFieldsByName[def.field_name] = value ?? null;
     }
 
     const enrichment = {
@@ -97,12 +112,19 @@ async function enrichPayload(
         : null,
       funnel_name: (funnelRes as any).data?.name ?? null,
       custom_fields: customFields,
+      custom_fields_by_name: customFieldsByName,
     };
+
 
     if (nested) {
       return {
         ...payload,
-        lead: { ...lead, ...payload.lead, custom_fields: customFields },
+        lead: {
+          ...lead,
+          ...payload.lead,
+          custom_fields: customFields,
+          custom_fields_by_name: customFieldsByName,
+        },
         transition: {
           ...payload.transition,
           previous_stage: {
