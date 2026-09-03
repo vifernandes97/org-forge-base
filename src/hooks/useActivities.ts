@@ -21,3 +21,14 @@ export function useCreateActivity() {
     },
   });
 }
+
+export function useUpdateActivity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: updateActivity,
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['lead-activities', vars.lead_id] });
+      qc.invalidateQueries({ queryKey: ['lead', vars.lead_id] });
+    },
+  });
+}
