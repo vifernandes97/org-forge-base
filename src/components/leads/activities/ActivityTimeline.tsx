@@ -56,7 +56,7 @@ export function ActivityTimeline({ leadId }: { leadId: string }) {
 
       <div className="space-y-4">
         {activities.map(activity => (
-          <ActivityItem key={activity.id} activity={activity} />
+          <ActivityItem key={activity.id} activity={activity} leadId={leadId} />
         ))}
       </div>
 
@@ -71,39 +71,114 @@ export function ActivityTimeline({ leadId }: { leadId: string }) {
   );
 }
 
-function ActivityItem({ activity }: { activity: LeadActivityWithUser }) {
+const EDITABLE_TYPES = ['note', 'call', 'email', 'meeting'];
+
+function ActivityItem({ activity, leadId }: { activity: LeadActivityWithUser; leadId: string }) {
   const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(activity.title);
+  const [description, setDescription] = useState(activity.description || '');
+  const { user } = useAuth();
+  const updateActivityMut = useUpdateActivity();
   const hasLongDesc = activity.description && activity.description.length > 120;
+  const canEdit =
+    EDITABLE_TYPES.includes(activity.activity_type) && user?.id === activity.user_id;
+
+  const handleSave = async () => {
+    if (!title.trim()) {
+      toast.error('O título não pode ficar vazio');
+      return;
+    }
+    try {
+      await updateActivityMut.mutateAsync({
+        id: activity.id,
+        lead_id: leadId,
+        title: title.trim(),
+        description: description.trim() || null,
+      });
+      toast.success('Nota atualizada!');
+      setEditing(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao atualizar nota');
+    }
+  };
+
+  const handleCancel = () => {
+    setTitle(activity.title);
+    setDescription(activity.description || '');
+    setEditing(false);
+  };
 
   return (
-    <div className="flex gap-3 relative">
+    <div className="flex gap-3 relative group">
       <ActivityIcon type={activity.activity_type as ActivityType} />
       <div className="flex-1 min-w-0 pt-0.5">
-        <p className="text-sm font-medium leading-snug">{activity.title}</p>
-        {activity.description && (
-          <div className="mt-0.5">
-            <p className={`text-sm text-muted-foreground whitespace-pre-wrap ${!expanded && hasLongDesc ? 'line-clamp-2' : ''}`}>
-              {activity.description}
-            </p>
-            {hasLongDesc && (
-              <button onClick={() => setExpanded(!expanded)} className="text-xs text-primary hover:underline flex items-center gap-0.5 mt-0.5">
-                {expanded ? <><ChevronUp className="h-3 w-3" /> Menos</> : <><ChevronDown className="h-3 w-3" /> Mais</>}
-              </button>
-            )}
+        {editing ? (
+          <div className="space-y-2">
+            <Input
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Título"
+              className="h-8 text-sm"
+            />
+            <Textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Descrição"
+              rows={4}
+              className="text-sm"
+            />
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleSave} disabled={updateActivityMut.isPending}>
+                {updateActivityMut.isPending ? 'Salvando...' : 'Salvar'}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={handleCancel}>
+                Cancelar
+              </Button>
+            </div>
           </div>
+        ) : (
+          <>
+            <div className="flex items-start gap-2">
+              <p className="text-sm font-medium leading-snug flex-1">{activity.title}</p>
+              {canEdit && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+                  onClick={() => setEditing(true)}
+                  aria-label="Editar nota"
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+            {activity.description && (
+              <div className="mt-0.5">
+                <p className={`text-sm text-muted-foreground whitespace-pre-wrap ${!expanded && hasLongDesc ? 'line-clamp-2' : ''}`}>
+                  {activity.description}
+                </p>
+                {hasLongDesc && (
+                  <button onClick={() => setExpanded(!expanded)} className="text-xs text-primary hover:underline flex items-center gap-0.5 mt-0.5">
+                    {expanded ? <><ChevronUp className="h-3 w-3" /> Menos</> : <><ChevronDown className="h-3 w-3" /> Mais</>}
+                  </button>
+                )}
+              </div>
+            )}
+            <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+              {activity.user && (
+                <span className="flex items-center gap-1">
+                  <Avatar className="h-4 w-4">
+                    <AvatarFallback className="text-[8px]">{activity.user.full_name?.[0]}</AvatarFallback>
+                  </Avatar>
+                  {activity.user.full_name}
+                </span>
+              )}
+              <span>·</span>
+              <span>{formatDistanceToNow(new Date(activity.created_at), { addSuffix: true, locale: ptBR })}</span>
+            </div>
+          </>
         )}
-        <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
-          {activity.user && (
-            <span className="flex items-center gap-1">
-              <Avatar className="h-4 w-4">
-                <AvatarFallback className="text-[8px]">{activity.user.full_name?.[0]}</AvatarFallback>
-              </Avatar>
-              {activity.user.full_name}
-            </span>
-          )}
-          <span>·</span>
-          <span>{formatDistanceToNow(new Date(activity.created_at), { addSuffix: true, locale: ptBR })}</span>
-        </div>
       </div>
     </div>
   );
