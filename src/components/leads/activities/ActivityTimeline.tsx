@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import { useLeadActivities } from '@/hooks/useActivities';
+import { useLeadActivities, useUpdateActivity } from '@/hooks/useActivities';
 import { ActivityIcon } from './ActivityIcon';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Pencil } from 'lucide-react';
+import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 import type { LeadActivityWithUser, ActivityType } from '@/types';
 
 const PAGE_SIZE = 20;
