@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getLeadActivities, createActivity } from '@/services/activities';
+import { getLeadActivities, createActivity, updateActivity } from '@/services/activities';
 
 export function useLeadActivities(leadId: string | undefined, page: number, pageSize = 20) {
   return useQuery({
