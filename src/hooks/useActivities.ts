@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getLeadActivities, createActivity } from '@/services/activities';
+import { getLeadActivities, createActivity, updateActivity } from '@/services/activities';
 
 export function useLeadActivities(leadId: string | undefined, page: number, pageSize = 20) {
   return useQuery({
@@ -18,6 +18,17 @@ export function useCreateActivity() {
       qc.invalidateQueries({ queryKey: ['lead', vars.lead_id] });
       qc.invalidateQueries({ queryKey: ['leads-kanban'] });
       qc.invalidateQueries({ queryKey: ['leads-list'] });
+    },
+  });
+}
+
+export function useUpdateActivity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: updateActivity,
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['lead-activities', vars.lead_id] });
+      qc.invalidateQueries({ queryKey: ['lead', vars.lead_id] });
     },
   });
 }
