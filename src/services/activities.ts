@@ -28,3 +28,19 @@ export async function createActivity(data: {
   // Also update lead's last_activity_at
   await supabase.from('leads').update({ last_activity_at: new Date().toISOString() } as any).eq('id', data.lead_id);
 }
+
+export async function updateActivity(params: {
+  id: string;
+  lead_id: string;
+  title?: string;
+  description?: string | null;
+}) {
+  const updates: Record<string, any> = {};
+  if (params.title !== undefined) updates.title = params.title;
+  if (params.description !== undefined) updates.description = params.description;
+  const { error } = await supabase
+    .from('lead_activities')
+    .update(updates as any)
+    .eq('id', params.id);
+  if (error) throw error;
+}
