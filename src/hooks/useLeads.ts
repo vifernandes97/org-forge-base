@@ -5,7 +5,7 @@ import {
   getLeads, getLead, createLead, updateLead, deleteLead,
   upsertCustomFieldValues, upsertCustomFieldValue, getLeadsByFunnel, getLeadsListPaginated,
   moveLeadToStage, bulkMoveLeads, bulkAssignLeads, bulkDeleteLeads, bulkArchiveLeads,
-  archiveLead, unarchiveLead,
+  archiveLead, unarchiveLead, mergeLeads,
 } from '@/services/leads';
 
 export function useLeads() {
@@ -213,6 +213,24 @@ export function useUnarchiveLead() {
       qc.invalidateQueries({ queryKey: ['lead', leadId] });
       qc.invalidateQueries({ queryKey: ['leads-kanban'] });
       qc.invalidateQueries({ queryKey: ['leads-list'] });
+    },
+  });
+}
+
+export function useMergeLeads() {
+  const qc = useQueryClient();
+  const { organization } = useOrganization();
+  return useMutation({
+    mutationFn: (vars: { primaryId: string; duplicateIds: string[] }) =>
+      mergeLeads(vars.primaryId, vars.duplicateIds),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['leads', organization?.id] });
+      qc.invalidateQueries({ queryKey: ['leads-kanban'] });
+      qc.invalidateQueries({ queryKey: ['leads-list'] });
+      qc.invalidateQueries({ queryKey: ['lead'] });
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: ['activities'] });
+      qc.invalidateQueries({ queryKey: ['funnel-metrics'] });
     },
   });
 }
