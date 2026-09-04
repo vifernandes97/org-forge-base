@@ -323,3 +323,41 @@ export async function getArchiveReasonsSummary(
     count: Number(r.count),
   }));
 }
+
+export async function mergeLeads(primaryId: string, duplicateIds: string[]) {
+  const { data, error } = await supabase.rpc('merge_leads' as any, {
+    p_primary_id: primaryId,
+    p_duplicate_ids: duplicateIds,
+  });
+  if (error) throw error;
+  return data as any;
+}
+
+export async function getLeadsByIds(ids: string[]) {
+  if (!ids.length) return [];
+  const { data, error } = await supabase
+    .from('leads')
+    .select('*, stage:stages(*), assigned_profile:profiles!leads_assigned_to_fkey(*)')
+    .in('id', ids);
+  if (error) throw error;
+  return data as any[];
+}
+
+export async function searchLeadsForMerge(orgId: string, term: string, excludeId: string) {
+  const t = term.trim();
+  let query = supabase
+    .from('leads')
+    .select('*, stage:stages(*)')
+    .eq('organization_id', orgId)
+    .neq('id', excludeId)
+    .limit(10);
+  if (t) {
+    const s = `%${t}%`;
+    query = query.or(
+      [`name.ilike.${s}`, `company.ilike.${s}`, `company_name.ilike.${s}`, `email.ilike.${s}`, `phone.ilike.${s}`].join(',')
+    );
+  }
+  const { data, error } = await query.order('last_activity_at', { ascending: false });
+  if (error) throw error;
+  return data as any[];
+}

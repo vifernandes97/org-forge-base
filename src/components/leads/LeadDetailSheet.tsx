@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { TaskList } from '@/components/tasks/TaskList';
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
-import { Plus, Archive, ArchiveRestore, Trophy } from 'lucide-react';
+import { Plus, Archive, ArchiveRestore, Trophy, Merge } from 'lucide-react';
 import { QuickActivityForm } from './activities/QuickActivityForm';
 import { ActivityTimeline } from './activities/ActivityTimeline';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -24,6 +24,7 @@ import { CustomFieldInlineEdit } from './CustomFieldInlineEdit';
 import { StagePipeline } from './StagePipeline';
 
 import { LeadFormDialog } from './LeadFormDialog';
+import { MergeLeadsDialog } from './MergeLeadsDialog';
 import { Pencil, Trash2, Clock, AlertTriangle, Building2, Mail, Tag, User, DollarSign, FileText, Instagram, FileBadge } from 'lucide-react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -57,6 +58,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [mergeOpen, setMergeOpen] = useState(false);
   const [selectedReasonId, setSelectedReasonId] = useState<string>('');
 
   const handleStageChange = async (stageId: string) => {
@@ -255,6 +257,11 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                     {typedLead.status === 'won' && (
                       <Button variant="ghost" size="sm" onClick={handleToggleWon} className="text-muted-foreground text-xs">
                         Reabrir
+                      </Button>
+                    )}
+                    {!isArchived && (
+                      <Button variant="ghost" size="icon" onClick={() => setMergeOpen(true)} aria-label="Mesclar negócio">
+                        <Merge className="h-4 w-4" />
                       </Button>
                     )}
                     {!isArchived && (
@@ -579,6 +586,14 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
           )}
         </SheetContent>
       </Sheet>
+
+      {typedLead && (
+        <MergeLeadsDialog
+          open={mergeOpen}
+          onOpenChange={setMergeOpen}
+          baseLeadId={typedLead.id}
+        />
+      )}
 
       {/* Archive dialog */}
       <AlertDialog open={archiveDialogOpen} onOpenChange={v => { setArchiveDialogOpen(v); if (!v) setSelectedReasonId(''); }}>
