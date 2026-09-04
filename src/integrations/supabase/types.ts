@@ -495,6 +495,8 @@ export type Database = {
           funnel_id: string
           id: string
           last_activity_at: string
+          merged_at: string | null
+          merged_into_lead_id: string | null
           name: string
           notes: string | null
           organization_id: string
@@ -521,6 +523,8 @@ export type Database = {
           funnel_id: string
           id?: string
           last_activity_at?: string
+          merged_at?: string | null
+          merged_into_lead_id?: string | null
           name: string
           notes?: string | null
           organization_id: string
@@ -547,6 +551,8 @@ export type Database = {
           funnel_id?: string
           id?: string
           last_activity_at?: string
+          merged_at?: string | null
+          merged_into_lead_id?: string | null
           name?: string
           notes?: string | null
           organization_id?: string
@@ -581,6 +587,13 @@ export type Database = {
             columns: ["funnel_id"]
             isOneToOne: false
             referencedRelation: "funnels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_merged_into_lead_id_fkey"
+            columns: ["merged_into_lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
           {
@@ -1241,6 +1254,10 @@ export type Database = {
           p_token: string
         }
         Returns: undefined
+      }
+      merge_leads: {
+        Args: { p_duplicate_ids: string[]; p_primary_id: string }
+        Returns: Json
       }
       record_invite_event: {
         Args: { p_event: string; p_invite_id: string; p_metadata?: Json }
