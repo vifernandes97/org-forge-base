@@ -6,7 +6,9 @@ import { useBulkMoveLeads, useBulkAssignLeads, useBulkDeleteLeads, useBulkArchiv
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { useActiveArchiveReasons } from '@/hooks/useArchiveReasons';
 import { toast } from 'sonner';
-import { Trash2, ArrowRight, UserPlus, Archive } from 'lucide-react';
+import { useState } from 'react';
+import { MergeLeadsDialog } from '../MergeLeadsDialog';
+import { Trash2, ArrowRight, UserPlus, Archive, Merge } from 'lucide-react';
 import type { Stage } from '@/types';
 
 interface BulkActionsBarProps {
@@ -22,6 +24,7 @@ export function BulkActionsBar({ selectedIds, stages, onClear }: BulkActionsBarP
   const bulkArchive = useBulkArchiveLeads();
   const { data: members } = useOrgMembers();
   const { data: archiveReasons } = useActiveArchiveReasons();
+  const [mergeOpen, setMergeOpen] = useState(false);
 
   const handleMove = async (stageId: string) => {
     try {
@@ -105,6 +108,22 @@ export function BulkActionsBar({ selectedIds, stages, onClear }: BulkActionsBarP
           ))}
         </SelectContent>
       </Select>
+
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={selectedIds.length < 2}
+        onClick={() => setMergeOpen(true)}
+      >
+        <Merge className="h-3.5 w-3.5 mr-1" /> Mesclar
+      </Button>
+
+      <MergeLeadsDialog
+        open={mergeOpen}
+        onOpenChange={setMergeOpen}
+        leadIds={selectedIds}
+        onMerged={onClear}
+      />
 
       <AlertDialog>
         <AlertDialogTrigger asChild>
