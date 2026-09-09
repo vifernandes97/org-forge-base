@@ -41,10 +41,11 @@ import { toast } from 'sonner';
 type ViewMode = 'kanban' | 'list';
 
 const LS_VIEW_KEY = 'crm_leads_view_mode';
-const LS_FUNNEL_KEY = 'crm_leads_funnel_id';
+const funnelKey = (orgId: string) => `crm_leads_funnel_id:${orgId}`;
 
 export default function LeadsPage() {
-  const { isOwner, isAdmin, isMember } = useOrganization();
+  const { isOwner, isAdmin, isMember, organization } = useOrganization();
+  const orgId = organization?.id;
   const { data: funnels, isLoading: funnelsLoading } = useFunnels();
   const canCreate = isOwner || isAdmin || isMember;
   const { filters, searchInput, setFilter, clearFilters, applyFilters, applyMany, activeFilterCount } = useLeadFilters();
@@ -58,9 +59,7 @@ export default function LeadsPage() {
     return 'kanban';
   });
 
-  const [selectedFunnelId, setSelectedFunnelId] = useState<string>(() =>
-    localStorage.getItem(LS_FUNNEL_KEY) || ''
-  );
+  const [selectedFunnelId, setSelectedFunnelId] = useState<string>('');
   const [createOpen, setCreateOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
 
