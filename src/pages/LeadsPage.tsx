@@ -241,16 +241,20 @@ export default function LeadsPage() {
           ) : (
             <ListView funnelId={selectedFunnelId} filters={filters} />
           )
+        ) : funnelsLoading || (funnels && funnels.length > 0) ? (
+          <div className="flex items-center justify-center rounded-lg border border-dashed p-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center gap-4">
             <Contact className="h-12 w-12 text-muted-foreground/50" />
             <div className="space-y-1">
               <p className="font-medium">Nenhum funil configurado</p>
               <p className="text-sm text-muted-foreground">
-                {funnelsLoading ? 'Carregando funis...' : 'Configure seu primeiro funil para começar a gerenciar seus negócios.'}
+                Configure seu primeiro funil para começar a gerenciar seus negócios.
               </p>
             </div>
-            {!funnelsLoading && (
+            {(
               <Button variant="outline" onClick={() => window.location.href = '/settings/funnels'}>
                 Configurar funil
               </Button>
