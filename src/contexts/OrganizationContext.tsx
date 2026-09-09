@@ -45,8 +45,15 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     try {
       if (showLoading) setLoading(true);
       const data = await getUserOrganizations();
-      const orgs = data.map(d => d.organizations);
-      const membList = data.map(d => ({ org_id: d.organization_id, role: d.role as OrgRole }));
+      // A user may have more than one membership row per org — keep one entry per organization
+      const seen = new Set<string>();
+      const orgs = data
+        .map(d => d.organizations)
+        .filter(o => o && !seen.has(o.id) && seen.add(o.id));
+      const membSeen = new Set<string>();
+      const membList = data
+        .filter(d => !membSeen.has(d.organization_id) && membSeen.add(d.organization_id))
+        .map(d => ({ org_id: d.organization_id, role: d.role as OrgRole }));
       setOrganizations(orgs);
       setMemberships(membList);
 
