@@ -36,6 +36,13 @@
       "when": 1788990790284,
       "tag": "0004_revoke_public_execute_definer_functions",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788990813809,
+      "tag": "0005_revoke_anon_org_helpers",
+      "breakpoints": true
     }
   ]
 }
