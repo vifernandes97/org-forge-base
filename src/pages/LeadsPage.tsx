@@ -41,10 +41,11 @@ import { toast } from 'sonner';
 type ViewMode = 'kanban' | 'list';
 
 const LS_VIEW_KEY = 'crm_leads_view_mode';
-const LS_FUNNEL_KEY = 'crm_leads_funnel_id';
+const funnelKey = (orgId: string) => `crm_leads_funnel_id:${orgId}`;
 
 export default function LeadsPage() {
-  const { isOwner, isAdmin, isMember } = useOrganization();
+  const { isOwner, isAdmin, isMember, organization } = useOrganization();
+  const orgId = organization?.id;
   const { data: funnels, isLoading: funnelsLoading } = useFunnels();
   const canCreate = isOwner || isAdmin || isMember;
   const { filters, searchInput, setFilter, clearFilters, applyFilters, applyMany, activeFilterCount } = useLeadFilters();
@@ -58,9 +59,7 @@ export default function LeadsPage() {
     return 'kanban';
   });
 
-  const [selectedFunnelId, setSelectedFunnelId] = useState<string>(() =>
-    localStorage.getItem(LS_FUNNEL_KEY) || ''
-  );
+  const [selectedFunnelId, setSelectedFunnelId] = useState<string>('');
   const [createOpen, setCreateOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -70,7 +69,7 @@ export default function LeadsPage() {
     if (!selectedFunnelId) return;
     setExporting(true);
     try {
-      const leads = await getLeadsByFunnel(selectedFunnelId, filters);
+      const leads = await getLeadsByFunnel(selectedFunnelId, filters, orgId);
       if (!leads.length) {
         toast.info('Nenhum negócio encontrado para exportar.');
         return;
@@ -101,20 +100,23 @@ export default function LeadsPage() {
 
   useEffect(() => { localStorage.setItem(LS_VIEW_KEY, viewMode); }, [viewMode]);
   useEffect(() => {
-    if (selectedFunnelId) localStorage.setItem(LS_FUNNEL_KEY, selectedFunnelId);
-  }, [selectedFunnelId]);
+    if (orgId && selectedFunnelId) localStorage.setItem(funnelKey(orgId), selectedFunnelId);
+  }, [orgId, selectedFunnelId]);
 
-  // Auto-select default funnel
+  // Clear selection immediately when switching companies
+  useEffect(() => { setSelectedFunnelId(''); }, [orgId]);
+
+  // Auto-select funnel of the active organization
   useEffect(() => {
-    if (!funnels?.length) return;
-    const stored = localStorage.getItem(LS_FUNNEL_KEY);
+    if (!orgId || !funnels?.length) return;
+    const stored = localStorage.getItem(funnelKey(orgId));
     if (stored && funnels.find(f => f.id === stored)) {
       setSelectedFunnelId(stored);
       return;
     }
     const defaultFunnel = funnels.find(f => f.is_default) || funnels[0];
     setSelectedFunnelId(defaultFunnel.id);
-  }, [funnels]);
+  }, [funnels, orgId]);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -239,16 +241,20 @@ export default function LeadsPage() {
           ) : (
             <ListView funnelId={selectedFunnelId} filters={filters} />
           )
+        ) : funnelsLoading || (funnels && funnels.length > 0) ? (
+          <div className="flex items-center justify-center rounded-lg border border-dashed p-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center gap-4">
             <Contact className="h-12 w-12 text-muted-foreground/50" />
             <div className="space-y-1">
               <p className="font-medium">Nenhum funil configurado</p>
               <p className="text-sm text-muted-foreground">
-                {funnelsLoading ? 'Carregando funis...' : 'Configure seu primeiro funil para começar a gerenciar seus negócios.'}
+                Configure seu primeiro funil para começar a gerenciar seus negócios.
               </p>
             </div>
-            {!funnelsLoading && (
+            {(
               <Button variant="outline" onClick={() => window.location.href = '/settings/funnels'}>
                 Configurar funil
               </Button>
