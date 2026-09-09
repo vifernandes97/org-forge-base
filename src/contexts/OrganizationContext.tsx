@@ -76,8 +76,11 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   }, [organizations, activeOrgId]);
 
   const setActiveOrg = (orgId: string) => {
+    if (orgId === activeOrgId) return;
     setActiveOrgId(orgId);
     localStorage.setItem(ACTIVE_ORG_KEY, orgId);
+    // Discard cached data from the previous organization
+    queryClient.clear();
   };
 
   const organization = organizations.find(o => o.id === activeOrgId) ?? null;
