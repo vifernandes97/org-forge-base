@@ -15,6 +15,13 @@
       "when": 1788528924133,
       "tag": "0001_merge_leads",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788989004874,
+      "tag": "0002_contacts_lead_fk",
+      "breakpoints": true
     }
   ]
 }
