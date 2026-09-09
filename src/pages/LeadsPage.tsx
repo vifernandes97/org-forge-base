@@ -63,6 +63,7 @@ export default function LeadsPage() {
 
   const [selectedFunnelId, setSelectedFunnelId] = useState<string>('');
   const [createOpen, setCreateOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
 
   const currentStatusFilter = filters.status_filter || 'open';
