@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { Organization, OrgRole } from '@/types';
 import { useAuth } from './AuthContext';
 import { getUserOrganizations } from '@/services/organizations';
