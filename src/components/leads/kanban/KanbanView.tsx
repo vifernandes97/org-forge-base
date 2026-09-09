@@ -44,15 +44,22 @@ export function KanbanView({ funnelId, filters }: KanbanViewProps) {
     [stages]
   );
 
+  const hasCustomFieldFilter = !!filters?.custom_fields && Object.keys(filters.custom_fields).length > 0;
+  const leadIds = useMemo(() => (leads || []).map((l: any) => l.id), [leads]);
+
+  const { data: cfRows } = useQuery({
+    queryKey: ['custom-field-values', funnelId, leadIds],
+    queryFn: () => getCustomFieldValuesForLeads(leadIds),
+    enabled: hasCustomFieldFilter && leadIds.length > 0,
+  });
+
+  const cfMap = useMemo(() => buildCustomFieldValueMap((cfRows || []) as any), [cfRows]);
+
   // Apply client-side filters (stage_time, custom_fields)
-  const filteredLeads = useMemo(() => {
-    let result = leads || [];
-    if (filters?.stage_time) {
-      result = result.filter((l: any) => matchesStageTime(l, filters.stage_time!, sortedStages));
-    }
-    // Custom field filtering would go here if custom_field_values were loaded
-    return result;
-  }, [leads, filters, sortedStages]);
+  const filteredLeads = useMemo(
+    () => applyClientFilters((leads || []) as any[], filters, sortedStages, cfMap),
+    [leads, filters, sortedStages, cfMap]
+  );
 
   const leadsByStage = useMemo(() => {
     const map: Record<string, LeadWithRelations[]> = {};
