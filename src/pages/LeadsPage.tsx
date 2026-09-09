@@ -35,7 +35,12 @@ import {
   MoreHorizontal,
 } from 'lucide-react';
 import { ImportLeadsDialog } from '@/components/leads/import/ImportLeadsDialog';
-import { getLeadsByFunnel } from '@/services/leads';
+import { getLeadsForExport, getCustomFieldValuesForLeads } from '@/services/leads';
+import { getActivitiesForLeads } from '@/services/activities';
+import { useStages } from '@/hooks/useStages';
+import { useCustomFields } from '@/hooks/useCustomFields';
+import { applyClientFilters, buildCustomFieldValueMap } from '@/lib/leadClientFilters';
+import { buildActivityRows, buildLeadRows } from '@/lib/leadsExport';
 import { downloadCSV } from '@/lib/exportCsv';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
