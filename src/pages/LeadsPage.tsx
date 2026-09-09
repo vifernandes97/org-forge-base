@@ -29,10 +29,12 @@ import {
   List,
   Contact,
   Download,
+  Upload,
   Loader2,
   ChevronDown,
   MoreHorizontal,
 } from 'lucide-react';
+import { ImportLeadsDialog } from '@/components/leads/import/ImportLeadsDialog';
 import { getLeadsByFunnel } from '@/services/leads';
 import { downloadCSV } from '@/lib/exportCsv';
 import { format } from 'date-fns';
@@ -61,6 +63,7 @@ export default function LeadsPage() {
 
   const [selectedFunnelId, setSelectedFunnelId] = useState<string>('');
   const [createOpen, setCreateOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
 
   const currentStatusFilter = filters.status_filter || 'open';
@@ -198,6 +201,12 @@ export default function LeadsPage() {
                     )}
                     Exportar CSV
                   </DropdownMenuItem>
+                  {canCreate && (
+                    <DropdownMenuItem onClick={() => setImportOpen(true)}>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Importar planilha
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -263,6 +272,11 @@ export default function LeadsPage() {
         )}
 
         <LeadFormDialog open={createOpen} onOpenChange={setCreateOpen} />
+        <ImportLeadsDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          defaultFunnelId={selectedFunnelId}
+        />
       </div>
     </TooltipProvider>
   );
