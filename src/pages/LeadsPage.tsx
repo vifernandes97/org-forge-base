@@ -100,20 +100,23 @@ export default function LeadsPage() {
 
   useEffect(() => { localStorage.setItem(LS_VIEW_KEY, viewMode); }, [viewMode]);
   useEffect(() => {
-    if (selectedFunnelId) localStorage.setItem(LS_FUNNEL_KEY, selectedFunnelId);
-  }, [selectedFunnelId]);
+    if (orgId && selectedFunnelId) localStorage.setItem(funnelKey(orgId), selectedFunnelId);
+  }, [orgId, selectedFunnelId]);
 
-  // Auto-select default funnel
+  // Clear selection immediately when switching companies
+  useEffect(() => { setSelectedFunnelId(''); }, [orgId]);
+
+  // Auto-select funnel of the active organization
   useEffect(() => {
-    if (!funnels?.length) return;
-    const stored = localStorage.getItem(LS_FUNNEL_KEY);
+    if (!orgId || !funnels?.length) return;
+    const stored = localStorage.getItem(funnelKey(orgId));
     if (stored && funnels.find(f => f.id === stored)) {
       setSelectedFunnelId(stored);
       return;
     }
     const defaultFunnel = funnels.find(f => f.is_default) || funnels[0];
     setSelectedFunnelId(defaultFunnel.id);
-  }, [funnels]);
+  }, [funnels, orgId]);
 
   return (
     <TooltipProvider delayDuration={200}>
