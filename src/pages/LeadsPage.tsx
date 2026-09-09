@@ -201,6 +201,12 @@ export default function LeadsPage() {
                     )}
                     Exportar CSV
                   </DropdownMenuItem>
+                  {canCreate && (
+                    <DropdownMenuItem onClick={() => setImportOpen(true)}>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Importar planilha
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
