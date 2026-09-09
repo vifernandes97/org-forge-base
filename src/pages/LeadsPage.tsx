@@ -29,10 +29,12 @@ import {
   List,
   Contact,
   Download,
+  Upload,
   Loader2,
   ChevronDown,
   MoreHorizontal,
 } from 'lucide-react';
+import { ImportLeadsDialog } from '@/components/leads/import/ImportLeadsDialog';
 import { getLeadsByFunnel } from '@/services/leads';
 import { downloadCSV } from '@/lib/exportCsv';
 import { format } from 'date-fns';
