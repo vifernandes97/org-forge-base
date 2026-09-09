@@ -24,6 +24,7 @@ const ACTIVE_ORG_KEY = 'crm_active_org_id';
 
 export function OrganizationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const userId = user?.id ?? null;
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [memberships, setMemberships] = useState<{ org_id: string; role: OrgRole }[]>([]);
