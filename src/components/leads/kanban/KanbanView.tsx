@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
-import { differenceInHours } from 'date-fns';
 import { useStages } from '@/hooks/useStages';
 import { useLeadsByFunnel, useMoveLeadToStage } from '@/hooks/useLeads';
 import { useCreateActivity } from '@/hooks/useActivities';
