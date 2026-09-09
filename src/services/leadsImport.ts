@@ -190,8 +190,9 @@ export async function runImport(params: {
       stage_id: stageId,
       priority: 'medium',
       value: 0,
-      tags: [],
+      tags: [] as string[],
       ...r.lead,
+      name: String(r.lead.name),
     }));
     const { data, error } = await supabase.from('leads').insert(payload).select('id');
     if (error || !data) {
