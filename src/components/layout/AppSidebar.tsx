@@ -10,7 +10,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { useOrganization } from '@/contexts/OrganizationContext';
+import { OrgSwitcher } from '@/components/layout/OrgSwitcher';
 import { useTaskBadgeCounts } from '@/hooks/useTasks';
 import { Badge } from '@/components/ui/badge';
 
@@ -27,20 +27,12 @@ const settingsNav = [
 ];
 
 export function AppSidebar() {
-  const { organization } = useOrganization();
   const { data: badgeCounts } = useTaskBadgeCounts();
   const totalBadge = (badgeCounts?.overdue || 0) + (badgeCounts?.today || 0);
 
   return (
     <Sidebar collapsible="icon" className="border-r">
-      <div className="flex h-14 items-center gap-2 border-b px-4">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
-          {organization?.name?.[0]?.toUpperCase() || 'C'}
-        </div>
-        <span className="truncate text-sm font-semibold group-data-[collapsible=icon]:hidden">
-          {organization?.name || 'CRM'}
-        </span>
-      </div>
+      <OrgSwitcher />
 
       <SidebarContent>
         <SidebarGroup>

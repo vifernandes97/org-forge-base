@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { Organization, OrgRole } from '@/types';
 import { useAuth } from './AuthContext';
 import { getUserOrganizations } from '@/services/organizations';
@@ -23,6 +24,7 @@ const ACTIVE_ORG_KEY = 'crm_active_org_id';
 
 export function OrganizationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const userId = user?.id ?? null;
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [memberships, setMemberships] = useState<{ org_id: string; role: OrgRole }[]>([]);
@@ -43,8 +45,15 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     try {
       if (showLoading) setLoading(true);
       const data = await getUserOrganizations();
-      const orgs = data.map(d => d.organizations);
-      const membList = data.map(d => ({ org_id: d.organization_id, role: d.role as OrgRole }));
+      // A user may have more than one membership row per org — keep one entry per organization
+      const seen = new Set<string>();
+      const orgs = data
+        .map(d => d.organizations)
+        .filter(o => o && !seen.has(o.id) && seen.add(o.id));
+      const membSeen = new Set<string>();
+      const membList = data
+        .filter(d => !membSeen.has(d.organization_id) && membSeen.add(d.organization_id))
+        .map(d => ({ org_id: d.organization_id, role: d.role as OrgRole }));
       setOrganizations(orgs);
       setMemberships(membList);
 
@@ -76,8 +85,11 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   }, [organizations, activeOrgId]);
 
   const setActiveOrg = (orgId: string) => {
+    if (orgId === activeOrgId) return;
     setActiveOrgId(orgId);
     localStorage.setItem(ACTIVE_ORG_KEY, orgId);
+    // Discard cached data from the previous organization
+    queryClient.clear();
   };
 
   const organization = organizations.find(o => o.id === activeOrgId) ?? null;

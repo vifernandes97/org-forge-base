@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Separator } from '@/components/ui/separator';
-import { Building2, Trash2 } from 'lucide-react';
+import { Building2, Trash2, Plus } from 'lucide-react';
+import { CreateOrganizationDialog } from '@/components/organizations/CreateOrganizationDialog';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -24,6 +25,7 @@ export default function OrganizationPage() {
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
     if (organization) {
@@ -82,10 +84,18 @@ export default function OrganizationPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold flex items-center gap-2">
-        <Building2 className="h-6 w-6" />
-        Organização
-      </h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Building2 className="h-6 w-6" />
+          Organização
+        </h1>
+        <Button variant="outline" onClick={() => setCreateOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nova empresa
+        </Button>
+      </div>
+
+      <CreateOrganizationDialog open={createOpen} onOpenChange={setCreateOpen} />
 
       <Card>
         <CardHeader>
