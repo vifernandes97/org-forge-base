@@ -4,6 +4,7 @@ import { useLeadsList } from '@/hooks/useLeads';
 import { useStages } from '@/hooks/useStages';
 import { useCustomFields } from '@/hooks/useCustomFields';
 import { getCustomFieldValuesForLeads } from '@/services/leads';
+import { applyClientFilters } from '@/lib/leadClientFilters';
 import { LeadDetailSheet } from '@/components/leads/LeadDetailSheet';
 import { BulkActionsBar } from './BulkActionsBar';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -100,13 +101,13 @@ export function ListView({ funnelId, filters }: ListViewProps) {
   const { data: result, isLoading } = useLeadsList(funnelId, page, pageSize, sortBy, sortOrder, filters);
   const { data: customFields } = useCustomFields();
 
-  const leads = result?.data || [];
+  const rawLeads = result?.data || [];
   const totalCount = result?.count || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
 
   const activeCustomFields = useMemo(() => (customFields || []).filter(f => f.is_active), [customFields]);
 
-  const leadIds = useMemo(() => leads.map((l: any) => l.id), [leads]);
+  const leadIds = useMemo(() => rawLeads.map((l: any) => l.id), [rawLeads]);
   const { data: cfValues } = useQuery({
     queryKey: ['custom-field-values-list', leadIds],
     queryFn: () => getCustomFieldValuesForLeads(leadIds),
@@ -121,6 +122,11 @@ export function ListView({ funnelId, filters }: ListViewProps) {
     });
     return map;
   }, [cfValues]);
+
+  const leads = useMemo(
+    () => applyClientFilters(rawLeads as any[], filters, stages || [], cfValueMap),
+    [rawLeads, filters, stages, cfValueMap]
+  );
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(visibleColumns));

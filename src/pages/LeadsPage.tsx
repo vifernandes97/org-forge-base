@@ -35,7 +35,12 @@ import {
   MoreHorizontal,
 } from 'lucide-react';
 import { ImportLeadsDialog } from '@/components/leads/import/ImportLeadsDialog';
-import { getLeadsByFunnel } from '@/services/leads';
+import { getLeadsForExport, getCustomFieldValuesForLeads } from '@/services/leads';
+import { getActivitiesForLeads } from '@/services/activities';
+import { useStages } from '@/hooks/useStages';
+import { useCustomFields } from '@/hooks/useCustomFields';
+import { applyClientFilters, buildCustomFieldValueMap } from '@/lib/leadClientFilters';
+import { buildActivityRows, buildLeadRows } from '@/lib/leadsExport';
 import { downloadCSV } from '@/lib/exportCsv';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -68,32 +73,48 @@ export default function LeadsPage() {
 
   const currentStatusFilter = filters.status_filter || 'open';
 
+  const { data: exportStages } = useStages(selectedFunnelId);
+  const { data: customFieldDefs } = useCustomFields();
+
   const handleExportCSV = async () => {
     if (!selectedFunnelId) return;
     setExporting(true);
     try {
-      const leads = await getLeadsByFunnel(selectedFunnelId, filters, orgId);
+      const allLeads = await getLeadsForExport(selectedFunnelId, filters, orgId);
+      const cfRows = await getCustomFieldValuesForLeads(allLeads.map(l => l.id));
+      const cfMap = buildCustomFieldValueMap(cfRows as any);
+      const leads = applyClientFilters(allLeads, filters, exportStages || [], cfMap);
+
       if (!leads.length) {
         toast.info('Nenhum negócio encontrado para exportar.');
         return;
       }
-      const rows = leads.map(l => ({
-        Nome: l.name,
-        Email: l.email || '',
-        Telefone: l.phone || '',
-        Empresa: l.company || '',
-        Valor: l.value,
-        Prioridade: l.priority,
-        'Qualificação': l.qualification ?? '',
-        Fonte: l.source || '',
-        Tags: (l.tags || []).join('; '),
-        Etapa: l.stage?.name || '',
-        'Responsável': l.assigned_profile?.full_name || '',
-        Status: l.status,
-        'Criado em': format(new Date(l.created_at), 'dd/MM/yyyy HH:mm'),
-      }));
-      downloadCSV(rows, `negocios_${format(new Date(), 'yyyy-MM-dd')}.csv`);
-      toast.success('CSV exportado com sucesso!');
+
+      const activities = await getActivitiesForLeads(leads.map(l => l.id));
+      const activitiesByLead: Record<string, any[]> = {};
+      activities.forEach(a => {
+        if (!activitiesByLead[a.lead_id]) activitiesByLead[a.lead_id] = [];
+        activitiesByLead[a.lead_id].push(a);
+      });
+
+      const activeCustomFields = (customFieldDefs || []).filter(f => f.is_active);
+      const funnelName = (funnels || []).find(f => f.id === selectedFunnelId)?.name || 'funil';
+      const slug = funnelName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+      const stamp = format(new Date(), 'yyyy-MM-dd');
+
+      downloadCSV(
+        buildLeadRows(leads, activitiesByLead, activeCustomFields, cfMap),
+        `negocios_${slug}_${stamp}.csv`
+      );
+
+      const activityRows = buildActivityRows(leads, activities);
+      if (activityRows.length) {
+        downloadCSV(activityRows, `negocios_historico_${slug}_${stamp}.csv`);
+      }
+
+      toast.success(
+        `${leads.length} negócio(s) e ${activityRows.length} registro(s) de histórico exportados.`
+      );
     } catch {
       toast.error('Erro ao exportar CSV.');
     } finally {

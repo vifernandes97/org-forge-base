@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
-import { differenceInHours } from 'date-fns';
 import { useStages } from '@/hooks/useStages';
 import { useLeadsByFunnel, useMoveLeadToStage } from '@/hooks/useLeads';
 import { useCreateActivity } from '@/hooks/useActivities';
@@ -13,26 +12,14 @@ import { KanbanColumn } from './KanbanColumn';
 import { DragOverlayCard } from './DragOverlayCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LeadDetailSheet } from '@/components/leads/LeadDetailSheet';
-import type { LeadWithRelations, LeadFilters, StageTimeFilter } from '@/types';
+import type { LeadWithRelations, LeadFilters } from '@/types';
+import { useQuery } from '@tanstack/react-query';
+import { getCustomFieldValuesForLeads } from '@/services/leads';
+import { applyClientFilters, buildCustomFieldValueMap } from '@/lib/leadClientFilters';
 
 interface KanbanViewProps {
   funnelId: string;
   filters?: LeadFilters;
-}
-
-function matchesStageTime(lead: any, stageTime: StageTimeFilter, stages: any[]): boolean {
-  const hours = differenceInHours(new Date(), new Date(lead.stage_entered_at));
-  switch (stageTime) {
-    case 'less_24h': return hours < 24;
-    case '1_3_days': return hours >= 24 && hours < 72;
-    case '3_7_days': return hours >= 72 && hours < 168;
-    case 'more_7_days': return hours >= 168;
-    case 'above_sla': {
-      const stage = stages.find(s => s.id === lead.stage_id);
-      return stage?.sla_hours ? hours > stage.sla_hours : false;
-    }
-    default: return true;
-  }
 }
 
 export function KanbanView({ funnelId, filters }: KanbanViewProps) {
@@ -57,15 +44,22 @@ export function KanbanView({ funnelId, filters }: KanbanViewProps) {
     [stages]
   );
 
+  const hasCustomFieldFilter = !!filters?.custom_fields && Object.keys(filters.custom_fields).length > 0;
+  const leadIds = useMemo(() => (leads || []).map((l: any) => l.id), [leads]);
+
+  const { data: cfRows } = useQuery({
+    queryKey: ['custom-field-values', funnelId, leadIds],
+    queryFn: () => getCustomFieldValuesForLeads(leadIds),
+    enabled: hasCustomFieldFilter && leadIds.length > 0,
+  });
+
+  const cfMap = useMemo(() => buildCustomFieldValueMap((cfRows || []) as any), [cfRows]);
+
   // Apply client-side filters (stage_time, custom_fields)
-  const filteredLeads = useMemo(() => {
-    let result = leads || [];
-    if (filters?.stage_time) {
-      result = result.filter((l: any) => matchesStageTime(l, filters.stage_time!, sortedStages));
-    }
-    // Custom field filtering would go here if custom_field_values were loaded
-    return result;
-  }, [leads, filters, sortedStages]);
+  const filteredLeads = useMemo(
+    () => applyClientFilters((leads || []) as any[], filters, sortedStages, cfMap),
+    [leads, filters, sortedStages, cfMap]
+  );
 
   const leadsByStage = useMemo(() => {
     const map: Record<string, LeadWithRelations[]> = {};

@@ -14,6 +14,24 @@ export async function getLeadActivities(leadId: string, page: number, pageSize: 
   return { data: data as unknown as LeadActivityWithUser[], count: count || 0 };
 }
 
+/** Fetch every activity (timeline) of the given leads, in chunks. */
+export async function getActivitiesForLeads(leadIds: string[]) {
+  if (!leadIds.length) return [] as any[];
+  const chunkSize = 150;
+  const all: any[] = [];
+  for (let i = 0; i < leadIds.length; i += chunkSize) {
+    const chunk = leadIds.slice(i, i + chunkSize);
+    const { data, error } = await supabase
+      .from('lead_activities')
+      .select('*, user:profiles!lead_activities_user_id_fkey(full_name, email)')
+      .in('lead_id', chunk)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    all.push(...((data as any[]) || []));
+  }
+  return all;
+}
+
 export async function createActivity(data: {
   organization_id: string;
   lead_id: string;
