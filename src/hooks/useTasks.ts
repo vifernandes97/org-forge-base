@@ -5,28 +5,34 @@ import { getLeadTasks, getMyTasks, getTaskBadgeCounts, createTask, updateTask, c
 import { createActivity } from '@/services/activities';
 
 export function useLeadTasks(leadId: string | undefined) {
+  const { organization } = useOrganization();
+  const orgId = organization?.id;
   return useQuery({
-    queryKey: ['lead-tasks', leadId],
-    queryFn: () => getLeadTasks(leadId!),
-    enabled: !!leadId,
+    queryKey: ['lead-tasks', orgId, leadId],
+    queryFn: () => getLeadTasks(leadId!, orgId!),
+    enabled: !!leadId && !!orgId,
   });
 }
 
 export function useMyTasks() {
   const { user } = useAuth();
+  const { organization } = useOrganization();
+  const orgId = organization?.id;
   return useQuery({
-    queryKey: ['my-tasks', user?.id],
-    queryFn: () => getMyTasks(user!.id),
-    enabled: !!user?.id,
+    queryKey: ['my-tasks', orgId, user?.id],
+    queryFn: () => getMyTasks(user!.id, orgId!),
+    enabled: !!user?.id && !!orgId,
   });
 }
 
 export function useTaskBadgeCounts() {
   const { user } = useAuth();
+  const { organization } = useOrganization();
+  const orgId = organization?.id;
   return useQuery({
-    queryKey: ['task-badge-counts', user?.id],
-    queryFn: () => getTaskBadgeCounts(user!.id),
-    enabled: !!user?.id,
+    queryKey: ['task-badge-counts', orgId, user?.id],
+    queryFn: () => getTaskBadgeCounts(user!.id, orgId!),
+    enabled: !!user?.id && !!orgId,
     refetchInterval: 60000,
   });
 }
