@@ -65,6 +65,16 @@ export function ImportLeadsDialog({ open, onOpenChange, defaultFunnelId }: Props
   const { data: stages } = useStages(funnelId || undefined);
   const activeCustomFields = (customFields || []).filter(f => f.is_active);
 
+  // Keep the funnel in sync with the page selection whenever the dialog opens
+  useEffect(() => {
+    if (open && defaultFunnelId) setFunnelId(defaultFunnelId);
+  }, [open, defaultFunnelId]);
+
+  // Pre-select the first stage of the chosen funnel
+  useEffect(() => {
+    if (!stageId && stages?.length) setStageId(stages[0].id);
+  }, [stages, stageId]);
+
   const reset = () => {
     setStep(1);
     setFileName('');
