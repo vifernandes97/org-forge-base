@@ -4,6 +4,7 @@ import { useLeadsList } from '@/hooks/useLeads';
 import { useStages } from '@/hooks/useStages';
 import { useCustomFields } from '@/hooks/useCustomFields';
 import { getCustomFieldValuesForLeads } from '@/services/leads';
+import { applyClientFilters } from '@/lib/leadClientFilters';
 import { LeadDetailSheet } from '@/components/leads/LeadDetailSheet';
 import { BulkActionsBar } from './BulkActionsBar';
 import { Checkbox } from '@/components/ui/checkbox';

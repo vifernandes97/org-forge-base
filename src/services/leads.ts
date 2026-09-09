@@ -201,6 +201,22 @@ export async function getLeadsByFunnel(funnelId: string, filters?: LeadFilters, 
   return data as any[];
 }
 
+/** Full lead records (all relations) matching the current server-side filters, for export. */
+export async function getLeadsForExport(funnelId: string, filters?: LeadFilters, orgId?: string) {
+  let query = supabase
+    .from('leads')
+    .select(
+      '*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*), archive_reason:archive_reasons(*), contacts(*)'
+    )
+    .eq('funnel_id', funnelId);
+  if (orgId) query = query.eq('organization_id', orgId);
+  query = applyFilters(query, filters);
+  query = query.order('created_at', { ascending: false });
+  const { data, error } = await query;
+  if (error) throw error;
+  return data as any[];
+}
+
 export async function getLeadsListPaginated(
   funnelId: string,
   page: number,
