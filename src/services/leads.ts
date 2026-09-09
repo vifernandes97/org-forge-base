@@ -188,11 +188,12 @@ export async function getOrgMembers(orgId: string) {
   return data as any[];
 }
 
-export async function getLeadsByFunnel(funnelId: string, filters?: LeadFilters) {
+export async function getLeadsByFunnel(funnelId: string, filters?: LeadFilters, orgId?: string) {
   let query = supabase
     .from('leads')
     .select('*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*)')
     .eq('funnel_id', funnelId);
+  if (orgId) query = query.eq('organization_id', orgId);
   query = applyFilters(query, filters);
   query = query.order('last_activity_at', { ascending: false });
   const { data, error } = await query;
@@ -206,7 +207,8 @@ export async function getLeadsListPaginated(
   pageSize: number,
   sortBy: string,
   sortOrder: 'asc' | 'desc',
-  filters?: LeadFilters
+  filters?: LeadFilters,
+  orgId?: string
 ) {
   const from = page * pageSize;
   const to = from + pageSize - 1;
@@ -214,6 +216,7 @@ export async function getLeadsListPaginated(
     .from('leads')
     .select('*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*)', { count: 'exact' })
     .eq('funnel_id', funnelId);
+  if (orgId) query = query.eq('organization_id', orgId);
   query = applyFilters(query, filters);
   query = query.order(sortBy as any, { ascending: sortOrder === 'asc' }).range(from, to);
   const { data, error, count } = await query;

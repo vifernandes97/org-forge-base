@@ -27,10 +27,12 @@ export function useLead(id: string | undefined) {
 }
 
 export function useLeadsByFunnel(funnelId: string | undefined, filters?: LeadFilters) {
+  const { organization } = useOrganization();
+  const orgId = organization?.id;
   return useQuery({
-    queryKey: ['leads-kanban', funnelId, filters],
-    queryFn: () => getLeadsByFunnel(funnelId!, filters),
-    enabled: !!funnelId,
+    queryKey: ['leads-kanban', orgId, funnelId, filters],
+    queryFn: () => getLeadsByFunnel(funnelId!, filters, orgId),
+    enabled: !!funnelId && !!orgId,
   });
 }
 
@@ -42,10 +44,12 @@ export function useLeadsList(
   sortOrder: 'asc' | 'desc',
   filters?: LeadFilters
 ) {
+  const { organization } = useOrganization();
+  const orgId = organization?.id;
   return useQuery({
-    queryKey: ['leads-list', funnelId, page, pageSize, sortBy, sortOrder, filters],
-    queryFn: () => getLeadsListPaginated(funnelId!, page, pageSize, sortBy, sortOrder, filters),
-    enabled: !!funnelId,
+    queryKey: ['leads-list', orgId, funnelId, page, pageSize, sortBy, sortOrder, filters],
+    queryFn: () => getLeadsListPaginated(funnelId!, page, pageSize, sortBy, sortOrder, filters, orgId),
+    enabled: !!funnelId && !!orgId,
   });
 }
 
@@ -103,14 +107,16 @@ export function useDeleteLead() {
 
 export function useMoveLeadToStage(funnelId: string | undefined) {
   const qc = useQueryClient();
+  const { organization } = useOrganization();
+  const orgId = organization?.id;
   return useMutation({
     mutationFn: ({ leadId, stageId }: { leadId: string; stageId: string }) =>
       moveLeadToStage(leadId, stageId),
     onMutate: async ({ leadId, stageId }) => {
       await qc.cancelQueries({ queryKey: ['leads-kanban'] });
-      const queries = qc.getQueriesData({ queryKey: ['leads-kanban', funnelId] });
+      const queries = qc.getQueriesData({ queryKey: ['leads-kanban', orgId, funnelId] });
       const prev = queries[0]?.[1];
-      qc.setQueriesData({ queryKey: ['leads-kanban', funnelId] }, (old: any[] | undefined) => {
+      qc.setQueriesData({ queryKey: ['leads-kanban', orgId, funnelId] }, (old: any[] | undefined) => {
         if (!old) return old;
         return old.map((l: any) =>
           l.id === leadId ? { ...l, stage_id: stageId, stage_entered_at: new Date().toISOString() } : l
@@ -120,7 +126,7 @@ export function useMoveLeadToStage(funnelId: string | undefined) {
     },
     onError: (_, __, ctx) => {
       if (ctx?.prev) {
-        qc.setQueriesData({ queryKey: ['leads-kanban', funnelId] }, ctx.prev);
+        qc.setQueriesData({ queryKey: ['leads-kanban', orgId, funnelId] }, ctx.prev);
       }
     },
     onSettled: () => {
