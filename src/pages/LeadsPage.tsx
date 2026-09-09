@@ -69,7 +69,7 @@ export default function LeadsPage() {
     if (!selectedFunnelId) return;
     setExporting(true);
     try {
-      const leads = await getLeadsByFunnel(selectedFunnelId, filters);
+      const leads = await getLeadsByFunnel(selectedFunnelId, filters, orgId);
       if (!leads.length) {
         toast.info('Nenhum negócio encontrado para exportar.');
         return;
