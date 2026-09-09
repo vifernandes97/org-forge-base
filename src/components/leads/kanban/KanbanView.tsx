@@ -12,26 +12,14 @@ import { KanbanColumn } from './KanbanColumn';
 import { DragOverlayCard } from './DragOverlayCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LeadDetailSheet } from '@/components/leads/LeadDetailSheet';
-import type { LeadWithRelations, LeadFilters, StageTimeFilter } from '@/types';
+import type { LeadWithRelations, LeadFilters } from '@/types';
+import { useQuery } from '@tanstack/react-query';
+import { getCustomFieldValuesForLeads } from '@/services/leads';
+import { applyClientFilters, buildCustomFieldValueMap } from '@/lib/leadClientFilters';
 
 interface KanbanViewProps {
   funnelId: string;
   filters?: LeadFilters;
-}
-
-function matchesStageTime(lead: any, stageTime: StageTimeFilter, stages: any[]): boolean {
-  const hours = differenceInHours(new Date(), new Date(lead.stage_entered_at));
-  switch (stageTime) {
-    case 'less_24h': return hours < 24;
-    case '1_3_days': return hours >= 24 && hours < 72;
-    case '3_7_days': return hours >= 72 && hours < 168;
-    case 'more_7_days': return hours >= 168;
-    case 'above_sla': {
-      const stage = stages.find(s => s.id === lead.stage_id);
-      return stage?.sla_hours ? hours > stage.sla_hours : false;
-    }
-    default: return true;
-  }
 }
 
 export function KanbanView({ funnelId, filters }: KanbanViewProps) {
