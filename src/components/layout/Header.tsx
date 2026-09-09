@@ -32,25 +32,6 @@ export function Header() {
 
       <div className="flex-1" />
 
-      {/* Org Switcher */}
-      {organizations.length > 1 && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-1 text-sm">
-              {organization?.name}
-              <ChevronDown className="h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {organizations.map(org => (
-              <DropdownMenuItem key={org.id} onClick={() => setActiveOrg(org.id)}>
-                {org.name}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-
       {/* Theme toggle */}
       <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Alternar tema">
         {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
