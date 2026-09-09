@@ -44,7 +44,7 @@ export function useCreateTask() {
   return useMutation({
     mutationFn: createTask,
     onSuccess: (task) => {
-      qc.invalidateQueries({ queryKey: ['lead-tasks', task.lead_id] });
+      qc.invalidateQueries({ queryKey: ['lead-tasks'] });
       qc.invalidateQueries({ queryKey: ['my-tasks'] });
       qc.invalidateQueries({ queryKey: ['task-badge-counts'] });
       if (user && organization) {
@@ -69,7 +69,7 @@ export function useCompleteTask() {
     mutationFn: ({ taskId }: { taskId: string; leadId: string; orgId: string; title: string }) =>
       completeTask(taskId),
     onSuccess: (task, vars) => {
-      qc.invalidateQueries({ queryKey: ['lead-tasks', vars.leadId] });
+      qc.invalidateQueries({ queryKey: ['lead-tasks'] });
       qc.invalidateQueries({ queryKey: ['my-tasks'] });
       qc.invalidateQueries({ queryKey: ['task-badge-counts'] });
       if (user) {
@@ -93,7 +93,7 @@ export function useUncompleteTask() {
     mutationFn: ({ taskId }: { taskId: string; leadId: string }) =>
       uncompleteTask(taskId),
     onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: ['lead-tasks', vars.leadId] });
+      qc.invalidateQueries({ queryKey: ['lead-tasks'] });
       qc.invalidateQueries({ queryKey: ['my-tasks'] });
       qc.invalidateQueries({ queryKey: ['task-badge-counts'] });
     },
@@ -106,7 +106,7 @@ export function useUpdateTask() {
     mutationFn: ({ id, updates }: { id: string; updates: any; leadId: string }) =>
       updateTask(id, updates),
     onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: ['lead-tasks', vars.leadId] });
+      qc.invalidateQueries({ queryKey: ['lead-tasks'] });
       qc.invalidateQueries({ queryKey: ['my-tasks'] });
       qc.invalidateQueries({ queryKey: ['task-badge-counts'] });
     },
