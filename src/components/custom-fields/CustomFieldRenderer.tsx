@@ -57,19 +57,10 @@ export function CustomFieldRenderer({ field, value, onChange, disabled }: Custom
       return <DateField value={value} onChange={onChange} disabled={disabled} label={field.field_label} />;
 
     case 'select':
-      return (
-        <Select value={value} onValueChange={onChange} disabled={disabled}>
-          <SelectTrigger><SelectValue placeholder={`Selecione ${field.field_label}`} /></SelectTrigger>
-          <SelectContent>
-            {(field.options || []).map(opt => (
-              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      );
+      return <SelectCombobox field={field} value={value} onChange={onChange} disabled={disabled} />;
 
     case 'multi_select':
-      return <MultiSelectField options={field.options || []} value={value} onChange={onChange} disabled={disabled} />;
+      return <MultiSelectField field={field} value={value} onChange={onChange} disabled={disabled} />;
 
     case 'checkbox':
       return (
