@@ -251,6 +251,25 @@ export async function moveLeadToStage(leadId: string, stageId: string) {
   return data as Lead;
 }
 
+export async function moveLeadToFunnel(leadId: string, funnelId: string, stageId: string) {
+  const { data, error } = await supabase
+    .from('leads')
+    .update({ funnel_id: funnelId, stage_id: stageId })
+    .eq('id', leadId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Lead;
+}
+
+export async function bulkMoveLeadsToFunnel(leadIds: string[], funnelId: string, stageId: string) {
+  const { error } = await supabase
+    .from('leads')
+    .update({ funnel_id: funnelId, stage_id: stageId })
+    .in('id', leadIds);
+  if (error) throw error;
+}
+
 export async function bulkMoveLeads(leadIds: string[], stageId: string) {
   const { error } = await supabase
     .from('leads')
