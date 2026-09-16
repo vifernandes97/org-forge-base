@@ -640,23 +640,27 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
       )}
 
       {/* Archive dialog */}
-      <AlertDialog open={archiveDialogOpen} onOpenChange={v => { setArchiveDialogOpen(v); if (!v) setSelectedReasonId(''); }}>
+      <AlertDialog open={archiveDialogOpen} onOpenChange={v => { setArchiveDialogOpen(v); if (!v) { setSelectedReasonId(''); setArchiveDetails(''); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Arquivar negócio</AlertDialogTitle>
-            <AlertDialogDescription>Selecione o motivo do arquivamento.</AlertDialogDescription>
+            <AlertDialogDescription>Selecione o motivo do arquivamento ou crie um novo.</AlertDialogDescription>
           </AlertDialogHeader>
-          <Select value={selectedReasonId || '__placeholder__'} onValueChange={v => setSelectedReasonId(v === '__placeholder__' ? '' : v)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione um motivo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__placeholder__" disabled>Selecione um motivo</SelectItem>
-              {(archiveReasons || []).map(r => (
-                <SelectItem key={r.id} value={r.id}>{r.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-3">
+            <ArchiveReasonCombobox value={selectedReasonId} onChange={setSelectedReasonId} />
+            <div className="space-y-1.5">
+              <Label htmlFor="archive-details" className="text-xs font-medium text-muted-foreground">
+                Detalhes (opcional)
+              </Label>
+              <Textarea
+                id="archive-details"
+                rows={3}
+                placeholder="Adicione detalhes sobre o arquivamento..."
+                value={archiveDetails}
+                onChange={e => setArchiveDetails(e.target.value)}
+              />
+            </div>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleArchive} disabled={!selectedReasonId || archiveLeadMut.isPending}>
