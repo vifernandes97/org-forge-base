@@ -43,6 +43,18 @@ export function useCreateArchiveReason() {
   });
 }
 
+export function useAddArchiveReason() {
+  const qc = useQueryClient();
+  const { organization } = useOrganization();
+  return useMutation({
+    mutationFn: (label: string) => addArchiveReason(organization!.id, label),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['archive-reasons'] });
+      qc.invalidateQueries({ queryKey: ['archive-reasons-active'] });
+    },
+  });
+}
+
 export function useUpdateArchiveReason() {
   const qc = useQueryClient();
   return useMutation({
