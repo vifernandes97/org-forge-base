@@ -6,13 +6,26 @@ function applyFilters(query: any, filters?: LeadFilters) {
     query = query.is('archived_at', null).eq('status', 'open');
     return query;
   }
-  const statusFilter = filters.status_filter || 'open';
-  if (statusFilter === 'archived') {
-    query = query.not('archived_at', 'is', null);
-  } else if (statusFilter === 'won') {
-    query = query.eq('status', 'won').is('archived_at', null);
+  const statuses = filters.status_filters?.length
+    ? filters.status_filters
+    : [filters.status_filter || 'open'];
+  const unique = Array.from(new Set(statuses));
+  if (unique.length === 1) {
+    const s = unique[0];
+    if (s === 'archived') {
+      query = query.not('archived_at', 'is', null);
+    } else if (s === 'won') {
+      query = query.eq('status', 'won').is('archived_at', null);
+    } else {
+      query = query.eq('status', 'open').is('archived_at', null);
+    }
   } else {
-    query = query.eq('status', 'open').is('archived_at', null);
+    const parts = unique.map((s) =>
+      s === 'archived'
+        ? 'archived_at.not.is.null'
+        : `and(status.eq.${s},archived_at.is.null)`,
+    );
+    query = query.or(parts.join(','));
   }
   if (filters.search) {
     const raw = filters.search.trim();

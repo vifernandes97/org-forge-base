@@ -71,7 +71,7 @@ export default function LeadsPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  const currentStatusFilter = filters.status_filter || 'open';
+  const showArchivedSummary = (filters.status_filters || ['open']).includes('archived');
 
   const { data: exportStages } = useStages(selectedFunnelId);
   const { data: customFieldDefs } = useCustomFields();
@@ -256,7 +256,7 @@ export default function LeadsPage() {
         )}
 
         {/* Archived summary */}
-        {selectedFunnelId && currentStatusFilter === 'archived' && (
+        {selectedFunnelId && showArchivedSummary && (
           <ArchivedSummaryPanel
             funnelId={selectedFunnelId}
             filters={filters}

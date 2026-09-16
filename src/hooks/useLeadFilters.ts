@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { LeadFilters, LeadPriority, StageTimeFilter } from '@/types';
 
-const ARRAY_KEYS: (keyof LeadFilters)[] = ['stage_ids', 'assigned_to', 'priorities', 'tags', 'sources', 'qualifications', 'archive_reason_ids'];
+const ARRAY_KEYS: (keyof LeadFilters)[] = ['stage_ids', 'assigned_to', 'priorities', 'tags', 'sources', 'qualifications', 'archive_reason_ids', 'status_filters'];
 const NUMBER_KEYS: (keyof LeadFilters)[] = ['value_min', 'value_max'];
 const STRING_KEYS: (keyof LeadFilters)[] = ['search', 'created_at_from', 'created_at_to', 'last_activity_from', 'last_activity_to', 'stage_time', 'status_filter'];
 
@@ -12,7 +12,7 @@ function deserialize(params: URLSearchParams): LeadFilters {
     const v = params.get(key);
     if (v) (filters as any)[key] = v;
   }
-  if (!filters.status_filter) filters.status_filter = 'open';
+  // (status handled after array keys below)
   for (const key of NUMBER_KEYS) {
     const v = params.get(key);
     if (v) (filters as any)[key] = Number(v);
@@ -25,6 +25,11 @@ function deserialize(params: URLSearchParams): LeadFilters {
   if (cf) {
     try { filters.custom_fields = JSON.parse(cf); } catch {}
   }
+  // Backward compat: legacy single status_filter param
+  if (!filters.status_filters?.length) {
+    filters.status_filters = filters.status_filter ? [filters.status_filter] : ['open'];
+  }
+  delete filters.status_filter;
   return filters;
 }
 
@@ -96,7 +101,7 @@ export function useLeadFilters() {
   }, [handleSearchChange]);
 
   const clearFilters = useCallback(() => {
-    setFiltersState({ status_filter: 'open' });
+    setFiltersState({ status_filters: ['open'] });
     setSearchInput('');
   }, []);
 
@@ -139,7 +144,8 @@ export function useLeadFilters() {
     if (filters.stage_time) count++;
     if (filters.qualifications?.length) count++;
     if (filters.archive_reason_ids?.length) count++;
-    if (filters.status_filter && filters.status_filter !== 'open') count++;
+    const st = filters.status_filters || ['open'];
+    if (st.length !== 1 || st[0] !== 'open') count++;
     if (filters.custom_fields && Object.keys(filters.custom_fields).length > 0) count += Object.keys(filters.custom_fields).length;
     return count;
   }, [filters]);

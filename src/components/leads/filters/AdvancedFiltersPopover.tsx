@@ -12,13 +12,19 @@ import { FilterMultiSelect } from './FilterMultiSelect';
 import { FilterDateRange } from './FilterDateRange';
 import { FilterValueRange } from './FilterValueRange';
 import { CustomFieldFilters } from './CustomFieldFilters';
-import type { CustomFieldDefinition, LeadFilters, LeadPriority, StageTimeFilter } from '@/types';
+import type { CustomFieldDefinition, LeadFilters, LeadPriority, LeadStatusFilter, StageTimeFilter } from '@/types';
 
 interface Option {
   value: string;
   label: string;
   color?: string;
 }
+
+const STATUS_OPTIONS: Option[] = [
+  { value: 'open', label: 'Ativos' },
+  { value: 'won', label: 'Ganhos' },
+  { value: 'archived', label: 'Arquivados' },
+];
 
 interface AdvancedFiltersPopoverProps {
   filters: LeadFilters;
@@ -144,7 +150,10 @@ export function AdvancedFiltersPopover({
 
   const sectionCounts = useMemo(() => {
     const essentials =
-      (draft.status_filter && draft.status_filter !== 'open' ? 1 : 0) +
+      (() => {
+        const st = draft.status_filters || ['open'];
+        return st.length !== 1 || st[0] !== 'open' ? 1 : 0;
+      })() +
       (draft.stage_ids?.length || 0) +
       (draft.assigned_to?.length || 0) +
       (draft.priorities?.length || 0) +
@@ -166,7 +175,7 @@ export function AdvancedFiltersPopover({
   const handleApply = () => {
     // Build a partial that explicitly clears removed keys
     const allKeys: (keyof LeadFilters)[] = [
-      'status_filter',
+      'status_filters',
       'stage_ids',
       'assigned_to',
       'priorities',
@@ -187,13 +196,13 @@ export function AdvancedFiltersPopover({
     for (const k of allKeys) {
       (partial as any)[k] = (draft as any)[k];
     }
-    if (!partial.status_filter) partial.status_filter = 'open';
+    if (!partial.status_filters?.length) partial.status_filters = ['open'];
     applyMany(partial);
     setOpen(false);
   };
 
   const handleClear = () => {
-    setDraft({ search: filters.search, status_filter: 'open' });
+    setDraft({ search: filters.search, status_filters: ['open'] });
   };
 
   return (
@@ -245,21 +254,17 @@ export function AdvancedFiltersPopover({
           <div className="px-4 py-2 divide-y divide-border">
             <Section title="Essenciais" defaultOpen count={sectionCounts.essentials}>
               <FilterRow label="Status">
-                <Select
-                  value={draft.status_filter || 'open'}
-                  onValueChange={(v) =>
-                    setDraftField('status_filter', v as 'open' | 'won' | 'archived')
+                <FilterMultiSelect
+                  label="Selecionar status"
+                  options={STATUS_OPTIONS}
+                  selected={(draft.status_filters || ['open']) as string[]}
+                  onChange={(v) =>
+                    setDraftField(
+                      'status_filters',
+                      (v.length ? v : ['open']) as LeadStatusFilter[],
+                    )
                   }
-                >
-                  <SelectTrigger className="h-8 text-xs flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="open">Ativos</SelectItem>
-                    <SelectItem value="won">Ganhos</SelectItem>
-                    <SelectItem value="archived">Arquivados</SelectItem>
-                  </SelectContent>
-                </Select>
+                />
               </FilterRow>
               <FilterRow label="Etapa">
                 <FilterMultiSelect
