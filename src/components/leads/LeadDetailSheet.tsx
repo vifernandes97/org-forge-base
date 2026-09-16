@@ -340,6 +340,16 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                     </Badge>
                   )}
                 </div>
+                {isArchived && (typedLead.archive_reason?.label || (typedLead as any).archive_details) && (
+                  <div className="rounded-md bg-muted/50 p-3 text-sm space-y-1">
+                    {typedLead.archive_reason?.label && (
+                      <p><span className="text-muted-foreground">Motivo do arquivamento: </span>{typedLead.archive_reason.label}</p>
+                    )}
+                    {(typedLead as any).archive_details && (
+                      <p className="whitespace-pre-wrap text-muted-foreground">{(typedLead as any).archive_details}</p>
+                    )}
+                  </div>
+                )}
               </SheetHeader>
 
               {/* Stage Pipeline - Bitrix style */}
