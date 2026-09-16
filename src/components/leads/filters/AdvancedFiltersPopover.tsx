@@ -12,13 +12,19 @@ import { FilterMultiSelect } from './FilterMultiSelect';
 import { FilterDateRange } from './FilterDateRange';
 import { FilterValueRange } from './FilterValueRange';
 import { CustomFieldFilters } from './CustomFieldFilters';
-import type { CustomFieldDefinition, LeadFilters, LeadPriority, StageTimeFilter } from '@/types';
+import type { CustomFieldDefinition, LeadFilters, LeadPriority, LeadStatusFilter, StageTimeFilter } from '@/types';
 
 interface Option {
   value: string;
   label: string;
   color?: string;
 }
+
+const STATUS_OPTIONS: Option[] = [
+  { value: 'open', label: 'Ativos' },
+  { value: 'won', label: 'Ganhos' },
+  { value: 'archived', label: 'Arquivados' },
+];
 
 interface AdvancedFiltersPopoverProps {
   filters: LeadFilters;
