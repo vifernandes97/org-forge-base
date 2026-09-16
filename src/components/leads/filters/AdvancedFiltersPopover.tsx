@@ -169,7 +169,7 @@ export function AdvancedFiltersPopover({
   const handleApply = () => {
     // Build a partial that explicitly clears removed keys
     const allKeys: (keyof LeadFilters)[] = [
-      'status_filter',
+      'status_filters',
       'stage_ids',
       'assigned_to',
       'priorities',
@@ -190,13 +190,13 @@ export function AdvancedFiltersPopover({
     for (const k of allKeys) {
       (partial as any)[k] = (draft as any)[k];
     }
-    if (!partial.status_filter) partial.status_filter = 'open';
+    if (!partial.status_filters?.length) partial.status_filters = ['open'];
     applyMany(partial);
     setOpen(false);
   };
 
   const handleClear = () => {
-    setDraft({ search: filters.search, status_filter: 'open' });
+    setDraft({ search: filters.search, status_filters: ['open'] });
   };
 
   return (
