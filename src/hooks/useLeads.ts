@@ -6,6 +6,7 @@ import {
   upsertCustomFieldValues, upsertCustomFieldValue, getLeadsByFunnel, getLeadsListPaginated,
   moveLeadToStage, bulkMoveLeads, bulkAssignLeads, bulkDeleteLeads, bulkArchiveLeads,
   archiveLead, unarchiveLead, mergeLeads,
+  moveLeadToFunnel, bulkMoveLeadsToFunnel,
 } from '@/services/leads';
 
 export function useLeads() {
