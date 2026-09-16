@@ -26,6 +26,16 @@ export function BulkActionsBar({ selectedIds, stages, onClear }: BulkActionsBarP
   const { data: members } = useOrgMembers();
   const { data: archiveReasons } = useActiveArchiveReasons();
   const [mergeOpen, setMergeOpen] = useState(false);
+  const [moveFunnelOpen, setMoveFunnelOpen] = useState(false);
+  const bulkMoveFunnel = useBulkMoveLeadsToFunnel();
+
+  const handleMoveFunnel = async (funnelId: string, funnelName: string, stageId: string) => {
+    try {
+      await bulkMoveFunnel.mutateAsync({ leadIds: selectedIds, funnelId, stageId });
+      toast.success(`${selectedIds.length} negócios movidos para ${funnelName}`);
+      onClear();
+    } catch { toast.error('Erro ao mover negócios de funil'); }
+  };
 
   const handleMove = async (stageId: string) => {
     try {
