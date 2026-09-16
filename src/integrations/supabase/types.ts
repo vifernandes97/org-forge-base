@@ -1134,6 +1134,10 @@ export type Database = {
     }
     Functions: {
       accept_invite: { Args: { p_token: string }; Returns: Json }
+      add_custom_field_option: {
+        Args: { p_field_id: string; p_option: string }
+        Returns: string[]
+      }
       create_funnel_with_default_stages: {
         Args: { p_description?: string; p_name: string; p_org_id: string }
         Returns: {

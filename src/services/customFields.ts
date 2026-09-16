@@ -48,6 +48,15 @@ export async function deleteCustomField(id: string) {
   if (error) throw error;
 }
 
+export async function addCustomFieldOption(fieldId: string, option: string): Promise<string[]> {
+  const { data, error } = await supabase.rpc('add_custom_field_option', {
+    p_field_id: fieldId,
+    p_option: option,
+  });
+  if (error) throw error;
+  return (data ?? []) as string[];
+}
+
 export async function reorderCustomFields(fields: { id: string; position: number }[]) {
   const { error } = await supabase.rpc('reorder_custom_fields', {
     p_fields: fields as any,
