@@ -623,6 +623,16 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
         />
       )}
 
+      {typedLead && (
+        <MoveToFunnelDialog
+          open={moveFunnelOpen}
+          onOpenChange={setMoveFunnelOpen}
+          currentFunnelId={typedLead.funnel_id}
+          isPending={moveToFunnelMut.isPending}
+          onConfirm={handleMoveToFunnel}
+        />
+      )}
+
       {/* Archive dialog */}
       <AlertDialog open={archiveDialogOpen} onOpenChange={v => { setArchiveDialogOpen(v); if (!v) setSelectedReasonId(''); }}>
         <AlertDialogContent>
