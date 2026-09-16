@@ -492,6 +492,7 @@ export type Database = {
       }
       leads: {
         Row: {
+          archive_details: string | null
           archive_reason_id: string | null
           archived_at: string | null
           assigned_to: string | null
@@ -520,6 +521,7 @@ export type Database = {
           value: number
         }
         Insert: {
+          archive_details?: string | null
           archive_reason_id?: string | null
           archived_at?: string | null
           assigned_to?: string | null
@@ -548,6 +550,7 @@ export type Database = {
           value?: number
         }
         Update: {
+          archive_details?: string | null
           archive_reason_id?: string | null
           archived_at?: string | null
           assigned_to?: string | null
@@ -1134,6 +1137,23 @@ export type Database = {
     }
     Functions: {
       accept_invite: { Args: { p_token: string }; Returns: Json }
+      add_archive_reason: {
+        Args: { p_label: string; p_org_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          organization_id: string
+          position: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "archive_reasons"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       add_custom_field_option: {
         Args: { p_field_id: string; p_option: string }
         Returns: string[]
