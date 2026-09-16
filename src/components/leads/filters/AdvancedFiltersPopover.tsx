@@ -248,21 +248,17 @@ export function AdvancedFiltersPopover({
           <div className="px-4 py-2 divide-y divide-border">
             <Section title="Essenciais" defaultOpen count={sectionCounts.essentials}>
               <FilterRow label="Status">
-                <Select
-                  value={draft.status_filter || 'open'}
-                  onValueChange={(v) =>
-                    setDraftField('status_filter', v as 'open' | 'won' | 'archived')
+                <FilterMultiSelect
+                  label="Selecionar status"
+                  options={STATUS_OPTIONS}
+                  selected={(draft.status_filters || ['open']) as string[]}
+                  onChange={(v) =>
+                    setDraftField(
+                      'status_filters',
+                      (v.length ? v : ['open']) as LeadStatusFilter[],
+                    )
                   }
-                >
-                  <SelectTrigger className="h-8 text-xs flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="open">Ativos</SelectItem>
-                    <SelectItem value="won">Ganhos</SelectItem>
-                    <SelectItem value="archived">Arquivados</SelectItem>
-                  </SelectContent>
-                </Select>
+                />
               </FilterRow>
               <FilterRow label="Etapa">
                 <FilterMultiSelect
