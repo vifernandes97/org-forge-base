@@ -26,6 +26,9 @@ import { StagePipeline } from './StagePipeline';
 import { LeadFormDialog } from './LeadFormDialog';
 import { MergeLeadsDialog } from './MergeLeadsDialog';
 import { MoveToFunnelDialog } from './MoveToFunnelDialog';
+import { ArchiveReasonCombobox } from './ArchiveReasonCombobox';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Pencil, Trash2, Clock, AlertTriangle, Building2, Mail, Tag, User, DollarSign, FileText, Instagram, FileBadge, GitBranch } from 'lucide-react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -62,6 +65,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   const [mergeOpen, setMergeOpen] = useState(false);
   const [moveFunnelOpen, setMoveFunnelOpen] = useState(false);
   const [selectedReasonId, setSelectedReasonId] = useState<string>('');
+  const [archiveDetails, setArchiveDetails] = useState('');
   const moveToFunnelMut = useMoveLeadToFunnel();
 
   const handleMoveToFunnel = async (funnelId: string, funnelName: string, stageId: string, stageName: string) => {
@@ -151,19 +155,21 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
     if (!leadId || !selectedReasonId || !user || !organization) return;
     try {
       const reason = archiveReasons?.find(r => r.id === selectedReasonId);
-      await archiveLeadMut.mutateAsync({ leadId, reasonId: selectedReasonId });
+      const details = archiveDetails.trim();
+      await archiveLeadMut.mutateAsync({ leadId, reasonId: selectedReasonId, details });
       await createActivity({
         organization_id: organization.id,
         lead_id: leadId,
         user_id: user.id,
         activity_type: 'note',
         title: 'Negócio arquivado',
-        description: `Motivo: ${reason?.label || 'N/A'}`,
-        metadata: { source: 'archive', reason_id: selectedReasonId, reason_label: reason?.label },
+        description: `Motivo: ${reason?.label || 'N/A'}${details ? `\nDetalhes: ${details}` : ''}`,
+        metadata: { source: 'archive', reason_id: selectedReasonId, reason_label: reason?.label, details: details || null },
       });
       toast.success('Negócio arquivado!');
       setArchiveDialogOpen(false);
       setSelectedReasonId('');
+      setArchiveDetails('');
       onClose();
     } catch (err: any) {
       toast.error(err.message || 'Erro ao arquivar');
@@ -334,6 +340,16 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                     </Badge>
                   )}
                 </div>
+                {isArchived && ((typedLead as any).archive_reason?.label || (typedLead as any).archive_details) && (
+                  <div className="rounded-md bg-muted/50 p-3 text-sm space-y-1">
+                    {(typedLead as any).archive_reason?.label && (
+                      <p><span className="text-muted-foreground">Motivo do arquivamento: </span>{(typedLead as any).archive_reason.label}</p>
+                    )}
+                    {(typedLead as any).archive_details && (
+                      <p className="whitespace-pre-wrap text-muted-foreground">{(typedLead as any).archive_details}</p>
+                    )}
+                  </div>
+                )}
               </SheetHeader>
 
               {/* Stage Pipeline - Bitrix style */}
@@ -634,23 +650,27 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
       )}
 
       {/* Archive dialog */}
-      <AlertDialog open={archiveDialogOpen} onOpenChange={v => { setArchiveDialogOpen(v); if (!v) setSelectedReasonId(''); }}>
+      <AlertDialog open={archiveDialogOpen} onOpenChange={v => { setArchiveDialogOpen(v); if (!v) { setSelectedReasonId(''); setArchiveDetails(''); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Arquivar negócio</AlertDialogTitle>
-            <AlertDialogDescription>Selecione o motivo do arquivamento.</AlertDialogDescription>
+            <AlertDialogDescription>Selecione o motivo do arquivamento ou crie um novo.</AlertDialogDescription>
           </AlertDialogHeader>
-          <Select value={selectedReasonId || '__placeholder__'} onValueChange={v => setSelectedReasonId(v === '__placeholder__' ? '' : v)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione um motivo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__placeholder__" disabled>Selecione um motivo</SelectItem>
-              {(archiveReasons || []).map(r => (
-                <SelectItem key={r.id} value={r.id}>{r.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-3">
+            <ArchiveReasonCombobox value={selectedReasonId} onChange={setSelectedReasonId} />
+            <div className="space-y-1.5">
+              <Label htmlFor="archive-details" className="text-xs font-medium text-muted-foreground">
+                Detalhes (opcional)
+              </Label>
+              <Textarea
+                id="archive-details"
+                rows={3}
+                placeholder="Adicione detalhes sobre o arquivamento..."
+                value={archiveDetails}
+                onChange={e => setArchiveDetails(e.target.value)}
+              />
+            </div>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleArchive} disabled={!selectedReasonId || archiveLeadMut.isPending}>

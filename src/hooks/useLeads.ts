@@ -219,8 +219,8 @@ export function useArchiveLead() {
   const qc = useQueryClient();
   const { organization } = useOrganization();
   return useMutation({
-    mutationFn: ({ leadId, reasonId }: { leadId: string; reasonId: string }) =>
-      archiveLead(leadId, reasonId),
+    mutationFn: ({ leadId, reasonId, details }: { leadId: string; reasonId: string; details?: string | null }) =>
+      archiveLead(leadId, reasonId, details),
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['leads', organization?.id] });
       qc.invalidateQueries({ queryKey: ['lead', vars.leadId] });

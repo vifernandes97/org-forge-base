@@ -40,6 +40,15 @@ export async function createArchiveReason(orgId: string, label: string, position
   return data as unknown as ArchiveReason;
 }
 
+export async function addArchiveReason(orgId: string, label: string): Promise<ArchiveReason> {
+  const { data, error } = await supabase.rpc('add_archive_reason' as any, {
+    p_org_id: orgId,
+    p_label: label,
+  });
+  if (error) throw error;
+  return data as unknown as ArchiveReason;
+}
+
 export async function updateArchiveReason(id: string, updates: Partial<Pick<ArchiveReason, 'label' | 'is_active' | 'position'>>) {
   const { error } = await supabase
     .from('archive_reasons')
