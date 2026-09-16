@@ -118,29 +118,178 @@ function DateField({ value, onChange, disabled, label }: { value: string; onChan
   );
 }
 
-function MultiSelectField({ options, value, onChange, disabled }: { options: string[]; value: string; onChange: (v: string) => void; disabled?: boolean }) {
-  const selected: string[] = value ? JSON.parse(value || '[]') : [];
+const norm = (v: string) => v.trim().toLowerCase();
+
+function useOptionCreator(field: CustomFieldDefinition) {
+  const addOption = useAddCustomFieldOption();
+  const [localOptions, setLocalOptions] = useState<string[]>([]);
+
+  const options = Array.from(
+    new Map([...(field.options || []), ...localOptions].map(o => [norm(o), o])).values()
+  );
+
+  const create = async (raw: string): Promise<string | null> => {
+    const option = raw.trim();
+    if (!option) return null;
+    const existing = options.find(o => norm(o) === norm(option));
+    if (existing) return existing;
+    try {
+      const next = await addOption.mutateAsync({ fieldId: field.id, option });
+      setLocalOptions(next);
+      return next.find(o => norm(o) === norm(option)) ?? option;
+    } catch (e: any) {
+      toast({
+        title: 'Não foi possível criar a opção',
+        description: e?.message ?? 'Tente novamente.',
+        variant: 'destructive',
+      });
+      return null;
+    }
+  };
+
+  return { options, create, isCreating: addOption.isPending };
+}
+
+function SelectCombobox({ field, value, onChange, disabled }: { field: CustomFieldDefinition; value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const { options, create, isCreating } = useOptionCreator(field);
+
+  const canCreate = search.trim().length > 0 && !options.some(o => norm(o) === norm(search));
+
+  const handleCreate = async () => {
+    const created = await create(search);
+    if (created) {
+      onChange(created);
+      setSearch('');
+      setOpen(false);
+    }
+  };
+
+  return (
+    <Popover open={open} onOpenChange={disabled ? undefined : setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          disabled={disabled}
+          className={cn('w-full justify-between font-normal', !value && 'text-muted-foreground')}
+        >
+          <span className="truncate">{value || `Selecione ${field.field_label}`}</span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command shouldFilter>
+          <CommandInput placeholder="Buscar ou criar..." value={search} onValueChange={setSearch} />
+          <CommandList>
+            <CommandEmpty className="py-2 px-2 text-sm text-muted-foreground">
+              {search.trim() ? 'Nenhuma opção encontrada.' : 'Nenhuma opção cadastrada.'}
+            </CommandEmpty>
+            <CommandGroup>
+              {options.map(opt => (
+                <CommandItem
+                  key={opt}
+                  value={opt}
+                  onSelect={() => {
+                    onChange(opt === value ? '' : opt);
+                    setOpen(false);
+                  }}
+                >
+                  <Check className={cn('mr-2 h-4 w-4', value === opt ? 'opacity-100' : 'opacity-0')} />
+                  {opt}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            {canCreate && (
+              <CommandGroup>
+                <CommandItem value={`__create__${search}`} onSelect={handleCreate} disabled={isCreating}>
+                  {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                  Criar "{search.trim()}"
+                </CommandItem>
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function MultiSelectField({ field, value, onChange, disabled }: { field: CustomFieldDefinition; value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  const [search, setSearch] = useState('');
+  const { options, create, isCreating } = useOptionCreator(field);
+
+  let selected: string[] = [];
+  try {
+    const parsed = value ? JSON.parse(value) : [];
+    if (Array.isArray(parsed)) selected = parsed;
+  } catch {
+    selected = [];
+  }
+
   const toggle = (opt: string) => {
-    const next = selected.includes(opt) ? selected.filter(s => s !== opt) : [...selected, opt];
+    const next = selected.some(s => norm(s) === norm(opt))
+      ? selected.filter(s => norm(s) !== norm(opt))
+      : [...selected, opt];
     onChange(JSON.stringify(next));
   };
+
+  const canCreate = search.trim().length > 0 && !options.some(o => norm(o) === norm(search));
+
+  const handleCreate = async () => {
+    const created = await create(search);
+    if (created) {
+      if (!selected.some(s => norm(s) === norm(created))) {
+        onChange(JSON.stringify([...selected, created]));
+      }
+      setSearch('');
+    }
+  };
+
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap gap-1">
-        {selected.map(s => (
-          <Badge key={s} variant="secondary" className="gap-1">
-            {s}
-            {!disabled && <X className="h-3 w-3 cursor-pointer" onClick={() => toggle(s)} />}
-          </Badge>
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {options.filter(o => !selected.includes(o)).map(opt => (
-          <Badge key={opt} variant="outline" className={cn('cursor-pointer', disabled && 'cursor-default opacity-50')} onClick={() => !disabled && toggle(opt)}>
-            + {opt}
-          </Badge>
-        ))}
-      </div>
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {selected.map(s => (
+            <Badge key={s} variant="secondary" className="gap-1">
+              {s}
+              {!disabled && <X className="h-3 w-3 cursor-pointer" onClick={() => toggle(s)} />}
+            </Badge>
+          ))}
+        </div>
+      )}
+      {!disabled && (
+        <Command shouldFilter className="rounded-md border">
+          <CommandInput placeholder="Buscar ou criar..." value={search} onValueChange={setSearch} />
+          <CommandList className="max-h-40">
+            <CommandEmpty className="py-2 px-2 text-sm text-muted-foreground">
+              {search.trim() ? 'Nenhuma opção encontrada.' : 'Nenhuma opção cadastrada.'}
+            </CommandEmpty>
+            <CommandGroup>
+              {options.map(opt => (
+                <CommandItem key={opt} value={opt} onSelect={() => toggle(opt)}>
+                  <Check
+                    className={cn(
+                      'mr-2 h-4 w-4',
+                      selected.some(s => norm(s) === norm(opt)) ? 'opacity-100' : 'opacity-0'
+                    )}
+                  />
+                  {opt}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            {canCreate && (
+              <CommandGroup>
+                <CommandItem value={`__create__${search}`} onSelect={handleCreate} disabled={isCreating}>
+                  {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                  Criar "{search.trim()}"
+                </CommandItem>
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      )}
     </div>
   );
 }
