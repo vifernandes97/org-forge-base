@@ -2,15 +2,24 @@ import { useState } from 'react';
 import type { CustomFieldDefinition } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon, X } from 'lucide-react';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { CalendarIcon, X, Check, ChevronsUpDown, Plus, Loader2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useAddCustomFieldOption } from '@/hooks/useCustomFields';
+import { toast } from '@/hooks/use-toast';
 
 interface CustomFieldRendererProps {
   field: CustomFieldDefinition;
