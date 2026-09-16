@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { PriorityBadge } from './PriorityBadge';
 import { StatusBadge } from './StatusBadge';
-import { useLead, useDeleteLead, useArchiveLead, useUnarchiveLead, useUpdateLead, useUpsertCustomFieldValue } from '@/hooks/useLeads';
+import { useLead, useDeleteLead, useArchiveLead, useUnarchiveLead, useUpdateLead, useUpsertCustomFieldValue, useMoveLeadToFunnel } from '@/hooks/useLeads';
 import { useActiveArchiveReasons } from '@/hooks/useArchiveReasons';
 import { useCustomFields } from '@/hooks/useCustomFields';
 import { useTeamMembers } from '@/hooks/useTeam';
@@ -25,7 +25,8 @@ import { StagePipeline } from './StagePipeline';
 
 import { LeadFormDialog } from './LeadFormDialog';
 import { MergeLeadsDialog } from './MergeLeadsDialog';
-import { Pencil, Trash2, Clock, AlertTriangle, Building2, Mail, Tag, User, DollarSign, FileText, Instagram, FileBadge } from 'lucide-react';
+import { MoveToFunnelDialog } from './MoveToFunnelDialog';
+import { Pencil, Trash2, Clock, AlertTriangle, Building2, Mail, Tag, User, DollarSign, FileText, Instagram, FileBadge, GitBranch } from 'lucide-react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { differenceInHours, formatDistanceToNow } from 'date-fns';
@@ -59,7 +60,29 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [mergeOpen, setMergeOpen] = useState(false);
+  const [moveFunnelOpen, setMoveFunnelOpen] = useState(false);
   const [selectedReasonId, setSelectedReasonId] = useState<string>('');
+  const moveToFunnelMut = useMoveLeadToFunnel();
+
+  const handleMoveToFunnel = async (funnelId: string, funnelName: string, stageId: string, stageName: string) => {
+    if (!leadId || !user || !organization || !typedLead) return;
+    const oldFunnel = typedLead.funnel?.name || '';
+    try {
+      await moveToFunnelMut.mutateAsync({ leadId, funnelId, stageId });
+      await createActivity({
+        organization_id: organization.id,
+        lead_id: leadId,
+        user_id: user.id,
+        activity_type: 'stage_change',
+        title: `Funil alterado: ${oldFunnel} → ${funnelName} (etapa: ${stageName})`,
+        metadata: { from_funnel: oldFunnel, to_funnel: funnelName, to_stage: stageName },
+      });
+      toast.success(`Movido para ${funnelName}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao mover de funil');
+    }
+  };
+
 
   const handleStageChange = async (stageId: string) => {
     if (!leadId || !user || !organization || !typedLead) return;
@@ -257,6 +280,11 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                     {typedLead.status === 'won' && (
                       <Button variant="ghost" size="sm" onClick={handleToggleWon} className="text-muted-foreground text-xs">
                         Reabrir
+                      </Button>
+                    )}
+                    {!isArchived && (
+                      <Button variant="ghost" size="icon" onClick={() => setMoveFunnelOpen(true)} aria-label="Mover para outro funil" title="Mover para outro funil">
+                        <GitBranch className="h-4 w-4" />
                       </Button>
                     )}
                     {!isArchived && (
@@ -592,6 +620,16 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
           open={mergeOpen}
           onOpenChange={setMergeOpen}
           baseLeadId={typedLead.id}
+        />
+      )}
+
+      {typedLead && (
+        <MoveToFunnelDialog
+          open={moveFunnelOpen}
+          onOpenChange={setMoveFunnelOpen}
+          currentFunnelId={typedLead.funnel_id}
+          isPending={moveToFunnelMut.isPending}
+          onConfirm={handleMoveToFunnel}
         />
       )}
 

@@ -2,13 +2,14 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useBulkMoveLeads, useBulkAssignLeads, useBulkDeleteLeads, useBulkArchiveLeads } from '@/hooks/useLeads';
+import { useBulkMoveLeads, useBulkAssignLeads, useBulkDeleteLeads, useBulkArchiveLeads, useBulkMoveLeadsToFunnel } from '@/hooks/useLeads';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { useActiveArchiveReasons } from '@/hooks/useArchiveReasons';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { MergeLeadsDialog } from '../MergeLeadsDialog';
-import { Trash2, ArrowRight, UserPlus, Archive, Merge } from 'lucide-react';
+import { MoveToFunnelDialog } from '../MoveToFunnelDialog';
+import { Trash2, ArrowRight, UserPlus, Archive, Merge, GitBranch } from 'lucide-react';
 import type { Stage } from '@/types';
 
 interface BulkActionsBarProps {
@@ -25,6 +26,16 @@ export function BulkActionsBar({ selectedIds, stages, onClear }: BulkActionsBarP
   const { data: members } = useOrgMembers();
   const { data: archiveReasons } = useActiveArchiveReasons();
   const [mergeOpen, setMergeOpen] = useState(false);
+  const [moveFunnelOpen, setMoveFunnelOpen] = useState(false);
+  const bulkMoveFunnel = useBulkMoveLeadsToFunnel();
+
+  const handleMoveFunnel = async (funnelId: string, funnelName: string, stageId: string) => {
+    try {
+      await bulkMoveFunnel.mutateAsync({ leadIds: selectedIds, funnelId, stageId });
+      toast.success(`${selectedIds.length} negócios movidos para ${funnelName}`);
+      onClear();
+    } catch { toast.error('Erro ao mover negócios de funil'); }
+  };
 
   const handleMove = async (stageId: string) => {
     try {
@@ -108,6 +119,19 @@ export function BulkActionsBar({ selectedIds, stages, onClear }: BulkActionsBarP
           ))}
         </SelectContent>
       </Select>
+
+      <Button variant="outline" size="sm" onClick={() => setMoveFunnelOpen(true)}>
+        <GitBranch className="h-3.5 w-3.5 mr-1" /> Mover para funil
+      </Button>
+
+      <MoveToFunnelDialog
+        open={moveFunnelOpen}
+        onOpenChange={setMoveFunnelOpen}
+        currentFunnelId={stages[0]?.funnel_id}
+        count={selectedIds.length}
+        isPending={bulkMoveFunnel.isPending}
+        onConfirm={handleMoveFunnel}
+      />
 
       <Button
         variant="outline"

@@ -6,6 +6,7 @@ import {
   upsertCustomFieldValues, upsertCustomFieldValue, getLeadsByFunnel, getLeadsListPaginated,
   moveLeadToStage, bulkMoveLeads, bulkAssignLeads, bulkDeleteLeads, bulkArchiveLeads,
   archiveLead, unarchiveLead, mergeLeads,
+  moveLeadToFunnel, bulkMoveLeadsToFunnel,
 } from '@/services/leads';
 
 export function useLeads() {
@@ -132,6 +133,37 @@ export function useMoveLeadToStage(funnelId: string | undefined) {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ['leads-kanban'] });
       qc.invalidateQueries({ queryKey: ['leads-list'] });
+    },
+  });
+}
+
+export function useMoveLeadToFunnel() {
+  const qc = useQueryClient();
+  const { organization } = useOrganization();
+  return useMutation({
+    mutationFn: ({ leadId, funnelId, stageId }: { leadId: string; funnelId: string; stageId: string }) =>
+      moveLeadToFunnel(leadId, funnelId, stageId),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['leads', organization?.id] });
+      qc.invalidateQueries({ queryKey: ['lead', vars.leadId] });
+      qc.invalidateQueries({ queryKey: ['leads-kanban'] });
+      qc.invalidateQueries({ queryKey: ['leads-list'] });
+      qc.invalidateQueries({ queryKey: ['funnel-metrics'] });
+    },
+  });
+}
+
+export function useBulkMoveLeadsToFunnel() {
+  const qc = useQueryClient();
+  const { organization } = useOrganization();
+  return useMutation({
+    mutationFn: ({ leadIds, funnelId, stageId }: { leadIds: string[]; funnelId: string; stageId: string }) =>
+      bulkMoveLeadsToFunnel(leadIds, funnelId, stageId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['leads', organization?.id] });
+      qc.invalidateQueries({ queryKey: ['leads-kanban'] });
+      qc.invalidateQueries({ queryKey: ['leads-list'] });
+      qc.invalidateQueries({ queryKey: ['funnel-metrics'] });
     },
   });
 }
