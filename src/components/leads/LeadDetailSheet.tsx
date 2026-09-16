@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { PriorityBadge } from './PriorityBadge';
 import { StatusBadge } from './StatusBadge';
-import { useLead, useDeleteLead, useArchiveLead, useUnarchiveLead, useUpdateLead, useUpsertCustomFieldValue } from '@/hooks/useLeads';
+import { useLead, useDeleteLead, useArchiveLead, useUnarchiveLead, useUpdateLead, useUpsertCustomFieldValue, useMoveLeadToFunnel } from '@/hooks/useLeads';
 import { useActiveArchiveReasons } from '@/hooks/useArchiveReasons';
 import { useCustomFields } from '@/hooks/useCustomFields';
 import { useTeamMembers } from '@/hooks/useTeam';
@@ -25,7 +25,8 @@ import { StagePipeline } from './StagePipeline';
 
 import { LeadFormDialog } from './LeadFormDialog';
 import { MergeLeadsDialog } from './MergeLeadsDialog';
-import { Pencil, Trash2, Clock, AlertTriangle, Building2, Mail, Tag, User, DollarSign, FileText, Instagram, FileBadge } from 'lucide-react';
+import { MoveToFunnelDialog } from './MoveToFunnelDialog';
+import { Pencil, Trash2, Clock, AlertTriangle, Building2, Mail, Tag, User, DollarSign, FileText, Instagram, FileBadge, GitBranch } from 'lucide-react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { differenceInHours, formatDistanceToNow } from 'date-fns';
