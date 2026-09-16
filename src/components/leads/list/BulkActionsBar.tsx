@@ -120,6 +120,19 @@ export function BulkActionsBar({ selectedIds, stages, onClear }: BulkActionsBarP
         </SelectContent>
       </Select>
 
+      <Button variant="outline" size="sm" onClick={() => setMoveFunnelOpen(true)}>
+        <GitBranch className="h-3.5 w-3.5 mr-1" /> Mover para funil
+      </Button>
+
+      <MoveToFunnelDialog
+        open={moveFunnelOpen}
+        onOpenChange={setMoveFunnelOpen}
+        currentFunnelId={stages[0]?.funnel_id}
+        count={selectedIds.length}
+        isPending={bulkMoveFunnel.isPending}
+        onConfirm={handleMoveFunnel}
+      />
+
       <Button
         variant="outline"
         size="sm"
