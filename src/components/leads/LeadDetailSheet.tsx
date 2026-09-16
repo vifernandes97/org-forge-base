@@ -26,6 +26,9 @@ import { StagePipeline } from './StagePipeline';
 import { LeadFormDialog } from './LeadFormDialog';
 import { MergeLeadsDialog } from './MergeLeadsDialog';
 import { MoveToFunnelDialog } from './MoveToFunnelDialog';
+import { ArchiveReasonCombobox } from './ArchiveReasonCombobox';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Pencil, Trash2, Clock, AlertTriangle, Building2, Mail, Tag, User, DollarSign, FileText, Instagram, FileBadge, GitBranch } from 'lucide-react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -62,6 +65,7 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   const [mergeOpen, setMergeOpen] = useState(false);
   const [moveFunnelOpen, setMoveFunnelOpen] = useState(false);
   const [selectedReasonId, setSelectedReasonId] = useState<string>('');
+  const [archiveDetails, setArchiveDetails] = useState('');
   const moveToFunnelMut = useMoveLeadToFunnel();
 
   const handleMoveToFunnel = async (funnelId: string, funnelName: string, stageId: string, stageName: string) => {
@@ -151,19 +155,21 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
     if (!leadId || !selectedReasonId || !user || !organization) return;
     try {
       const reason = archiveReasons?.find(r => r.id === selectedReasonId);
-      await archiveLeadMut.mutateAsync({ leadId, reasonId: selectedReasonId });
+      const details = archiveDetails.trim();
+      await archiveLeadMut.mutateAsync({ leadId, reasonId: selectedReasonId, details });
       await createActivity({
         organization_id: organization.id,
         lead_id: leadId,
         user_id: user.id,
         activity_type: 'note',
         title: 'Negócio arquivado',
-        description: `Motivo: ${reason?.label || 'N/A'}`,
-        metadata: { source: 'archive', reason_id: selectedReasonId, reason_label: reason?.label },
+        description: `Motivo: ${reason?.label || 'N/A'}${details ? `\nDetalhes: ${details}` : ''}`,
+        metadata: { source: 'archive', reason_id: selectedReasonId, reason_label: reason?.label, details: details || null },
       });
       toast.success('Negócio arquivado!');
       setArchiveDialogOpen(false);
       setSelectedReasonId('');
+      setArchiveDetails('');
       onClose();
     } catch (err: any) {
       toast.error(err.message || 'Erro ao arquivar');
