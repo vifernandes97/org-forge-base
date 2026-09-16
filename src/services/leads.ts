@@ -325,10 +325,15 @@ export async function bulkArchiveLeads(leadIds: string[], reasonId: string) {
   if (error) throw error;
 }
 
-export async function archiveLead(id: string, archiveReasonId: string) {
+export async function archiveLead(id: string, archiveReasonId: string, details?: string | null) {
   const { data, error } = await supabase
     .from('leads')
-    .update({ archived_at: new Date().toISOString(), archive_reason_id: archiveReasonId, status: 'inactive' } as any)
+    .update({
+      archived_at: new Date().toISOString(),
+      archive_reason_id: archiveReasonId,
+      status: 'inactive',
+      archive_details: details?.trim() ? details.trim() : null,
+    } as any)
     .eq('id', id)
     .select()
     .single();
@@ -339,7 +344,7 @@ export async function archiveLead(id: string, archiveReasonId: string) {
 export async function unarchiveLead(id: string) {
   const { data, error } = await supabase
     .from('leads')
-    .update({ archived_at: null, archive_reason_id: null, status: 'open' } as any)
+    .update({ archived_at: null, archive_reason_id: null, archive_details: null, status: 'open' } as any)
     .eq('id', id)
     .select()
     .single();
