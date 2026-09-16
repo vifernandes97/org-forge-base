@@ -109,7 +109,7 @@ export function LeadFilterBar({
     [customFields],
   );
 
-  const showArchiveReason = filters.status_filter === 'archived';
+  const showArchiveReason = (filters.status_filters || []).includes('archived');
 
   // Build active filter chips (grouped per category)
   type Chip = {
