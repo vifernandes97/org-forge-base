@@ -2,13 +2,14 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useBulkMoveLeads, useBulkAssignLeads, useBulkDeleteLeads, useBulkArchiveLeads } from '@/hooks/useLeads';
+import { useBulkMoveLeads, useBulkAssignLeads, useBulkDeleteLeads, useBulkArchiveLeads, useBulkMoveLeadsToFunnel } from '@/hooks/useLeads';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { useActiveArchiveReasons } from '@/hooks/useArchiveReasons';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { MergeLeadsDialog } from '../MergeLeadsDialog';
-import { Trash2, ArrowRight, UserPlus, Archive, Merge } from 'lucide-react';
+import { MoveToFunnelDialog } from '../MoveToFunnelDialog';
+import { Trash2, ArrowRight, UserPlus, Archive, Merge, GitBranch } from 'lucide-react';
 import type { Stage } from '@/types';
 
 interface BulkActionsBarProps {
