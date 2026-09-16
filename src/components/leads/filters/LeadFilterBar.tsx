@@ -155,6 +155,20 @@ export function LeadFilterBar({
       }
     };
 
+    const statuses = filters.status_filters || ['open'];
+    if (statuses.length !== 1 || statuses[0] !== 'open') {
+      const labels: Record<string, string> = {
+        open: 'Ativos',
+        won: 'Ganhos',
+        archived: 'Arquivados',
+      };
+      list.push({
+        key: 'status',
+        label: `Status: ${statuses.map((s) => labels[s] ?? s).join(', ')}`,
+        onRemove: () => setFilter('status_filters', ['open']),
+      });
+    }
+
     groupOrSpread(
       'stage',
       'Etapa',
