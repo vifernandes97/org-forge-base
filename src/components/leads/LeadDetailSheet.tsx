@@ -283,6 +283,11 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
                       </Button>
                     )}
                     {!isArchived && (
+                      <Button variant="ghost" size="icon" onClick={() => setMoveFunnelOpen(true)} aria-label="Mover para outro funil" title="Mover para outro funil">
+                        <GitBranch className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {!isArchived && (
                       <Button variant="ghost" size="icon" onClick={() => setMergeOpen(true)} aria-label="Mesclar negócio">
                         <Merge className="h-4 w-4" />
                       </Button>
