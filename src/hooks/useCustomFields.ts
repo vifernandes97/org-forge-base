@@ -7,7 +7,20 @@ import {
   updateCustomField,
   deleteCustomField,
   reorderCustomFields,
+  addCustomFieldOption,
 } from '@/services/customFields';
+
+export function useAddCustomFieldOption() {
+  const qc = useQueryClient();
+  const { organization } = useOrganization();
+  return useMutation({
+    mutationFn: ({ fieldId, option }: { fieldId: string; option: string }) =>
+      addCustomFieldOption(fieldId, option),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['custom-fields', organization?.id] });
+    },
+  });
+}
 
 export function useCustomFields() {
   const { organization } = useOrganization();
