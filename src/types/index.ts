@@ -79,6 +79,7 @@ export interface CustomFieldValue {
 
 export type LeadPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type LeadStatus = 'open' | 'won' | 'inactive';
+export type LeadStatusFilter = 'open' | 'won' | 'archived';
 
 export interface Lead {
   id: string;
@@ -240,6 +241,8 @@ export interface LeadFilters {
   custom_fields?: Record<string, any>;
   qualifications?: number[];
   show_archived?: boolean;
-  status_filter?: 'open' | 'won' | 'archived';
+  /** @deprecated use status_filters */
+  status_filter?: LeadStatusFilter;
+  status_filters?: LeadStatusFilter[];
   archive_reason_ids?: string[];
 }
