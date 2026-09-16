@@ -137,6 +137,37 @@ export function useMoveLeadToStage(funnelId: string | undefined) {
   });
 }
 
+export function useMoveLeadToFunnel() {
+  const qc = useQueryClient();
+  const { organization } = useOrganization();
+  return useMutation({
+    mutationFn: ({ leadId, funnelId, stageId }: { leadId: string; funnelId: string; stageId: string }) =>
+      moveLeadToFunnel(leadId, funnelId, stageId),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['leads', organization?.id] });
+      qc.invalidateQueries({ queryKey: ['lead', vars.leadId] });
+      qc.invalidateQueries({ queryKey: ['leads-kanban'] });
+      qc.invalidateQueries({ queryKey: ['leads-list'] });
+      qc.invalidateQueries({ queryKey: ['funnel-metrics'] });
+    },
+  });
+}
+
+export function useBulkMoveLeadsToFunnel() {
+  const qc = useQueryClient();
+  const { organization } = useOrganization();
+  return useMutation({
+    mutationFn: ({ leadIds, funnelId, stageId }: { leadIds: string[]; funnelId: string; stageId: string }) =>
+      bulkMoveLeadsToFunnel(leadIds, funnelId, stageId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['leads', organization?.id] });
+      qc.invalidateQueries({ queryKey: ['leads-kanban'] });
+      qc.invalidateQueries({ queryKey: ['leads-list'] });
+      qc.invalidateQueries({ queryKey: ['funnel-metrics'] });
+    },
+  });
+}
+
 export function useBulkMoveLeads() {
   const qc = useQueryClient();
   return useMutation({
