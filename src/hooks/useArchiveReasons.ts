@@ -4,6 +4,7 @@ import {
   getArchiveReasons,
   getActiveArchiveReasons,
   createArchiveReason,
+  addArchiveReason,
   updateArchiveReason,
   deleteArchiveReason,
   seedDefaultReasons,

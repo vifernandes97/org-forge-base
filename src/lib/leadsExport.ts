@@ -90,6 +90,7 @@ export function buildLeadRows(
       Status: STATUS_LABELS[l.status] || l.status || '',
       Notas: l.notes || '',
       'Motivo de arquivamento': l.archive_reason?.label || '',
+      'Detalhes do arquivamento': (l as any).archive_details || '',
       'Arquivado em': dt(l.archived_at),
       'Mesclado em': dt(l.merged_at),
       'Mesclado no negócio': l.merged_into_lead_id || '',
