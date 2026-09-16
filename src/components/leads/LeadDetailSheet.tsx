@@ -60,7 +60,29 @@ export function LeadDetailSheet({ leadId, onClose }: LeadDetailSheetProps) {
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [mergeOpen, setMergeOpen] = useState(false);
+  const [moveFunnelOpen, setMoveFunnelOpen] = useState(false);
   const [selectedReasonId, setSelectedReasonId] = useState<string>('');
+  const moveToFunnelMut = useMoveLeadToFunnel();
+
+  const handleMoveToFunnel = async (funnelId: string, funnelName: string, stageId: string, stageName: string) => {
+    if (!leadId || !user || !organization || !typedLead) return;
+    const oldFunnel = typedLead.funnel?.name || '';
+    try {
+      await moveToFunnelMut.mutateAsync({ leadId, funnelId, stageId });
+      await createActivity({
+        organization_id: organization.id,
+        lead_id: leadId,
+        user_id: user.id,
+        activity_type: 'stage_change',
+        title: `Funil alterado: ${oldFunnel} → ${funnelName} (etapa: ${stageName})`,
+        metadata: { from_funnel: oldFunnel, to_funnel: funnelName, to_stage: stageName },
+      });
+      toast.success(`Movido para ${funnelName}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao mover de funil');
+    }
+  };
+
 
   const handleStageChange = async (stageId: string) => {
     if (!leadId || !user || !organization || !typedLead) return;
