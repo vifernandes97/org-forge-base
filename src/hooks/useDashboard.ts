@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { subDays, startOfMonth, endOfMonth, subMonths, startOfYear, differenceInDays } from 'date-fns';
+import { subDays, startOfMonth, endOfMonth, subMonths, addMonths, startOfYear, differenceInDays } from 'date-fns';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import * as dashboardService from '@/services/dashboard';
 
