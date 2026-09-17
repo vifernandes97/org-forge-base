@@ -38,7 +38,11 @@ function computePeriod(
     }
     case 'month': {
       const target = parseMonth(targetMonth);
-      return { dateFrom: startOfMonth(target).toISOString(), dateTo: endOfMonth(target).toISOString() };
+      const end = endOfMonth(target);
+      return {
+        dateFrom: startOfMonth(target).toISOString(),
+        dateTo: (end > now ? now : end).toISOString(),
+      };
     }
     case 'this_year': return { dateFrom: startOfYear(now).toISOString(), dateTo: now.toISOString() };
     case 'custom': return {
