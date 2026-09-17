@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, ChevronLeft, ChevronRight, SlidersHorizontal, X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -13,9 +13,7 @@ const PERIOD_OPTIONS: { value: PeriodKey; label: string }[] = [
   { value: '7d', label: 'Últimos 7 dias' },
   { value: '30d', label: 'Últimos 30 dias' },
   { value: '90d', label: 'Últimos 90 dias' },
-  { value: 'this_month', label: 'Este mês' },
   { value: 'last_month', label: 'Mês passado' },
-  { value: 'month', label: 'Mês específico' },
   { value: 'this_year', label: 'Este ano' },
   { value: 'custom', label: 'Personalizado' },
 ];
@@ -37,6 +35,12 @@ function buildMonthOptions() {
   return opts;
 }
 
+function monthLabel(targetMonth: string) {
+  const [y, m] = targetMonth.split('-').map(Number);
+  const label = format(new Date(y, (m || 1) - 1, 1), 'MMMM yyyy', { locale: ptBR });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 interface DashboardFiltersProps {
   periodKey: PeriodKey;
   onPeriodChange: (key: PeriodKey) => void;
@@ -48,46 +52,73 @@ interface DashboardFiltersProps {
   onCustomToChange: (d: Date | undefined) => void;
   targetMonth: string;
   onTargetMonthChange: (m: string) => void;
+  isCurrentMonth: boolean;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+  onResetToCurrentMonth: () => void;
 }
 
 export default function DashboardFilters({
   periodKey, onPeriodChange, funnelId, onFunnelChange,
   customFrom, customTo, onCustomFromChange, onCustomToChange,
   targetMonth, onTargetMonthChange,
+  isCurrentMonth, onPrevMonth, onNextMonth, onResetToCurrentMonth,
 }: DashboardFiltersProps) {
   const { data: funnels } = useFunnels();
   const monthOptions = buildMonthOptions();
-
+  const isMonthMode = periodKey === 'month';
+  const activeLabel = PERIOD_OPTIONS.find(o => o.value === periodKey)?.label ?? 'Período';
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <Select value={periodKey} onValueChange={(v) => onPeriodChange(v as PeriodKey)}>
-        <SelectTrigger className="w-[180px]">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {PERIOD_OPTIONS.map(o => (
-            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      {periodKey === 'month' && (
-        <Select value={targetMonth} onValueChange={onTargetMonthChange}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Selecione o mês" />
-          </SelectTrigger>
-          <SelectContent className="max-h-[300px]">
-            {monthOptions.map(o => (
-              <SelectItem key={o.value} value={o.value} disabled={o.disabled}>
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <div className="flex flex-wrap items-center gap-2">
+      {isMonthMode ? (
+        <div className="flex items-center gap-1 rounded-md border bg-background p-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onPrevMonth} aria-label="Mês anterior">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 min-w-[130px] font-medium">
+                {monthLabel(targetMonth)}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[200px] p-0" align="center">
+              <div className="max-h-[300px] overflow-y-auto p-1">
+                {monthOptions.map(o => (
+                  <button
+                    key={o.value}
+                    disabled={o.disabled}
+                    onClick={() => onTargetMonthChange(o.value)}
+                    className={cn(
+                      'w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent disabled:pointer-events-none disabled:opacity-40',
+                      o.value === targetMonth && 'bg-accent font-medium'
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={onNextMonth}
+            disabled={isCurrentMonth}
+            aria-label="Mês seguinte"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1 rounded-md border bg-background py-1 pl-3 pr-1">
+          <span className="text-sm font-medium">{activeLabel}</span>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onResetToCurrentMonth} aria-label="Voltar para o mês atual">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       )}
-
-
 
       {periodKey === 'custom' && (
         <div className="flex items-center gap-2">
@@ -117,17 +148,47 @@ export default function DashboardFilters({
         </div>
       )}
 
-      <Select value={funnelId ?? '__all__'} onValueChange={(v) => onFunnelChange(v === '__all__' ? null : v)}>
-        <SelectTrigger className="w-[200px]">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="__all__">Todos os funis</SelectItem>
-          {funnels?.map(f => (
-            <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="icon" aria-label="Mais filtros">
+            <SlidersHorizontal className="h-4 w-4" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[260px] space-y-4" align="end">
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">Período</p>
+            <Select value={isMonthMode ? '' : periodKey} onValueChange={(v) => onPeriodChange(v as PeriodKey)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Outros períodos" />
+              </SelectTrigger>
+              <SelectContent>
+                {PERIOD_OPTIONS.map(o => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">Funil</p>
+            <Select value={funnelId ?? '__all__'} onValueChange={(v) => onFunnelChange(v === '__all__' ? null : v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Todos os funis</SelectItem>
+                {funnels?.map(f => (
+                  <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button variant="ghost" size="sm" className="w-full" onClick={onResetToCurrentMonth} disabled={isMonthMode && isCurrentMonth}>
+            Voltar para o mês atual
+          </Button>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }

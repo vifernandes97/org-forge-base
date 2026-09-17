@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { subDays, startOfMonth, endOfMonth, subMonths, startOfYear, differenceInDays } from 'date-fns';
+import { subDays, startOfMonth, endOfMonth, subMonths, addMonths, startOfYear, differenceInDays } from 'date-fns';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import * as dashboardService from '@/services/dashboard';
 
@@ -38,7 +38,11 @@ function computePeriod(
     }
     case 'month': {
       const target = parseMonth(targetMonth);
-      return { dateFrom: startOfMonth(target).toISOString(), dateTo: endOfMonth(target).toISOString() };
+      const end = endOfMonth(target);
+      return {
+        dateFrom: startOfMonth(target).toISOString(),
+        dateTo: (end > now ? now : end).toISOString(),
+      };
     }
     case 'this_year': return { dateFrom: startOfYear(now).toISOString(), dateTo: now.toISOString() };
     case 'custom': return {
@@ -53,8 +57,12 @@ function currentMonthKey(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
+function monthKeyFrom(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export function useDashboardPeriod() {
-  const [periodKey, setPeriodKey] = useState<PeriodKey>('30d');
+  const [periodKey, setPeriodKey] = useState<PeriodKey>('month');
   const [customFrom, setCustomFrom] = useState<Date | undefined>();
   const [customTo, setCustomTo] = useState<Date | undefined>();
   const [targetMonth, setTargetMonth] = useState<string>(currentMonthKey());
@@ -64,10 +72,32 @@ export function useDashboardPeriod() {
     return { key: periodKey, dateFrom, dateTo };
   }, [periodKey, customFrom, customTo, targetMonth]);
 
+  const isCurrentMonth = targetMonth === currentMonthKey();
+
+  const goPrevMonth = () => {
+    setPeriodKey('month');
+    setTargetMonth(monthKeyFrom(subMonths(parseMonth(targetMonth), 1)));
+  };
+
+  const goNextMonth = () => {
+    if (isCurrentMonth) return;
+    const next = addMonths(parseMonth(targetMonth), 1);
+    const nextKey = monthKeyFrom(next);
+    if (nextKey > currentMonthKey()) return;
+    setPeriodKey('month');
+    setTargetMonth(nextKey);
+  };
+
+  const resetToCurrentMonth = () => {
+    setPeriodKey('month');
+    setTargetMonth(currentMonthKey());
+  };
+
   return {
     period, periodKey, setPeriodKey,
     customFrom, customTo, setCustomFrom, setCustomTo,
     targetMonth, setTargetMonth,
+    isCurrentMonth, goPrevMonth, goNextMonth, resetToCurrentMonth,
   };
 }
 
