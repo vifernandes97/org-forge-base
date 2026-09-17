@@ -20,7 +20,10 @@ import {
 import { useFunnels } from '@/hooks/useFunnels';
 
 export default function DashboardPage() {
-  const { period, periodKey, setPeriodKey, customFrom, customTo, setCustomFrom, setCustomTo, targetMonth, setTargetMonth } = useDashboardPeriod();
+  const {
+    period, periodKey, setPeriodKey, customFrom, customTo, setCustomFrom, setCustomTo,
+    targetMonth, setTargetMonth, isCurrentMonth, goPrevMonth, goNextMonth, resetToCurrentMonth,
+  } = useDashboardPeriod();
   const [funnelId, setFunnelId] = useState<string | null>(null);
   const { data: funnels } = useFunnels();
 
