@@ -60,6 +60,10 @@ export default function DashboardPage() {
           onCustomToChange={setCustomTo}
           targetMonth={targetMonth}
           onTargetMonthChange={setTargetMonth}
+          isCurrentMonth={isCurrentMonth}
+          onPrevMonth={goPrevMonth}
+          onNextMonth={goNextMonth}
+          onResetToCurrentMonth={resetToCurrentMonth}
         />
       </div>
 
