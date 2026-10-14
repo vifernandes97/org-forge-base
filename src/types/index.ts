@@ -86,12 +86,6 @@ export interface Lead {
   organization_id: string;
   funnel_id: string;
   stage_id: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
-  company: string | null;
-  company_name: string | null;
-  company_instagram: string | null;
   assigned_to: string | null;
   value: number;
   tags: string[];
