@@ -9,6 +9,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { OrgSwitcher } from '@/components/layout/OrgSwitcher';
 import { useTaskBadgeCounts } from '@/hooks/useTasks';
