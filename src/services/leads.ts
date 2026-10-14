@@ -27,23 +27,6 @@ function applyFilters(query: any, filters?: LeadFilters) {
     );
     query = query.or(parts.join(','));
   }
-  if (filters.search) {
-    const raw = filters.search.trim();
-    const s = `%${raw}%`;
-    const orParts = [
-      `name.ilike.${s}`,
-      `email.ilike.${s}`,
-      `company.ilike.${s}`,
-      `company_name.ilike.${s}`,
-      `phone.ilike.${s}`,
-    ];
-    // Digit-only search: match phone ignoring formatting (parentheses, spaces, dashes)
-    const digits = raw.replace(/\D/g, '');
-    if (digits.length >= 3) {
-      orParts.push(`phone.ilike.%${digits}%`);
-    }
-    query = query.or(orParts.join(','));
-  }
   if (filters.stage_ids?.length) {
     query = query.in('stage_id', filters.stage_ids);
   }
@@ -93,13 +76,41 @@ function applyFilters(query: any, filters?: LeadFilters) {
   if (filters.archive_reason_ids?.length) {
     query = query.in('archive_reason_id', filters.archive_reason_ids);
   }
+  if (filters.company_ids?.length) {
+    query = query.in('company_id', filters.company_ids);
+  }
+  if (filters.segments?.length) {
+    // requires the company embed to be !inner (see leadsQuery)
+    query = query.in('company.segment', filters.segments);
+  }
   return query;
 }
+
+/** Relations every deal screen needs: company + linked contacts. */
+export const LEAD_COMPANY_REL = 'company:companies(*), lead_contacts(id, is_primary, created_at, contact:contacts(*))';
+
+/**
+ * Base deals query. Uses search_leads RPC when there is a search term (accent-insensitive,
+ * searches company and all linked contacts), otherwise the leads table.
+ */
+function leadsQuery(select: string, filters: LeadFilters | undefined, orgId: string | undefined, opts?: { count?: 'exact' }) {
+  const sel = filters?.segments?.length ? select.replace('company:companies(*)', 'company:companies!inner(*)') : select;
+  const term = filters?.search?.trim();
+  if (term && orgId) {
+    return (supabase.rpc as any)('search_leads', { p_org: orgId, p_term: term }, opts?.count ? { count: opts.count } : undefined).select(sel);
+  }
+  return supabase.from('leads').select(sel, opts as any);
+}
+
+const SORT_MAP: Record<string, string> = {
+  company: 'company(trade_name)',
+  segment: 'company(segment)',
+};
 
 export async function getLeads(orgId: string): Promise<Lead[]> {
   const { data, error } = await supabase
     .from('leads')
-    .select('*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*)')
+    .select(`*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*), ${LEAD_COMPANY_REL}`)
     .eq('organization_id', orgId)
     .is('archived_at', null)
     .order('last_activity_at', { ascending: false });
@@ -110,7 +121,7 @@ export async function getLeads(orgId: string): Promise<Lead[]> {
 export async function getLead(id: string) {
   const { data, error } = await supabase
     .from('leads')
-    .select('*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*), custom_field_values(*)')
+    .select(`*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*), custom_field_values(*), ${LEAD_COMPANY_REL}`)
     .eq('id', id)
     .single();
   if (error) throw error;
@@ -121,12 +132,7 @@ export async function createLead(lead: {
   organization_id: string;
   funnel_id: string;
   stage_id: string;
-  name: string;
-  email?: string | null;
-  phone?: string | null;
-  company?: string | null;
-  company_name?: string | null;
-  company_instagram?: string | null;
+  company_id: string;
   qualification?: number | null;
   assigned_to?: string | null;
   value?: number;
@@ -202,9 +208,7 @@ export async function getOrgMembers(orgId: string) {
 }
 
 export async function getLeadsByFunnel(funnelId: string, filters?: LeadFilters, orgId?: string) {
-  let query = supabase
-    .from('leads')
-    .select('*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*)')
+  let query = leadsQuery(`*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*), ${LEAD_COMPANY_REL}`, filters, orgId)
     .eq('funnel_id', funnelId);
   if (orgId) query = query.eq('organization_id', orgId);
   query = applyFilters(query, filters);
@@ -216,12 +220,11 @@ export async function getLeadsByFunnel(funnelId: string, filters?: LeadFilters, 
 
 /** Full lead records (all relations) matching the current server-side filters, for export. */
 export async function getLeadsForExport(funnelId: string, filters?: LeadFilters, orgId?: string) {
-  let query = supabase
-    .from('leads')
-    .select(
-      '*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*), archive_reason:archive_reasons(*), lead_contacts(is_primary, contact:contacts(*))'
-    )
-    .eq('funnel_id', funnelId);
+  let query = leadsQuery(
+    `*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*), archive_reason:archive_reasons(*), ${LEAD_COMPANY_REL}`,
+    filters,
+    orgId
+  ).eq('funnel_id', funnelId);
   if (orgId) query = query.eq('organization_id', orgId);
   query = applyFilters(query, filters);
   query = query.order('created_at', { ascending: false });
@@ -241,13 +244,15 @@ export async function getLeadsListPaginated(
 ) {
   const from = page * pageSize;
   const to = from + pageSize - 1;
-  let query = supabase
-    .from('leads')
-    .select('*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*)', { count: 'exact' })
-    .eq('funnel_id', funnelId);
+  let query = leadsQuery(
+    `*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*), ${LEAD_COMPANY_REL}`,
+    filters,
+    orgId,
+    { count: 'exact' }
+  ).eq('funnel_id', funnelId);
   if (orgId) query = query.eq('organization_id', orgId);
   query = applyFilters(query, filters);
-  query = query.order(sortBy as any, { ascending: sortOrder === 'asc' }).range(from, to);
+  query = query.order((SORT_MAP[sortBy] || sortBy) as any, { ascending: sortOrder === 'asc' }).range(from, to);
   const { data, error, count } = await query;
   if (error) throw error;
   return { data: data as any[], count: count || 0 };
@@ -393,7 +398,7 @@ export async function getLeadsByIds(ids: string[]) {
   if (!ids.length) return [];
   const { data, error } = await supabase
     .from('leads')
-    .select('*, stage:stages(*), assigned_profile:profiles!leads_assigned_to_fkey(*)')
+    .select(`*, stage:stages(*), assigned_profile:profiles!leads_assigned_to_fkey(*), ${LEAD_COMPANY_REL}`)
     .in('id', ids);
   if (error) throw error;
   return data as any[];
@@ -401,19 +406,11 @@ export async function getLeadsByIds(ids: string[]) {
 
 export async function searchLeadsForMerge(orgId: string, term: string, excludeId: string) {
   const t = term.trim();
-  let query = supabase
-    .from('leads')
-    .select('*, stage:stages(*)')
-    .eq('organization_id', orgId)
-    .neq('id', excludeId)
-    .limit(10);
-  if (t) {
-    const s = `%${t}%`;
-    query = query.or(
-      [`name.ilike.${s}`, `company.ilike.${s}`, `company_name.ilike.${s}`, `email.ilike.${s}`, `phone.ilike.${s}`].join(',')
-    );
-  }
-  const { data, error } = await query.order('last_activity_at', { ascending: false });
+  const sel = `*, stage:stages(*), ${LEAD_COMPANY_REL}`;
+  const base: any = t
+    ? (supabase.rpc as any)('search_leads', { p_org: orgId, p_term: t }).select(sel)
+    : supabase.from('leads').select(sel).eq('organization_id', orgId);
+  const { data, error } = await base.neq('id', excludeId).limit(10).order('last_activity_at', { ascending: false });
   if (error) throw error;
   return data as any[];
 }
