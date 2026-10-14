@@ -12,6 +12,7 @@ import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { useCustomFields } from '@/hooks/useCustomFields';
 import { useLeads } from '@/hooks/useLeads';
 import { useActiveArchiveReasons } from '@/hooks/useArchiveReasons';
+import { useCompanies, useSegments } from '@/hooks/useCompanies';
 import type { LeadFilters, LeadPriority, StageTimeFilter } from '@/types';
 
 interface LeadFilterBarProps {
@@ -65,6 +66,14 @@ export function LeadFilterBar({
   const { data: customFields } = useCustomFields();
   const { data: allLeads } = useLeads();
   const { data: archiveReasons } = useActiveArchiveReasons();
+
+  const { data: companies } = useCompanies();
+  const { data: segments } = useSegments();
+  const segmentOptions = useMemo(() => (segments || []).map(s => ({ value: s, label: s })), [segments]);
+  const companyOptions = useMemo(
+    () => (companies || []).map(c => ({ value: c.id, label: c.trade_name })),
+    [companies],
+  );
 
   const archiveReasonOptions = useMemo(
     () => (archiveReasons || []).map((r) => ({ value: r.id, label: r.label })),
@@ -225,6 +234,22 @@ export function LeadFilterBar({
       allTags,
       () => setFilter('tags', undefined),
       (v) => setFilter('tags', (filters.tags || []).filter((x) => x !== v)),
+    );
+    groupOrSpread(
+      'seg',
+      'Segmento',
+      filters.segments || [],
+      segmentOptions,
+      () => setFilter('segments', undefined),
+      (v) => setFilter('segments', (filters.segments || []).filter((x) => x !== v)),
+    );
+    groupOrSpread(
+      'comp',
+      'Empresa',
+      filters.company_ids || [],
+      companyOptions,
+      () => setFilter('company_ids', undefined),
+      (v) => setFilter('company_ids', (filters.company_ids || []).filter((x) => x !== v)),
     );
     groupOrSpread(
       'arch',

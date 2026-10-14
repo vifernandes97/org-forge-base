@@ -109,6 +109,8 @@ export function AdvancedFiltersPopover({
   tagOptions,
   sourceOptions,
   archiveReasonOptions,
+  segmentOptions,
+  companyOptions,
   stageTimeOptions,
   customFields,
   showArchiveReason,
