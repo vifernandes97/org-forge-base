@@ -9,6 +9,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { OrgSwitcher } from '@/components/layout/OrgSwitcher';
 import { useTaskBadgeCounts } from '@/hooks/useTasks';
@@ -29,6 +30,8 @@ const settingsNav = [
 export function AppSidebar() {
   const { data: badgeCounts } = useTaskBadgeCounts();
   const totalBadge = (badgeCounts?.overdue || 0) + (badgeCounts?.today || 0);
+  const { isMobile, setOpenMobile } = useSidebar();
+  const closeOnMobile = () => { if (isMobile) setOpenMobile(false); };
 
   return (
     <Sidebar collapsible="icon" className="border-r">
