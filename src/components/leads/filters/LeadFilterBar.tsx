@@ -341,7 +341,7 @@ export function LeadFilterBar({
         <div className="relative flex-1 min-w-[200px] max-w-[360px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            placeholder="Buscar leads..."
+            placeholder="Buscar empresa, CNPJ ou contato..."
             value={searchInput}
             onChange={(e) => setFilter('search', e.target.value)}
             className="h-9 pl-9 text-sm bg-muted/50 border-transparent focus-visible:bg-background focus-visible:border-input"
