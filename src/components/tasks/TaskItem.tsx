@@ -6,6 +6,7 @@ import { formatDistanceToNow, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { TaskWithRelations } from '@/types';
 import { cn } from '@/lib/utils';
+import { getLeadDisplay } from '@/lib/leadDisplay';
 
 interface TaskItemProps {
   task: TaskWithRelations;
@@ -45,7 +46,7 @@ export function TaskItem({ task, onComplete, onUncomplete, showLead, onLeadClick
             onClick={() => onLeadClick?.(task.lead!.id)}
             className="text-xs text-primary hover:underline truncate block"
           >
-            {(task.lead as any).company_name || task.lead.name}
+            {getLeadDisplay(task.lead).title}
           </button>
         )}
         <div className="flex items-center gap-2 flex-wrap">

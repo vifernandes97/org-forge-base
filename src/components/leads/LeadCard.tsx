@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { PriorityBadge } from './PriorityBadge';
 import { StatusBadge } from './StatusBadge';
 import type { LeadWithRelations } from '@/types';
+import { getLeadDisplay } from '@/lib/leadDisplay';
 
 interface LeadCardProps {
   lead: LeadWithRelations;
@@ -10,6 +11,7 @@ interface LeadCardProps {
 }
 
 export function LeadCard({ lead, onClick }: LeadCardProps) {
+  const { title, segment, primaryContact } = getLeadDisplay(lead);
   return (
     <div
       className="flex items-center gap-4 rounded-lg border p-4 hover:bg-accent/50 cursor-pointer transition-colors"
@@ -17,15 +19,15 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
     >
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-center gap-2">
-          <span className="font-medium truncate">{lead.company_name || lead.name}</span>
+          <span className="font-medium truncate">{title}</span>
           <PriorityBadge priority={lead.priority} />
           {lead.status && lead.status !== 'open' && <StatusBadge status={lead.status} />}
         </div>
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          {lead.name && lead.company_name && lead.name !== lead.company_name && (
-            <span className="truncate">{lead.name}</span>
+          {primaryContact?.name && primaryContact.name !== title && (
+            <span className="truncate">{primaryContact.name}</span>
           )}
-          {lead.company && <span className="truncate">{lead.company}</span>}
+          {segment && <Badge variant="outline" className="text-[10px] font-normal text-muted-foreground">{segment}</Badge>}
           {lead.stage && (
             <Badge variant="outline" className="text-xs" style={{ borderColor: lead.stage.color, color: lead.stage.color }}>
               {lead.stage.name}

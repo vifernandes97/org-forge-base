@@ -8,6 +8,7 @@ import { useCustomFields } from '@/hooks/useCustomFields';
 import { StarRating } from './StarRating';
 import { Clock } from 'lucide-react';
 import type { LeadWithRelations } from '@/types';
+import { getLeadDisplay } from '@/lib/leadDisplay';
 
 interface KanbanCardProps {
   lead: LeadWithRelations;
@@ -26,10 +27,13 @@ export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
     ? { transform: `translate(${transform.x}px, ${transform.y}px)` }
     : undefined;
 
+  const { title, segment, primaryContact } = getLeadDisplay(lead);
+  const phone = primaryContact?.phone || null;
+
   const handleWhatsApp = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!lead.phone) return;
-    const digits = lead.phone.replace(/\D/g, '');
+    if (!phone) return;
+    const digits = phone.replace(/\D/g, '');
     window.open(`https://wa.me/${digits}`, '_blank');
   };
 
@@ -80,7 +84,7 @@ export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
     >
       {/* Row 1: identifier + avatar + WhatsApp */}
       <div className="flex items-center gap-2">
-        <span className="font-medium text-sm truncate flex-1">{lead.company_name || lead.name}</span>
+        <span className="font-medium text-sm truncate flex-1">{title}</span>
         {lead.assigned_profile && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -96,7 +100,7 @@ export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
             <TooltipContent>{lead.assigned_profile.full_name}</TooltipContent>
           </Tooltip>
         )}
-        {lead.phone && (
+        {phone && (
           <button
             type="button"
             onClick={handleWhatsApp}
@@ -110,9 +114,16 @@ export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
         )}
       </div>
 
-      {/* Row 2: contact name (when distinct from title) */}
-      {lead.name && lead.name !== (lead.company_name || lead.name) && (
-        <p className="text-xs text-muted-foreground truncate">{lead.name}</p>
+      {/* Row 2: primary contact + segment */}
+      {(primaryContact?.name || segment) && (
+        <div className="flex items-center gap-1.5 min-w-0">
+          {primaryContact?.name && primaryContact.name !== title && (
+            <p className="text-xs text-muted-foreground truncate">{primaryContact.name}</p>
+          )}
+          {segment && (
+            <span className="shrink-0 text-[10px] rounded border px-1 py-px text-muted-foreground">{segment}</span>
+          )}
+        </div>
       )}
 
       {/* Row 3: business type (custom field) */}
@@ -121,13 +132,13 @@ export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
       )}
 
       {/* Row 4: whatsapp / phone */}
-      {lead.phone && (
+      {phone && (
         <button
           type="button"
           onClick={handleWhatsApp}
           className="block text-xs text-muted-foreground hover:text-green-600 transition-colors truncate text-left"
         >
-          {lead.phone}
+          {phone}
         </button>
       )}
 
