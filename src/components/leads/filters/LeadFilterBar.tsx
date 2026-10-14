@@ -12,6 +12,7 @@ import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { useCustomFields } from '@/hooks/useCustomFields';
 import { useLeads } from '@/hooks/useLeads';
 import { useActiveArchiveReasons } from '@/hooks/useArchiveReasons';
+import { useCompanies, useSegments } from '@/hooks/useCompanies';
 import type { LeadFilters, LeadPriority, StageTimeFilter } from '@/types';
 
 interface LeadFilterBarProps {
@@ -65,6 +66,14 @@ export function LeadFilterBar({
   const { data: customFields } = useCustomFields();
   const { data: allLeads } = useLeads();
   const { data: archiveReasons } = useActiveArchiveReasons();
+
+  const { data: companies } = useCompanies();
+  const { data: segments } = useSegments();
+  const segmentOptions = useMemo(() => (segments || []).map(s => ({ value: s, label: s })), [segments]);
+  const companyOptions = useMemo(
+    () => (companies || []).map(c => ({ value: c.id, label: c.trade_name })),
+    [companies],
+  );
 
   const archiveReasonOptions = useMemo(
     () => (archiveReasons || []).map((r) => ({ value: r.id, label: r.label })),
@@ -227,6 +236,22 @@ export function LeadFilterBar({
       (v) => setFilter('tags', (filters.tags || []).filter((x) => x !== v)),
     );
     groupOrSpread(
+      'seg',
+      'Segmento',
+      filters.segments || [],
+      segmentOptions,
+      () => setFilter('segments', undefined),
+      (v) => setFilter('segments', (filters.segments || []).filter((x) => x !== v)),
+    );
+    groupOrSpread(
+      'comp',
+      'Empresa',
+      filters.company_ids || [],
+      companyOptions,
+      () => setFilter('company_ids', undefined),
+      (v) => setFilter('company_ids', (filters.company_ids || []).filter((x) => x !== v)),
+    );
+    groupOrSpread(
       'arch',
       'Motivo',
       filters.archive_reason_ids || [],
@@ -316,7 +341,7 @@ export function LeadFilterBar({
         <div className="relative flex-1 min-w-[200px] max-w-[360px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            placeholder="Buscar leads..."
+            placeholder="Buscar empresa, CNPJ ou contato..."
             value={searchInput}
             onChange={(e) => setFilter('search', e.target.value)}
             className="h-9 pl-9 text-sm bg-muted/50 border-transparent focus-visible:bg-background focus-visible:border-input"
@@ -360,6 +385,8 @@ export function LeadFilterBar({
             tagOptions={allTags}
             sourceOptions={allSources}
             archiveReasonOptions={archiveReasonOptions}
+            segmentOptions={segmentOptions}
+            companyOptions={companyOptions}
             stageTimeOptions={STAGE_TIME_OPTIONS}
             customFields={activeCustomFields}
             showArchiveReason={showArchiveReason}

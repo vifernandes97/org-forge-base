@@ -1,3 +1,4 @@
+import { formatCnpj } from '@/lib/cnpj';
 import { format } from 'date-fns';
 import type { CustomFieldDefinition } from '@/types';
 import type { CustomFieldValueMap } from './leadClientFilters';
@@ -17,6 +18,7 @@ const PRIORITY_LABELS: Record<string, string> = {
 };
 
 const ACTIVITY_LABELS: Record<string, string> = {
+  company_merge: 'Empresa mesclada',
   note: 'Nota',
   stage_change: 'Mudança de etapa',
   call: 'Ligação',
@@ -73,12 +75,15 @@ export function buildLeadRows(
 
     const row: Record<string, unknown> = {
       ID: l.id,
-      Empresa: l.company || '',
-      'Razão social': l.company_name || '',
-      Instagram: l.company_instagram || '',
-      'Nome do contato': contact?.name || l.name || '',
-      'E-mail': contact?.email || l.email || '',
-      Telefone: contact?.phone || l.phone || '',
+      Empresa: l.company?.trade_name || '',
+      Segmento: l.company?.segment || '',
+      'Razão social': l.company?.legal_name || '',
+      CNPJ: l.company?.cnpj ? formatCnpj(l.company.cnpj) : '',
+      Instagram: l.company?.instagram || '',
+      'Nome do contato': contact?.name || '',
+      'E-mail': contact?.email || '',
+      Telefone: contact?.phone || '',
+      'Outros contatos': otherContacts(l),
       Valor: l.value ?? 0,
       Prioridade: PRIORITY_LABELS[l.priority] || l.priority || '',
       'Qualificação': l.qualification ?? '',
@@ -123,9 +128,10 @@ export function buildActivityRows(leads: any[], activities: any[]): Record<strin
       const contact = primaryContact(l);
       return {
         'ID do negócio': l.id,
-        Empresa: l.company || '',
-        'Razão social': l.company_name || '',
-        'Nome do contato': contact?.name || l.name || '',
+        Empresa: l.company?.trade_name || '',
+        Segmento: l.company?.segment || '',
+        'Razão social': l.company?.legal_name || '',
+        'Nome do contato': contact?.name || '',
         'Data/hora': dt(a.created_at),
         Tipo: ACTIVITY_LABELS[a.activity_type] || a.activity_type || '',
         'Tipo (técnico)': a.activity_type || '',
@@ -140,4 +146,12 @@ export function buildActivityRows(leads: any[], activities: any[]): Record<strin
 function primaryContact(l: any): any {
   const links: any[] = Array.isArray(l.lead_contacts) ? l.lead_contacts : [];
   return (links.find(x => x.is_primary) || links[0])?.contact;
+}
+
+function otherContacts(l: any): string {
+  const links: any[] = Array.isArray(l.lead_contacts) ? l.lead_contacts : [];
+  return links
+    .filter(x => !x.is_primary && x.contact)
+    .map(x => [x.contact.name, x.contact.email, x.contact.phone].filter(Boolean).join(' / '))
+    .join(' | ');
 }

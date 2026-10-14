@@ -71,6 +71,13 @@
       "when": 1792020742915,
       "tag": "0009_phase1_segments_regroup_companies",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792021040999,
+      "tag": "0010_phase2_search_merge_companies",
+      "breakpoints": true
     }
   ]
 }

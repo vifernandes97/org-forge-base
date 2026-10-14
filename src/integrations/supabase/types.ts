@@ -636,7 +636,7 @@ export type Database = {
           last_activity_at?: string
           merged_at?: string | null
           merged_into_lead_id?: string | null
-          name: string
+          name?: string
           notes?: string | null
           organization_id: string
           phone?: string | null
@@ -1419,6 +1419,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      merge_companies: {
+        Args: { p_source: string; p_target: string }
+        Returns: Json
+      }
       merge_leads: {
         Args: { p_duplicate_ids: string[]; p_primary_id: string }
         Returns: Json
@@ -1439,6 +1443,45 @@ export type Database = {
           p_org: string
         }
         Returns: string
+      }
+      search_leads: {
+        Args: { p_org: string; p_term: string }
+        Returns: {
+          archive_details: string | null
+          archive_reason_id: string | null
+          archived_at: string | null
+          assigned_to: string | null
+          company: string | null
+          company_id: string | null
+          company_instagram: string | null
+          company_name: string | null
+          created_at: string
+          email: string | null
+          funnel_id: string
+          id: string
+          last_activity_at: string
+          merged_at: string | null
+          merged_into_lead_id: string | null
+          name: string
+          notes: string | null
+          organization_id: string
+          phone: string | null
+          priority: string
+          qualification: number | null
+          source: string | null
+          stage_entered_at: string
+          stage_id: string
+          status: string
+          tags: string[]
+          updated_at: string
+          value: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "leads"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
     }
     Enums: {

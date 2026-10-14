@@ -1,3 +1,4 @@
+import { getPrimaryContact } from '@/lib/leadDisplay';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface WebhookLogFilters {
@@ -101,10 +102,23 @@ export function buildWebhookPayload({
     timestamp: new Date().toISOString(),
     lead: {
       id: lead.id,
-      name: lead.name,
-      email: lead.email || null,
-      phone: lead.phone || null,
-      company: lead.company || null,
+      company: lead.company
+        ? {
+            id: lead.company.id, trade_name: lead.company.trade_name, legal_name: lead.company.legal_name,
+            cnpj: lead.company.cnpj, instagram: lead.company.instagram, segment: lead.company.segment,
+          }
+        : null,
+      contacts: (lead.lead_contacts || []).filter((x: any) => x.contact).map((x: any) => ({
+        id: x.contact.id, name: x.contact.name, email: x.contact.email, phone: x.contact.phone, is_primary: x.is_primary,
+      })),
+      /** @deprecated use contacts[is_primary] */
+      name: getPrimaryContact(lead)?.name || null,
+      /** @deprecated use contacts[is_primary] */
+      email: getPrimaryContact(lead)?.email || null,
+      /** @deprecated use contacts[is_primary] */
+      phone: getPrimaryContact(lead)?.phone || null,
+      /** @deprecated use company.segment */
+      company_segment: lead.company?.segment || null,
       value: lead.value || 0,
       tags: lead.tags || [],
       priority: lead.priority || 'medium',

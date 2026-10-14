@@ -22,18 +22,22 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Separator } from '@/components/ui/separator';
 import type { LeadFilters, CustomFieldDefinition } from '@/types';
+import { getLeadDisplay, getPrimaryContact } from '@/lib/leadDisplay';
+import { formatCnpj } from '@/lib/cnpj';
 
 interface ListViewProps {
   funnelId: string;
   filters?: LeadFilters;
 }
 
-const STORAGE_KEY = 'crm_leads_visible_cols';
+const STORAGE_KEY = 'crm_leads_visible_cols_v2';
 
 const COLUMNS = [
-  { key: 'name', label: 'Nome', defaultVisible: true, sortable: true },
   { key: 'company', label: 'Empresa', defaultVisible: true, sortable: true },
-  { key: 'company_name', label: 'Razão Social', defaultVisible: true, sortable: true },
+  { key: 'segment', label: 'Segmento', defaultVisible: true, sortable: true },
+  { key: 'legal_name', label: 'Razão Social', defaultVisible: true, sortable: false },
+  { key: 'cnpj', label: 'CNPJ', defaultVisible: false, sortable: false },
+  { key: 'contact', label: 'Contato principal', defaultVisible: true, sortable: false },
   { key: 'email', label: 'E-mail', defaultVisible: true, sortable: false },
   { key: 'phone', label: 'Telefone', defaultVisible: true, sortable: false },
   { key: 'stage_id', label: 'Etapa', defaultVisible: true, sortable: true },
@@ -251,9 +255,11 @@ export function ListView({ funnelId, filters }: ListViewProps) {
                   onCheckedChange={toggleAll}
                 />
               </TableHead>
-              {isVisible('name') && <SortHeader col="name">Nome</SortHeader>}
               {isVisible('company') && <SortHeader col="company">Empresa</SortHeader>}
-              {isVisible('company_name') && <SortHeader col="company_name">Razão Social</SortHeader>}
+              {isVisible('segment') && <SortHeader col="segment">Segmento</SortHeader>}
+              {isVisible('legal_name') && <TableHead>Razão Social</TableHead>}
+              {isVisible('cnpj') && <TableHead>CNPJ</TableHead>}
+              {isVisible('contact') && <TableHead>Contato principal</TableHead>}
               {isVisible('email') && <TableHead>E-mail</TableHead>}
               {isVisible('phone') && <TableHead>Telefone</TableHead>}
               {isVisible('stage_id') && <SortHeader col="stage_id">Etapa</SortHeader>}
@@ -290,20 +296,26 @@ export function ListView({ funnelId, filters }: ListViewProps) {
                       onCheckedChange={() => toggleSelect(lead.id)}
                     />
                   </TableCell>
-                  {isVisible('name') && (
-                    <TableCell className="font-medium max-w-[160px] truncate">{lead.company_name || lead.name}</TableCell>
-                  )}
                   {isVisible('company') && (
-                    <TableCell className="max-w-[120px] truncate text-muted-foreground">{lead.company || '—'}</TableCell>
+                    <TableCell className="font-medium max-w-[180px] truncate">{lead.company?.trade_name || '—'}</TableCell>
                   )}
-                  {isVisible('company_name') && (
-                    <TableCell className="max-w-[120px] truncate text-muted-foreground">{lead.company_name || '—'}</TableCell>
+                  {isVisible('segment') && (
+                    <TableCell className="max-w-[140px] truncate text-muted-foreground">{lead.company?.segment || '—'}</TableCell>
+                  )}
+                  {isVisible('legal_name') && (
+                    <TableCell className="max-w-[140px] truncate text-muted-foreground">{lead.company?.legal_name || '—'}</TableCell>
+                  )}
+                  {isVisible('cnpj') && (
+                    <TableCell className="text-muted-foreground text-xs whitespace-nowrap">{lead.company?.cnpj ? formatCnpj(lead.company.cnpj) : '—'}</TableCell>
+                  )}
+                  {isVisible('contact') && (
+                    <TableCell className="max-w-[140px] truncate">{getPrimaryContact(lead)?.name || '—'}</TableCell>
                   )}
                   {isVisible('email') && (
-                    <TableCell className="text-muted-foreground text-xs">{lead.email || '—'}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs">{getPrimaryContact(lead)?.email || '—'}</TableCell>
                   )}
                   {isVisible('phone') && (
-                    <TableCell className="text-muted-foreground text-xs">{lead.phone || '—'}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs">{getPrimaryContact(lead)?.phone || '—'}</TableCell>
                   )}
                   {isVisible('stage_id') && (
                     <TableCell>
@@ -407,7 +419,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-medium text-sm truncate">
-                      {lead.company_name || lead.name}
+                      {getLeadDisplay(lead).title}
                     </p>
                     {lead.stage && (
                       <Badge
@@ -420,7 +432,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground truncate mt-0.5">
-                    {[lead.company, lead.value > 0 ? `R$ ${Number(lead.value).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}` : null]
+                    {[getPrimaryContact(lead)?.name, lead.company?.segment, lead.value > 0 ? `R$ ${Number(lead.value).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}` : null]
                       .filter(Boolean)
                       .join(' · ') || '—'}
                   </p>

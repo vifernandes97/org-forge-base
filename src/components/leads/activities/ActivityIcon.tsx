@@ -1,4 +1,4 @@
-import { MessageSquare, Phone, Mail, Calendar, ArrowRight, Edit, CheckSquare, CheckCircle, Webhook, AlertTriangle } from 'lucide-react';
+import { MessageSquare, Phone, Mail, Calendar, ArrowRight, Edit, CheckSquare, CheckCircle, Webhook, AlertTriangle, Building2 } from 'lucide-react';
 import type { ActivityType } from '@/types';
 
 const config: Record<ActivityType, { icon: React.ElementType; color: string; bg: string }> = {
@@ -12,6 +12,7 @@ const config: Record<ActivityType, { icon: React.ElementType; color: string; bg:
   task_completed: { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-100 dark:bg-green-900/30' },
   webhook_sent: { icon: Webhook, color: 'text-indigo-600', bg: 'bg-indigo-100 dark:bg-indigo-900/30' },
   webhook_failed: { icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-100 dark:bg-red-900/30' },
+  company_merge: { icon: Building2, color: 'text-primary', bg: 'bg-primary/10' },
 };
 
 export function ActivityIcon({ type }: { type: ActivityType }) {

@@ -1,3 +1,4 @@
+import { getLeadDisplay } from '@/lib/leadDisplay';
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -33,7 +34,8 @@ interface MergeLeadsDialogProps {
 }
 
 function leadLabel(l: any) {
-  return l.company_name || l.company || l.name || 'Sem nome';
+  const d = getLeadDisplay(l);
+  return d.primaryContact?.name && d.primaryContact.name !== d.title ? `${d.title} · ${d.primaryContact.name}` : d.title;
 }
 
 export function MergeLeadsDialog({
@@ -70,6 +72,20 @@ export function MergeLeadsDialog({
   });
 
   const needsSearch = pickedIds.length < 2;
+
+  const contactsToJoin = (() => {
+    const primary = leads?.find((l: any) => l.id === primaryId);
+    if (!primary) return 0;
+    const have = new Set((primary.lead_contacts || []).map((x: any) => x.contact?.id));
+    const extra = new Set<string>();
+    for (const l of leads || []) {
+      if (l.id === primaryId) continue;
+      for (const x of l.lead_contacts || []) {
+        if (x.contact && x.contact.company_id === primary.company_id && !have.has(x.contact.id)) extra.add(x.contact.id);
+      }
+    }
+    return extra.size;
+  })();
 
   const { data: results, isFetching: searching } = useQuery({
     queryKey: ['merge-leads-search', organization?.id, debounced, baseLeadId],
@@ -135,9 +151,6 @@ export function MergeLeadsDialog({
                       className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
                     >
                       <span className="font-medium">{leadLabel(r)}</span>
-                      {r.name && r.name !== leadLabel(r) && (
-                        <span className="text-muted-foreground"> · {r.name}</span>
-                      )}
                       {r.stage?.name && (
                         <span className="block text-xs text-muted-foreground">{r.stage.name}</span>
                       )}
@@ -164,7 +177,7 @@ export function MergeLeadsDialog({
                   <div className="min-w-0 flex-1 text-sm">
                     <p className="truncate font-medium">{leadLabel(l)}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {[l.name, l.email, l.phone].filter(Boolean).join(' · ') || 'Sem contato'}
+                      {[getLeadDisplay(l).segment, getLeadDisplay(l).primaryContact?.email, getLeadDisplay(l).primaryContact?.phone].filter(Boolean).join(' · ') || 'Sem contato'}
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {l.stage?.name ? `${l.stage.name} · ` : ''}
@@ -175,6 +188,13 @@ export function MergeLeadsDialog({
                 </label>
               ))}
             </RadioGroup>
+          )}
+          {pickedIds.length > 1 && (
+            <p className="text-xs text-muted-foreground">
+              {contactsToJoin > 0
+                ? `${contactsToJoin} contato(s) dos duplicados serão unidos ao negócio principal.`
+                : 'Nenhum contato novo será unido (contatos de outra empresa ficam no duplicado).'}
+            </p>
           )}
           {pickedIds.length >= 2 && (
             <p className="text-xs text-muted-foreground">

@@ -64,6 +64,32 @@ async function enrichPayload(
     const previousStageId = payload.previous_stage_id ?? null;
     const funnelId = payload.funnel_id ?? lead.funnel_id ?? null;
 
+    // Empresa e contatos pelas novas tabelas
+    const [companyRes, linksRes] = await Promise.all([
+      lead.company_id
+        ? supabase.from("companies").select("id, trade_name, legal_name, cnpj, instagram, segment").eq("id", lead.company_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase.from("lead_contacts").select("is_primary, created_at, contact:contacts(id, name, email, phone)").eq("lead_id", leadId).order("created_at"),
+    ]);
+    const company = (companyRes as any).data || null;
+    const contacts = ((linksRes as any).data || [])
+      .filter((l: any) => l.contact)
+      .sort((a: any, b: any) => Number(b.is_primary) - Number(a.is_primary))
+      .map((l: any) => ({ id: l.contact.id, name: l.contact.name, email: l.contact.email, phone: l.contact.phone, is_primary: l.is_primary }));
+    const primary = contacts.find((c: any) => c.is_primary) || contacts[0] || null;
+    // DEPRECATED (remover quando os workflows migrarem para company/contacts):
+    // campos planos mantidos com o significado que os workflows do n8n já usam
+    // (company = segmento, company_name = nome fantasia).
+    const legacyFlat = {
+      name: primary?.name ?? null,
+      email: primary?.email ?? null,
+      phone: primary?.phone ?? null,
+      company: company?.segment ?? null,
+      company_name: company?.trade_name ?? null,
+      company_instagram: company?.instagram ?? null,
+    };
+    const relations = { company, contacts };
+
     const stageIds = [stageId, previousStageId].filter(Boolean);
     const [stagesRes, funnelRes, valuesRes, defsRes] = await Promise.all([
       stageIds.length
@@ -122,6 +148,8 @@ async function enrichPayload(
         lead: {
           ...lead,
           ...payload.lead,
+          ...legacyFlat,
+          ...relations,
           custom_fields: customFields,
           custom_fields_by_name: customFieldsByName,
         },
@@ -146,7 +174,7 @@ async function enrichPayload(
     }
 
     // Flat payload: full lead record first, existing keys win (backwards compat)
-    return { ...lead, ...enrichment, ...payload };
+    return { ...lead, ...enrichment, ...payload, ...legacyFlat, lead_name: legacyFlat.name, ...relations };
   } catch (err) {
     console.error("enrichPayload failed:", err);
     return payload;

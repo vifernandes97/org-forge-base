@@ -3,8 +3,10 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { formatStageTime } from '@/lib/formatStageTime';
 import { avatarColorFromId } from '@/lib/avatarColor';
 import type { LeadWithRelations } from '@/types';
+import { getLeadDisplay } from '@/lib/leadDisplay';
 
 export function DragOverlayCard({ lead }: { lead: LeadWithRelations }) {
+  const { title, segment, primaryContact } = getLeadDisplay(lead);
   const qualification = lead.qualification ?? 0;
   const assigneeColors = avatarColorFromId(lead.assigned_to);
   const isHighPriority = lead.priority === 'high' || lead.priority === 'urgent';
@@ -25,7 +27,7 @@ export function DragOverlayCard({ lead }: { lead: LeadWithRelations }) {
       }
     >
       <div className="flex items-center gap-2">
-        <span className="font-medium text-sm truncate flex-1">{lead.company_name || lead.name}</span>
+        <span className="font-medium text-sm truncate flex-1">{title}</span>
         {lead.assigned_profile && (
           <Avatar className="h-5 w-5 shrink-0">
             <AvatarFallback
@@ -37,11 +39,13 @@ export function DragOverlayCard({ lead }: { lead: LeadWithRelations }) {
           </Avatar>
         )}
       </div>
-      {lead.name && lead.company_name && lead.name !== lead.company_name && (
-        <p className="text-xs text-muted-foreground truncate">{lead.name}</p>
-      )}
-      {lead.company && (
-        <p className="text-xs text-muted-foreground truncate">{lead.company}</p>
+      {(primaryContact?.name || segment) && (
+        <div className="flex items-center gap-1.5 min-w-0">
+          {primaryContact?.name && primaryContact.name !== title && (
+            <p className="text-xs text-muted-foreground truncate">{primaryContact.name}</p>
+          )}
+          {segment && <span className="shrink-0 text-[10px] rounded border px-1 py-px text-muted-foreground">{segment}</span>}
+        </div>
       )}
       <div className="flex items-center justify-between gap-2">
         {qualification > 0 ? (

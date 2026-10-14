@@ -23,6 +23,12 @@ import { TagsInput } from './TagsInput';
 import { toast } from 'sonner';
 import type { LeadWithRelations, LeadPriority } from '@/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { CompanyCombobox } from '@/components/companies/CompanyCombobox';
+import { CompanyFormDialog } from '@/components/companies/CompanyFormDialog';
+import { ContactsPicker } from '@/components/companies/ContactsPicker';
+import { setLeadContacts } from '@/services/leadContacts';
+import { useQueryClient } from '@tanstack/react-query';
+import { getLeadContacts } from '@/lib/leadDisplay';
 
 const priorities: { value: LeadPriority; label: string }[] = [
   { value: 'low', label: 'Baixa' },
@@ -46,6 +52,12 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
   const updateLead = useUpdateLead();
   const createActivityMut = useCreateActivity();
   const { user } = useAuth();
+  const qc = useQueryClient();
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [contactIds, setContactIds] = useState<string[]>([]);
+  const [primaryContactId, setPrimaryContactId] = useState<string | null>(null);
+  const [creatingCompany, setCreatingCompany] = useState<string | null>(null);
+  const [companyError, setCompanyError] = useState(false);
 
   const [selectedFunnelId, setSelectedFunnelId] = useState<string>('');
   const { data: stages } = useStages(selectedFunnelId || undefined);
@@ -64,12 +76,6 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
   }, [open, lead, funnels]);
 
   const baseSchema = z.object({
-    name: z.string().min(2, 'Nome é obrigatório'),
-    email: z.string().email('Email inválido').or(z.literal('')).optional(),
-    phone: z.string().optional(),
-    company: z.string().optional(),
-    company_name: z.string().optional(),
-    company_instagram: z.string().optional(),
     funnel_id: z.string().min(1, 'Selecione um funil'),
     stage_id: z.string().min(1, 'Selecione uma etapa'),
     assigned_to: z.string().optional(),
@@ -86,12 +92,6 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
   const form = useForm({
     resolver: zodResolver(baseSchema),
     defaultValues: {
-      name: '',
-      email: '',
-      phone: '',
-      company: '',
-      company_name: '',
-      company_instagram: '',
       funnel_id: '',
       stage_id: '',
       assigned_to: '',
@@ -111,12 +111,6 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
     if (open) {
       if (lead) {
         form.reset({
-          name: lead.name,
-          email: lead.email || '',
-          phone: lead.phone || '',
-          company: lead.company || '',
-          company_name: (lead as any).company_name || '',
-          company_instagram: (lead as any).company_instagram || '',
           funnel_id: lead.funnel_id,
           stage_id: lead.stage_id,
           assigned_to: lead.assigned_to || '',
@@ -131,10 +125,18 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
         const vals: Record<string, string> = {};
         lead.custom_field_values?.forEach(v => { vals[v.field_definition_id] = v.value || ''; });
         setCfValues(vals);
+        setCompanyId(lead.company_id || null);
+        const links = getLeadContacts(lead);
+        setContactIds(links.map(l => l.contact!.id));
+        setPrimaryContactId(links.find(l => l.is_primary)?.contact?.id || links[0]?.contact?.id || null);
       } else {
         form.reset();
         setCfValues({});
+        setCompanyId(null);
+        setContactIds([]);
+        setPrimaryContactId(null);
       }
+      setCompanyError(false);
     }
   }, [open, lead, form]);
 
@@ -151,6 +153,11 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
 
   const onSubmit = async (data: z.infer<typeof baseSchema>) => {
     if (!organization) return;
+    if (!companyId) {
+      setCompanyError(true);
+      toast.error('Escolha a empresa do negócio');
+      return;
+    }
 
     // Validate required custom fields
     const missingRequired = activeFields.filter(f => f.is_required && !cfValues[f.id]?.trim());
@@ -168,12 +175,7 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
         await updateLead.mutateAsync({
           id: lead.id,
           updates: {
-            name: data.name,
-            email: data.email || null,
-            phone: data.phone || null,
-            company: data.company || null,
-            company_name: data.company_name || null,
-            company_instagram: data.company_instagram || null,
+            company_id: companyId,
             funnel_id: data.funnel_id,
             stage_id: data.stage_id,
             assigned_to: data.assigned_to || null,
@@ -186,11 +188,12 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
           },
           customFields: customFieldsData,
         });
+        await setLeadContacts(organization.id, lead.id, contactIds, primaryContactId);
 
         // Auto-register field_update activity
         if (user && organization) {
           const changes: { field: string; old_value: any; new_value: any }[] = [];
-          const fields = ['name', 'email', 'phone', 'company', 'company_name', 'company_instagram', 'priority', 'source', 'notes'] as const;
+          const fields = ['priority', 'source', 'notes'] as const;
           fields.forEach(f => {
             const oldVal = lead[f] || '';
             const newVal = (data as any)[f] || '';
@@ -199,6 +202,9 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
           const oldValue = String(lead.value || 0);
           const newValue = data.value || '0';
           if (oldValue !== newValue) changes.push({ field: 'value', old_value: oldValue, new_value: newValue });
+          if ((lead.company_id || null) !== companyId) {
+            changes.push({ field: 'company', old_value: lead.company?.trade_name || '', new_value: companyId });
+          }
 
           if (changes.length > 0) {
             createActivityMut.mutate({
@@ -214,15 +220,10 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
 
         toast.success('Negócio atualizado!');
       } else {
-        await createLead.mutateAsync({
+        const created = await createLead.mutateAsync({
           lead: {
             organization_id: organization.id,
-            name: data.name,
-            email: data.email || null,
-            phone: data.phone || null,
-            company: data.company || null,
-            company_name: data.company_name || null,
-            company_instagram: data.company_instagram || null,
+            company_id: companyId,
             funnel_id: data.funnel_id,
             stage_id: data.stage_id,
             assigned_to: data.assigned_to || null,
@@ -235,8 +236,12 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
           },
           customFields: customFieldsData,
         });
+        await setLeadContacts(organization.id, created.id, contactIds, primaryContactId);
         toast.success('Negócio criado!');
       }
+      qc.invalidateQueries({ queryKey: ['leads-kanban'] });
+      qc.invalidateQueries({ queryKey: ['leads-list'] });
+      qc.invalidateQueries({ queryKey: ['lead'] });
       onOpenChange(false);
     } catch (err: any) {
       toast.error(err.message || 'Erro ao salvar negócio');
@@ -254,63 +259,37 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
 
         <ScrollArea className="max-h-[calc(90vh-140px)] px-6">
           <form id="lead-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pb-4">
-            {/* Contato */}
+            {/* Empresa */}
             <div className="space-y-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Contato</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>Nome *</Label>
-                  <Input {...form.register('name')} placeholder="Nome do contato" />
-                  {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Email</Label>
-                  <Input {...form.register('email')} type="email" placeholder="email@exemplo.com" />
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Telefone</Label>
-                  <Controller
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <Input
-                        value={field.value}
-                        placeholder="(00) 00000-0000"
-                        onChange={e => {
-                          let v = e.target.value.replace(/\D/g, '').slice(0, 11);
-                          if (v.length > 6) v = `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7)}`;
-                          else if (v.length > 2) v = `(${v.slice(0, 2)}) ${v.slice(2)}`;
-                          else if (v.length > 0) v = `(${v}`;
-                          field.onChange(v);
-                        }}
-                      />
-                    )}
-                  />
-                </div>
-              </div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Empresa *</h3>
+              <CompanyCombobox
+                value={companyId}
+                onChange={c => {
+                  if (c.id !== companyId) { setContactIds([]); setPrimaryContactId(null); }
+                  setCompanyId(c.id);
+                  setCompanyError(false);
+                }}
+                onCreate={name => setCreatingCompany(name)}
+              />
+              {companyError && <p className="text-xs text-destructive">Empresa é obrigatória</p>}
             </div>
 
             <Separator />
 
-            {/* Negócio */}
+            {/* Contatos */}
             <div className="space-y-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Negócio</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>Empresa</Label>
-                  <Input {...form.register('company')} placeholder="Nome da empresa" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Razão Social</Label>
-                  <Input {...form.register('company_name')} placeholder="Razão social da empresa" />
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Instagram</Label>
-                  <Input {...form.register('company_instagram')} placeholder="@empresa" />
-                </div>
-              </div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Contatos</h3>
+              <ContactsPicker
+                companyId={companyId}
+                selectedIds={contactIds}
+                primaryId={primaryContactId}
+                onChange={(ids, primary) => { setContactIds(ids); setPrimaryContactId(primary); }}
+              />
             </div>
 
+            <Separator />
+
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Negócio</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Funil *</Label>
@@ -470,10 +449,20 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
         <DialogFooter className="px-6 pb-6">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>Cancelar</Button>
           <Button type="submit" form="lead-form" disabled={isLoading}>
-            {isLoading ? 'Salvando...' : isEditing ? 'Salvar' : 'Criar Lead'}
+            {isLoading ? 'Salvando...' : isEditing ? 'Salvar' : 'Criar negócio'}
           </Button>
         </DialogFooter>
       </DialogContent>
+      <CompanyFormDialog
+        open={creatingCompany !== null}
+        onOpenChange={o => { if (!o) setCreatingCompany(null); }}
+        initialName={creatingCompany || ''}
+        onCreated={c => {
+          if (c.id !== companyId) { setContactIds([]); setPrimaryContactId(null); }
+          setCompanyId(c.id);
+          setCompanyError(false);
+        }}
+      />
     </Dialog>
   );
 }
