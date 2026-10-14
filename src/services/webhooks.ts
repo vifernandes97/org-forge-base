@@ -118,7 +118,7 @@ export function buildWebhookPayload({
       /** @deprecated use contacts[is_primary] */
       phone: getPrimaryContact(lead)?.phone || null,
       /** @deprecated use company.segment */
-      company_segment_legacy: lead.company?.segment || null,
+      company_segment: lead.company?.segment || null,
       value: lead.value || 0,
       tags: lead.tags || [],
       priority: lead.priority || 'medium',
