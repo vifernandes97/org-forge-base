@@ -142,11 +142,6 @@ function ActivityItem({ activity, leadId }: { activity: LeadActivityWithUser; le
             <div className="flex items-start gap-2">
               <p className="text-sm font-medium leading-snug flex-1">
                 {activity.title}
-                {activity.activity_type === 'company_merge' && (
-                  <span className="ml-2 inline-flex items-center rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary align-middle">
-                    Empresa mesclada
-                  </span>
-                )}
               </p>
               {canEdit && (
                 <Button
