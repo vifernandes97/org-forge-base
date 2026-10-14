@@ -23,7 +23,7 @@ const OrganizationContext = createContext<OrganizationContextType | undefined>(u
 const ACTIVE_ORG_KEY = 'crm_active_org_id';
 
 export function OrganizationProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const userId = user?.id ?? null;
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -31,14 +31,18 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const [activeOrgId, setActiveOrgId] = useState<string | null>(
     () => localStorage.getItem(ACTIVE_ORG_KEY)
   );
-  const [loading, setLoading] = useState(true);
+  const [fetching, setFetching] = useState(true);
+  const [loadedFor, setLoadedFor] = useState<string | null | undefined>(undefined);
   const [initialized, setInitialized] = useState(false);
+  const setLoading = setFetching;
 
   const fetchOrgs = useCallback(async (showLoading = true) => {
+    if (authLoading) return;
     if (!userId) {
       setOrganizations([]);
       setMemberships([]);
       setLoading(false);
+      setLoadedFor(null);
       setInitialized(true);
       return;
     }

@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import { PrivateRoute } from "@/components/shared/PrivateRoute";
 import { OnboardingRoute } from "@/components/shared/OnboardingRoute";
+import { PublicRoute } from "@/components/shared/PublicRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
 import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
@@ -36,8 +37,8 @@ const App = () => (
           <OrganizationProvider>
             <Routes>
               {/* Public */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+              <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
               <Route path="/invite/:token" element={<AcceptInvitePage />} />
 
               {/* Onboarding — auth required, no org */}
