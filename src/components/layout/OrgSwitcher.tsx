@@ -23,8 +23,9 @@ const roleLabels: Record<string, string> = {
 
 export function OrgSwitcher() {
   const { organization, organizations, role, setActiveOrg } = useOrganization();
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === 'collapsed';
+  const closeOnMobile = () => { if (isMobile) setOpenMobile(false); };
   const [createOpen, setCreateOpen] = useState(false);
   const [query, setQuery] = useState('');
 
@@ -82,7 +83,7 @@ export function OrgSwitcher() {
           )}
           <div className="max-h-64 overflow-y-auto">
             {filtered.map(org => (
-              <DropdownMenuItem key={org.id} onClick={() => setActiveOrg(org.id)} className="gap-2">
+              <DropdownMenuItem key={org.id} onClick={() => { setActiveOrg(org.id); closeOnMobile(); }} className="gap-2">
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-muted text-[11px] font-semibold">
                   {org.name?.[0]?.toUpperCase()}
                 </div>
