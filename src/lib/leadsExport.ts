@@ -18,6 +18,7 @@ const PRIORITY_LABELS: Record<string, string> = {
 };
 
 const ACTIVITY_LABELS: Record<string, string> = {
+  company_merge: 'Empresa mesclada',
   note: 'Nota',
   stage_change: 'Mudança de etapa',
   call: 'Ligação',
