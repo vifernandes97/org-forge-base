@@ -97,7 +97,7 @@ function leadsQuery(select: string, filters: LeadFilters | undefined, orgId: str
   const sel = filters?.segments?.length ? select.replace('company:companies(*)', 'company:companies!inner(*)') : select;
   const term = filters?.search?.trim();
   if (term && orgId) {
-    return (supabase.rpc as any)('search_leads', { p_org: orgId, p_term: term }, opts?.count ? { count: opts.count } : undefined).select(sel);
+    return (supabase as any).rpc('search_leads', { p_org: orgId, p_term: term }, opts?.count ? { count: opts.count } : undefined).select(sel);
   }
   return supabase.from('leads').select(sel, opts as any);
 }
@@ -408,7 +408,7 @@ export async function searchLeadsForMerge(orgId: string, term: string, excludeId
   const t = term.trim();
   const sel = `*, stage:stages(*), ${LEAD_COMPANY_REL}`;
   const base: any = t
-    ? (supabase.rpc as any)('search_leads', { p_org: orgId, p_term: t }).select(sel)
+    ? (supabase as any).rpc('search_leads', { p_org: orgId, p_term: t }).select(sel)
     : supabase.from('leads').select(sel).eq('organization_id', orgId);
   const { data, error } = await base.neq('id', excludeId).limit(10).order('last_activity_at', { ascending: false });
   if (error) throw error;

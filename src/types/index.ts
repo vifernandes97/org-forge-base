@@ -106,6 +106,7 @@ export interface Lead {
   archived_at: string | null;
   archive_reason_id: string | null;
   qualification: number | null;
+  company_id: string | null;
 }
 
 export interface Contact {
@@ -127,6 +128,8 @@ export interface LeadWithRelations extends Lead {
   assigned_profile?: Profile;
   custom_field_values?: CustomFieldValue[];
   contact?: Contact;
+  company?: Company | null;
+  lead_contacts?: { id?: string; is_primary: boolean; created_at?: string; contact: Contact | null }[];
 }
 
 export type ActivityType = 'note' | 'call' | 'email' | 'meeting' | 'stage_change' | 'field_update' | 'task_created' | 'task_completed' | 'webhook_sent' | 'webhook_failed';
@@ -247,6 +250,8 @@ export interface LeadFilters {
   status_filter?: LeadStatusFilter;
   status_filters?: LeadStatusFilter[];
   archive_reason_ids?: string[];
+  segments?: string[];
+  company_ids?: string[];
 }
 
 export interface Company {
@@ -256,6 +261,7 @@ export interface Company {
   legal_name: string | null;
   cnpj: string | null;
   instagram: string | null;
+  segment: string | null;
   created_at: string;
   updated_at: string;
 }
