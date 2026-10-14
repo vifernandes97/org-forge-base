@@ -64,7 +64,7 @@ export function buildLeadRows(
   cfMap: CustomFieldValueMap
 ): Record<string, unknown>[] {
   return leads.map(l => {
-    const contact = Array.isArray(l.contacts) ? l.contacts[0] : l.contacts;
+    const contact = primaryContact(l);
     const activities = activitiesByLead[l.id] || [];
     const notes = activities
       .filter(a => a.activity_type === 'note')
@@ -120,7 +120,7 @@ export function buildActivityRows(leads: any[], activities: any[]): Record<strin
     })
     .map(a => {
       const l = leadById[a.lead_id];
-      const contact = Array.isArray(l.contacts) ? l.contacts[0] : l.contacts;
+      const contact = primaryContact(l);
       return {
         'ID do negócio': l.id,
         Empresa: l.company || '',
@@ -134,4 +134,10 @@ export function buildActivityRows(leads: any[], activities: any[]): Record<strin
         Autor: a.user?.full_name || a.user?.email || '',
       };
     });
+}
+
+/** Primary contact of a deal via lead_contacts (falls back to first linked contact). */
+function primaryContact(l: any): any {
+  const links: any[] = Array.isArray(l.lead_contacts) ? l.lead_contacts : [];
+  return (links.find(x => x.is_primary) || links[0])?.contact;
 }

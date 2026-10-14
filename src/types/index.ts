@@ -246,3 +246,23 @@ export interface LeadFilters {
   status_filters?: LeadStatusFilter[];
   archive_reason_ids?: string[];
 }
+
+export interface Company {
+  id: string;
+  organization_id: string;
+  trade_name: string;
+  legal_name: string | null;
+  cnpj: string | null;
+  instagram: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LeadContact {
+  id: string;
+  organization_id: string;
+  lead_id: string;
+  contact_id: string;
+  is_primary: boolean;
+  created_at: string;
+}
