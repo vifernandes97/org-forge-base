@@ -133,6 +133,7 @@ export type Database = {
           legal_name: string | null
           match_key: string | null
           organization_id: string
+          segment: string | null
           trade_name: string
           updated_at: string
         }
@@ -144,6 +145,7 @@ export type Database = {
           legal_name?: string | null
           match_key?: string | null
           organization_id: string
+          segment?: string | null
           trade_name: string
           updated_at?: string
         }
@@ -155,6 +157,7 @@ export type Database = {
           legal_name?: string | null
           match_key?: string | null
           organization_id?: string
+          segment?: string | null
           trade_name?: string
           updated_at?: string
         }
@@ -1268,6 +1271,10 @@ export type Database = {
         Args: { p_company: string; p_company_name: string }
         Returns: string
       }
+      company_segment_from_value: {
+        Args: { p_org: string; p_value: string }
+        Returns: string
+      }
       create_funnel_with_default_stages: {
         Args: { p_description?: string; p_name: string; p_org_id: string }
         Returns: {
@@ -1396,6 +1403,11 @@ export type Database = {
       }
       get_user_org_ids: { Args: never; Returns: string[] }
       get_user_org_role: { Args: { org_id: string }; Returns: string }
+      is_blank_company_value: { Args: { p_value: string }; Returns: boolean }
+      lead_company_key: {
+        Args: { p_company: string; p_company_name: string; p_org: string }
+        Returns: string
+      }
       log_invite_event: {
         Args: {
           p_event: string
@@ -1411,6 +1423,7 @@ export type Database = {
         Args: { p_duplicate_ids: string[]; p_primary_id: string }
         Returns: Json
       }
+      normalize_company_key: { Args: { p: string }; Returns: string }
       record_invite_event: {
         Args: { p_event: string; p_invite_id: string; p_metadata?: Json }
         Returns: undefined

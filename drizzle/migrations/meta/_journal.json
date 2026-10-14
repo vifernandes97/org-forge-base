@@ -64,6 +64,13 @@
       "when": 1792020187301,
       "tag": "0008_phase1_companies_contacts",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792020742915,
+      "tag": "0009_phase1_segments_regroup_companies",
+      "breakpoints": true
     }
   ]
 }
