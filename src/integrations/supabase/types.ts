@@ -124,32 +124,79 @@ export type Database = {
           },
         ]
       }
+      companies: {
+        Row: {
+          cnpj: string | null
+          created_at: string
+          id: string
+          instagram: string | null
+          legal_name: string | null
+          match_key: string | null
+          organization_id: string
+          trade_name: string
+          updated_at: string
+        }
+        Insert: {
+          cnpj?: string | null
+          created_at?: string
+          id?: string
+          instagram?: string | null
+          legal_name?: string | null
+          match_key?: string | null
+          organization_id: string
+          trade_name: string
+          updated_at?: string
+        }
+        Update: {
+          cnpj?: string | null
+          created_at?: string
+          id?: string
+          instagram?: string | null
+          legal_name?: string | null
+          match_key?: string | null
+          organization_id?: string
+          trade_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "companies_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
+          company_id: string | null
           created_at: string
           email: string | null
           id: string
-          lead_id: string
+          lead_id: string | null
           name: string
           organization_id: string
           phone: string | null
           updated_at: string
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           email?: string | null
           id?: string
-          lead_id: string
+          lead_id?: string | null
           name?: string
           organization_id: string
           phone?: string | null
           updated_at?: string
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           email?: string | null
           id?: string
-          lead_id?: string
+          lead_id?: string | null
           name?: string
           organization_id?: string
           phone?: string | null
@@ -157,9 +204,16 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "contacts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "contacts_lead_id_fkey"
             columns: ["lead_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "leads"
             referencedColumns: ["id"]
           },
@@ -490,6 +544,48 @@ export type Database = {
           },
         ]
       }
+      lead_contacts: {
+        Row: {
+          contact_id: string
+          created_at: string
+          id: string
+          is_primary: boolean
+          lead_id: string
+          organization_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          lead_id: string
+          organization_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          lead_id?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_contacts_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_contacts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           archive_details: string | null
@@ -497,6 +593,7 @@ export type Database = {
           archived_at: string | null
           assigned_to: string | null
           company: string | null
+          company_id: string | null
           company_instagram: string | null
           company_name: string | null
           created_at: string
@@ -526,6 +623,7 @@ export type Database = {
           archived_at?: string | null
           assigned_to?: string | null
           company?: string | null
+          company_id?: string | null
           company_instagram?: string | null
           company_name?: string | null
           created_at?: string
@@ -555,6 +653,7 @@ export type Database = {
           archived_at?: string | null
           assigned_to?: string | null
           company?: string | null
+          company_id?: string | null
           company_instagram?: string | null
           company_name?: string | null
           created_at?: string
@@ -591,6 +690,13 @@ export type Database = {
             columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
           {
@@ -1158,6 +1264,10 @@ export type Database = {
         Args: { p_field_id: string; p_option: string }
         Returns: string[]
       }
+      company_match_key: {
+        Args: { p_company: string; p_company_name: string }
+        Returns: string
+      }
       create_funnel_with_default_stages: {
         Args: { p_description?: string; p_name: string; p_org_id: string }
         Returns: {
@@ -1192,6 +1302,16 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      find_company_contact: {
+        Args: {
+          p_company: string
+          p_email: string
+          p_exclude?: string
+          p_name: string
+          p_phone: string
+        }
+        Returns: string
       }
       get_archive_reasons_summary: {
         Args: {
@@ -1297,6 +1417,16 @@ export type Database = {
       }
       reorder_custom_fields: { Args: { p_fields: Json }; Returns: undefined }
       reorder_stages: { Args: { p_stages: Json }; Returns: undefined }
+      resolve_company: {
+        Args: {
+          p_company: string
+          p_company_name: string
+          p_instagram: string
+          p_lead_name: string
+          p_org: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       org_role: "owner" | "admin" | "member" | "viewer"
