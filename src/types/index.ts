@@ -111,7 +111,9 @@ export interface Lead {
 export interface Contact {
   id: string;
   organization_id: string;
-  lead_id: string;
+  company_id: string | null;
+  /** @deprecated substituído por lead_contacts; remover na fase 4 */
+  lead_id: string | null;
   name: string;
   email: string | null;
   phone: string | null;
@@ -245,4 +247,24 @@ export interface LeadFilters {
   status_filter?: LeadStatusFilter;
   status_filters?: LeadStatusFilter[];
   archive_reason_ids?: string[];
+}
+
+export interface Company {
+  id: string;
+  organization_id: string;
+  trade_name: string;
+  legal_name: string | null;
+  cnpj: string | null;
+  instagram: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LeadContact {
+  id: string;
+  organization_id: string;
+  lead_id: string;
+  contact_id: string;
+  is_primary: boolean;
+  created_at: string;
 }

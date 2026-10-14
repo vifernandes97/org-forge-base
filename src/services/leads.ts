@@ -219,7 +219,7 @@ export async function getLeadsForExport(funnelId: string, filters?: LeadFilters,
   let query = supabase
     .from('leads')
     .select(
-      '*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*), archive_reason:archive_reasons(*), contacts(*)'
+      '*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*), archive_reason:archive_reasons(*), lead_contacts(is_primary, contact:contacts(*))'
     )
     .eq('funnel_id', funnelId);
   if (orgId) query = query.eq('organization_id', orgId);
