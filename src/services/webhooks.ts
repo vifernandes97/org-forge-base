@@ -102,7 +102,7 @@ export function buildWebhookPayload({
     timestamp: new Date().toISOString(),
     lead: {
       id: lead.id,
-      company: lead.company
+      company_data: lead.company
         ? {
             id: lead.company.id, trade_name: lead.company.trade_name, legal_name: lead.company.legal_name,
             cnpj: lead.company.cnpj, instagram: lead.company.instagram, segment: lead.company.segment,
@@ -117,8 +117,10 @@ export function buildWebhookPayload({
       email: getPrimaryContact(lead)?.email || null,
       /** @deprecated use contacts[is_primary] */
       phone: getPrimaryContact(lead)?.phone || null,
-      /** @deprecated use company.segment */
-      company_segment: lead.company?.segment || null,
+      /** @deprecated use company_data */
+      company: lead.company?.segment || lead.company?.trade_name || null,
+      /** @deprecated use company_data.trade_name */
+      company_name: lead.company?.trade_name || null,
       value: lead.value || 0,
       tags: lead.tags || [],
       priority: lead.priority || 'medium',

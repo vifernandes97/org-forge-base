@@ -84,11 +84,11 @@ async function enrichPayload(
       name: primary?.name ?? null,
       email: primary?.email ?? null,
       phone: primary?.phone ?? null,
-      company: company?.segment ?? null,
+      company: company?.segment ?? company?.trade_name ?? null,
       company_name: company?.trade_name ?? null,
       company_instagram: company?.instagram ?? null,
     };
-    const relations = { company, contacts };
+    const relations = { company_data: company, contacts };
 
     const stageIds = [stageId, previousStageId].filter(Boolean);
     const [stagesRes, funnelRes, valuesRes, defsRes] = await Promise.all([
