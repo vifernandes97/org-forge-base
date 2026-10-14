@@ -2,7 +2,17 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { LeadFilters, LeadPriority, StageTimeFilter } from '@/types';
 
-const ARRAY_KEYS: (keyof LeadFilters)[] = ['stage_ids', 'assigned_to', 'priorities', 'tags', 'sources', 'qualifications', 'archive_reason_ids', 'status_filters'];
+const ARRAY_KEYS: (keyof LeadFilters)[] = ['stage_ids', 'assigned_to', 'priorities', 'tags', 'sources', 'qualifications', 'archive_reason_ids', 'status_filters', 'segments', 'company_ids'];
+const KNOWN_KEYS = new Set<string>([...ARRAY_KEYS, 'value_min', 'value_max', 'search', 'created_at_from', 'created_at_to', 'last_activity_from', 'last_activity_to', 'stage_time', 'status_filter', 'custom_fields', 'show_archived']);
+
+/** Drop keys that no longer exist (e.g. from old saved filters). */
+function sanitize(f: LeadFilters): LeadFilters {
+  const out: any = {};
+  for (const [k, v] of Object.entries(f || {})) if (KNOWN_KEYS.has(k)) out[k] = v;
+  if (!out.status_filters?.length) out.status_filters = out.status_filter ? [out.status_filter] : ['open'];
+  delete out.status_filter;
+  return out;
+}
 const NUMBER_KEYS: (keyof LeadFilters)[] = ['value_min', 'value_max'];
 const STRING_KEYS: (keyof LeadFilters)[] = ['search', 'created_at_from', 'created_at_to', 'last_activity_from', 'last_activity_to', 'stage_time', 'status_filter'];
 
@@ -106,8 +116,9 @@ export function useLeadFilters() {
   }, []);
 
   const applyFilters = useCallback((newFilters: LeadFilters) => {
-    setFiltersState(newFilters);
-    setSearchInput(newFilters.search || '');
+    const clean = sanitize(newFilters);
+    setFiltersState(clean);
+    setSearchInput(clean.search || '');
   }, []);
 
   const applyMany = useCallback((partial: Partial<LeadFilters>) => {
@@ -144,6 +155,8 @@ export function useLeadFilters() {
     if (filters.stage_time) count++;
     if (filters.qualifications?.length) count++;
     if (filters.archive_reason_ids?.length) count++;
+    if (filters.segments?.length) count++;
+    if (filters.company_ids?.length) count++;
     const st = filters.status_filters || ['open'];
     if (st.length !== 1 || st[0] !== 'open') count++;
     if (filters.custom_fields && Object.keys(filters.custom_fields).length > 0) count += Object.keys(filters.custom_fields).length;

@@ -39,6 +39,8 @@ interface AdvancedFiltersPopoverProps {
   tagOptions: Option[];
   sourceOptions: Option[];
   archiveReasonOptions: Option[];
+  segmentOptions: Option[];
+  companyOptions: Option[];
   stageTimeOptions: { value: StageTimeFilter; label: string }[];
   customFields: CustomFieldDefinition[];
   showArchiveReason: boolean;
@@ -161,6 +163,8 @@ export function AdvancedFiltersPopover({
     const origin =
       (draft.sources?.length || 0) +
       (draft.tags?.length || 0) +
+      (draft.segments?.length || 0) +
+      (draft.company_ids?.length || 0) +
       (showArchiveReason ? draft.archive_reason_ids?.length || 0 : 0);
     const time =
       (draft.created_at_from || draft.created_at_to ? 1 : 0) +
@@ -183,6 +187,8 @@ export function AdvancedFiltersPopover({
       'sources',
       'tags',
       'archive_reason_ids',
+      'segments',
+      'company_ids',
       'created_at_from',
       'created_at_to',
       'last_activity_from',
@@ -301,6 +307,26 @@ export function AdvancedFiltersPopover({
             </Section>
 
             <Section title="Origem & classificação" count={sectionCounts.origin}>
+              {segmentOptions.length > 0 && (
+                <FilterRow label="Segmento">
+                  <FilterMultiSelect
+                    label="Selecionar"
+                    options={segmentOptions}
+                    selected={draft.segments || []}
+                    onChange={(v) => setDraftField('segments', v)}
+                  />
+                </FilterRow>
+              )}
+              {companyOptions.length > 0 && (
+                <FilterRow label="Empresa">
+                  <FilterMultiSelect
+                    label="Buscar empresa"
+                    options={companyOptions}
+                    selected={draft.company_ids || []}
+                    onChange={(v) => setDraftField('company_ids', v)}
+                  />
+                </FilterRow>
+              )}
               {sourceOptions.length > 0 && (
                 <FilterRow label="Fonte">
                   <FilterMultiSelect
