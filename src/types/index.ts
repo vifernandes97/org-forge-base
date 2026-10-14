@@ -111,7 +111,9 @@ export interface Lead {
 export interface Contact {
   id: string;
   organization_id: string;
-  lead_id: string;
+  company_id: string | null;
+  /** @deprecated substituído por lead_contacts; remover na fase 4 */
+  lead_id: string | null;
   name: string;
   email: string | null;
   phone: string | null;
