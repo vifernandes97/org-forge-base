@@ -76,11 +76,15 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       console.error('Failed to fetch organizations:', err);
     } finally {
       setLoading(false);
+      setLoadedFor(userId);
       setInitialized(true);
     }
-  }, [userId]);
+  }, [userId, authLoading]);
 
   useEffect(() => { fetchOrgs(!initialized); }, [fetchOrgs]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Loading until auth resolved AND orgs fetched for the current user
+  const loading = authLoading || loadedFor !== userId || (fetching && !initialized);
 
   // Dynamic document title
   useEffect(() => {
