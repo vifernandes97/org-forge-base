@@ -359,9 +359,7 @@ export function LeadFilterBar({
           <QuickFilterPill
             label="Responsável"
             options={memberOptions}
-            archiveReasonOptions={archiveReasonOptions}
-            segmentOptions={segmentOptions}
-            companyOptions={companyOptions}
+            selected={filters.assigned_to || []}
             onChange={(v) => setFilter('assigned_to', v)}
           />
           <QuickFilterPill
@@ -387,6 +385,8 @@ export function LeadFilterBar({
             tagOptions={allTags}
             sourceOptions={allSources}
             archiveReasonOptions={archiveReasonOptions}
+            segmentOptions={segmentOptions}
+            companyOptions={companyOptions}
             stageTimeOptions={STAGE_TIME_OPTIONS}
             customFields={activeCustomFields}
             showArchiveReason={showArchiveReason}
