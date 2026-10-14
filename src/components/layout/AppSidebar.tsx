@@ -45,7 +45,7 @@ export function AppSidebar() {
               {mainNav.map(item => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium">
+                    <NavLink to={item.url} end onClick={closeOnMobile} activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium">
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                       {item.url === '/tasks' && totalBadge > 0 && (
@@ -68,7 +68,7 @@ export function AppSidebar() {
               {settingsNav.map(item => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink to={item.url} activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium">
+                    <NavLink to={item.url} onClick={closeOnMobile} activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium">
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </NavLink>
