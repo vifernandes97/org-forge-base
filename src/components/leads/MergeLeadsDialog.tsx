@@ -1,3 +1,4 @@
+import { getLeadDisplay } from '@/lib/leadDisplay';
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -33,7 +34,8 @@ interface MergeLeadsDialogProps {
 }
 
 function leadLabel(l: any) {
-  return l.company_name || l.company || l.name || 'Sem nome';
+  const d = getLeadDisplay(l);
+  return d.primaryContact?.name && d.primaryContact.name !== d.title ? `${d.title} · ${d.primaryContact.name}` : d.title;
 }
 
 export function MergeLeadsDialog({
@@ -164,7 +166,7 @@ export function MergeLeadsDialog({
                   <div className="min-w-0 flex-1 text-sm">
                     <p className="truncate font-medium">{leadLabel(l)}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {[l.name, l.email, l.phone].filter(Boolean).join(' · ') || 'Sem contato'}
+                      {[getLeadDisplay(l).segment, getLeadDisplay(l).primaryContact?.email, getLeadDisplay(l).primaryContact?.phone].filter(Boolean).join(' · ') || 'Sem contato'}
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {l.stage?.name ? `${l.stage.name} · ` : ''}
