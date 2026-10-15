@@ -120,6 +120,13 @@
       "when": 1792026331221,
       "tag": "0016_companies_contacts_screens",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792026873358,
+      "tag": "0017_merge_contacts_primary_order",
+      "breakpoints": true
     }
   ]
 }
