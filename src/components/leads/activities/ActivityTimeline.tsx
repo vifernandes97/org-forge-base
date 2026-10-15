@@ -140,7 +140,9 @@ function ActivityItem({ activity, leadId }: { activity: LeadActivityWithUser; le
         ) : (
           <>
             <div className="flex items-start gap-2">
-              <p className="text-sm font-medium leading-snug flex-1">{activity.title}</p>
+              <p className="text-sm font-medium leading-snug flex-1">
+                {activity.title}
+              </p>
               {canEdit && (
                 <Button
                   variant="ghost"
