@@ -44,7 +44,7 @@ export function CompanyCombobox({ value, onChange, onCreate, excludeId, placehol
           className={cn('w-full justify-between font-normal', !selected && 'text-muted-foreground')}>
           <span className="truncate">
             {selected ? selected.trade_name : placeholder}
-            {selected?.segment && <span className="ml-2 text-xs text-muted-foreground">{selected.segment}</span>}
+            {selected?.segment_ref?.label && <span className="ml-2 text-xs text-muted-foreground">{selected.segment_ref?.label}</span>}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -61,7 +61,7 @@ export function CompanyCombobox({ value, onChange, onCreate, excludeId, placehol
                   <div className="min-w-0">
                     <div className="truncate">{c.trade_name}</div>
                     <div className="truncate text-xs text-muted-foreground">
-                      {[c.segment, c.legal_name, c.cnpj ? formatCnpj(c.cnpj) : null].filter(Boolean).join(' · ')}
+                      {[c.segment_ref?.label, c.legal_name, c.cnpj ? formatCnpj(c.cnpj) : null].filter(Boolean).join(' · ')}
                     </div>
                   </div>
                 </CommandItem>

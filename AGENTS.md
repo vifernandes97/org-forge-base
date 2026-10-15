@@ -1,0 +1,1 @@
+- Company segments live in public.company_segments (per org, managed list) referenced by companies.segment_id; companies.segment text is deprecated and must not be read or written — keeps segment names consistent and renameable.

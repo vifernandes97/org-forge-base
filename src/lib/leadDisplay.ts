@@ -39,7 +39,7 @@ export function getLeadDisplay(lead: any): {
   const primaryContact = getPrimaryContact(lead);
   return {
     title: company?.trade_name || primaryContact?.name || 'Sem empresa',
-    segment: company?.segment || null,
+    segment: company?.segment_ref?.label || null,
     company,
     primaryContact,
   };

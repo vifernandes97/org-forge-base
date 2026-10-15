@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tansta
 import { useOrganization } from '@/contexts/OrganizationContext';
 import {
   getCompanies, getCompany, createCompany, updateCompany, getSegments, mergeCompanies, getCompanyCounts,
+  getSegmentUsage, addSegment, updateSegment, deleteSegment, reorderSegments, mergeSegments,
   type CompanyInput,
 } from '@/services/companies';
 import {
@@ -146,3 +147,26 @@ export function useChangeLeadCompany() {
     onSuccess: () => invalidateLeadData(qc),
   });
 }
+
+export function useSegmentUsage() {
+  const { organization } = useOrganization();
+  const orgId = organization?.id;
+  return useQuery({ queryKey: ['segments', 'usage', orgId], queryFn: () => getSegmentUsage(orgId!), enabled: !!orgId });
+}
+
+function useSegmentMutation<T>(fn: (v: T, orgId: string) => Promise<any>) {
+  const qc = useQueryClient();
+  const { organization } = useOrganization();
+  return useMutation({
+    mutationFn: (v: T) => fn(v, organization!.id),
+    onSuccess: () => invalidateLeadData(qc),
+  });
+}
+
+export const useAddSegment = () => useSegmentMutation<string>((label, org) => addSegment(org, label));
+export const useUpdateSegment = () =>
+  useSegmentMutation<{ id: string; updates: { label?: string; is_active?: boolean } }>(({ id, updates }) => updateSegment(id, updates));
+export const useDeleteSegment = () => useSegmentMutation<string>(id => deleteSegment(id));
+export const useReorderSegments = () => useSegmentMutation<string[]>((ids, org) => reorderSegments(org, ids));
+export const useMergeSegments = () =>
+  useSegmentMutation<{ sourceId: string; targetId: string }>(({ sourceId, targetId }) => mergeSegments(sourceId, targetId));

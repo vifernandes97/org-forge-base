@@ -67,11 +67,15 @@ async function enrichPayload(
     // Empresa e contatos pelas novas tabelas
     const [companyRes, linksRes] = await Promise.all([
       lead.company_id
-        ? supabase.from("companies").select("id, trade_name, legal_name, cnpj, instagram, segment").eq("id", lead.company_id).maybeSingle()
+        ? supabase.from("companies").select("id, trade_name, legal_name, cnpj, instagram, segment_ref:company_segments(label)").eq("id", lead.company_id).maybeSingle()
         : Promise.resolve({ data: null }),
       supabase.from("lead_contacts").select("is_primary, created_at, contact:contacts(id, name, email, phone)").eq("lead_id", leadId).order("created_at"),
     ]);
-    const company = (companyRes as any).data || null;
+    const rawCompany = (companyRes as any).data || null;
+    const company = rawCompany
+      ? { id: rawCompany.id, trade_name: rawCompany.trade_name, legal_name: rawCompany.legal_name, cnpj: rawCompany.cnpj,
+          instagram: rawCompany.instagram, segment: rawCompany.segment_ref?.label ?? null }
+      : null;
     const contacts = ((linksRes as any).data || [])
       .filter((l: any) => l.contact)
       .sort((a: any, b: any) => Number(b.is_primary) - Number(a.is_primary))

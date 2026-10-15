@@ -78,6 +78,13 @@
       "when": 1792021040999,
       "tag": "0010_phase2_search_merge_companies",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792023449830,
+      "tag": "0011_company_segments",
+      "breakpoints": true
     }
   ]
 }

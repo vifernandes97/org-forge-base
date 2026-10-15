@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { LeadFilters, LeadPriority, StageTimeFilter } from '@/types';
 
-const ARRAY_KEYS: (keyof LeadFilters)[] = ['stage_ids', 'assigned_to', 'priorities', 'tags', 'sources', 'qualifications', 'archive_reason_ids', 'status_filters', 'segments', 'company_ids'];
+const ARRAY_KEYS: (keyof LeadFilters)[] = ['stage_ids', 'assigned_to', 'priorities', 'tags', 'sources', 'qualifications', 'archive_reason_ids', 'status_filters', 'segments', 'segment_ids', 'company_ids'];
 const KNOWN_KEYS = new Set<string>([...ARRAY_KEYS, 'value_min', 'value_max', 'search', 'created_at_from', 'created_at_to', 'last_activity_from', 'last_activity_to', 'stage_time', 'status_filter', 'custom_fields', 'show_archived']);
 
 /** Drop keys that no longer exist (e.g. from old saved filters). */
@@ -155,7 +155,7 @@ export function useLeadFilters() {
     if (filters.stage_time) count++;
     if (filters.qualifications?.length) count++;
     if (filters.archive_reason_ids?.length) count++;
-    if (filters.segments?.length) count++;
+    if (filters.segment_ids?.length || filters.segments?.length) count++;
     if (filters.company_ids?.length) count++;
     const st = filters.status_filters || ['open'];
     if (st.length !== 1 || st[0] !== 'open') count++;

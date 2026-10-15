@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Users, ListChecks, ArrowUpFromLine, ArrowDownToLine, Archive, Settings } from 'lucide-react';
+import { Building2, Users, ListChecks, ArrowUpFromLine, ArrowDownToLine, Archive, Settings, Tag } from 'lucide-react';
 import OrganizationPage from '@/pages/OrganizationPage';
 import TeamPage from '@/pages/TeamPage';
 import CustomFieldsPage from '@/pages/CustomFieldsPage';
 import WebhooksPage from '@/pages/WebhooksPage';
 import InboundWebhooksPage from '@/pages/InboundWebhooksPage';
 import ArchiveReasonsPage from '@/pages/ArchiveReasonsPage';
+import SegmentsPage from '@/pages/SegmentsPage';
 
 const tabs = [
   { value: 'organization', label: 'Organização', icon: Building2 },
@@ -16,6 +17,7 @@ const tabs = [
   { value: 'webhooks', label: 'Webhooks de Saída', icon: ArrowUpFromLine },
   { value: 'inbound-webhooks', label: 'Webhooks de Entrada', icon: ArrowDownToLine },
   { value: 'archive-reasons', label: 'Motivos de Arquivamento', icon: Archive },
+  { value: 'segments', label: 'Segmentos', icon: Tag },
 ];
 
 export default function SettingsPage() {
@@ -53,6 +55,7 @@ export default function SettingsPage() {
         <TabsContent value="webhooks"><WebhooksPage /></TabsContent>
         <TabsContent value="inbound-webhooks"><InboundWebhooksPage /></TabsContent>
         <TabsContent value="archive-reasons"><ArchiveReasonsPage /></TabsContent>
+        <TabsContent value="segments"><SegmentsPage /></TabsContent>
       </Tabs>
     </div>
   );

@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { normalizeKey } from '@/lib/leadDisplay';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -69,7 +70,18 @@ export function LeadFilterBar({
 
   const { data: companies } = useCompanies();
   const { data: segments } = useSegments();
-  const segmentOptions = useMemo(() => (segments || []).map(s => ({ value: s, label: s })), [segments]);
+  const segmentOptions = useMemo(
+    () => (segments || []).map(s => ({ value: s.id, label: s.is_active ? s.label : `${s.label} (inativo)` })),
+    [segments],
+  );
+  // Legacy filters (saved/URL) store the segment text: convert by normalized name to ids.
+  useEffect(() => {
+    if (!filters.segments?.length || !segments) return;
+    const keys = new Set(filters.segments.map(normalizeKey));
+    const ids = segments.filter(s => keys.has(normalizeKey(s.label))).map(s => s.id);
+    applyMany({ segments: undefined, segment_ids: Array.from(new Set([...(filters.segment_ids || []), ...ids])) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.segments, segments]);
   const companyOptions = useMemo(
     () => (companies || []).map(c => ({ value: c.id, label: c.trade_name })),
     [companies],
@@ -238,10 +250,10 @@ export function LeadFilterBar({
     groupOrSpread(
       'seg',
       'Segmento',
-      filters.segments || [],
+      filters.segment_ids || [],
       segmentOptions,
-      () => setFilter('segments', undefined),
-      (v) => setFilter('segments', (filters.segments || []).filter((x) => x !== v)),
+      () => setFilter('segment_ids', undefined),
+      (v) => setFilter('segment_ids', (filters.segment_ids || []).filter((x) => x !== v)),
     );
     groupOrSpread(
       'comp',
