@@ -34,3 +34,8 @@
 - [x] Re-preencher segmento Oniplataforma pelo Tipo de negócio
 - [ ] Desativar campo Tipo de negócio na Oniplataforma — aguardando confirmação
 - [ ] Resumo dos 10 primeiros leads reais da Oniplataforma após publicar — aguardando recebimentos
+
+# Fase 2.6 — Telas de Empresas e Contatos
+- [x] Menu, rotas, visões e consultas no servidor, mesclar contatos
+- [x] Empresas (lista, filtros, massa, CSV), detalhe com abas, Contatos (lista, filtros, massa, painel ?contact=)
+- [x] Testes DDATA e limpeza
