@@ -252,7 +252,16 @@ export async function getLeadsListPaginated(
   ).eq('funnel_id', funnelId);
   if (orgId) query = query.eq('organization_id', orgId);
   query = applyFilters(query, filters);
-  query = query.order((SORT_MAP[sortBy] || sortBy) as any, { ascending: sortOrder === 'asc' }).range(from, to);
+  const asc = sortOrder === 'asc';
+  if (sortBy === 'segment') {
+    // configured segment position, then trade name; companies without segment always last
+    query = query
+      .order('company(segment_sort)' as any, { ascending: asc, nullsFirst: false })
+      .order('company(trade_name)' as any, { ascending: true });
+  } else {
+    query = query.order((SORT_MAP[sortBy] || sortBy) as any, { ascending: asc });
+  }
+  query = query.range(from, to);
   const { data, error, count } = await query;
   if (error) throw error;
   return { data: data as any[], count: count || 0 };

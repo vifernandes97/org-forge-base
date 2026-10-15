@@ -85,6 +85,13 @@
       "when": 1792023449830,
       "tag": "0011_company_segments",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792023958543,
+      "tag": "0012_company_segment_sort",
+      "breakpoints": true
     }
   ]
 }
