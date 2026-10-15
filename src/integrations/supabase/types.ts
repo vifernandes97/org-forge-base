@@ -134,6 +134,7 @@ export type Database = {
           match_key: string | null
           organization_id: string
           segment: string | null
+          segment_id: string | null
           trade_name: string
           updated_at: string
         }
@@ -146,6 +147,7 @@ export type Database = {
           match_key?: string | null
           organization_id: string
           segment?: string | null
+          segment_id?: string | null
           trade_name: string
           updated_at?: string
         }
@@ -158,12 +160,58 @@ export type Database = {
           match_key?: string | null
           organization_id?: string
           segment?: string | null
+          segment_id?: string | null
           trade_name?: string
           updated_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "companies_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "companies_segment_id_fkey"
+            columns: ["segment_id"]
+            isOneToOne: false
+            referencedRelation: "company_segments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_segments: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          organization_id: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          organization_id: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          organization_id?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_segments_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -1263,6 +1311,24 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      add_company_segment: {
+        Args: { p_label: string; p_org_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          organization_id: string
+          position: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "company_segments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       add_custom_field_option: {
         Args: { p_field_id: string; p_option: string }
         Returns: string[]
@@ -1272,6 +1338,10 @@ export type Database = {
         Returns: string
       }
       company_segment_from_value: {
+        Args: { p_org: string; p_value: string }
+        Returns: string
+      }
+      company_segment_id_from_value: {
         Args: { p_org: string; p_value: string }
         Returns: string
       }
@@ -1423,6 +1493,10 @@ export type Database = {
         Args: { p_source: string; p_target: string }
         Returns: Json
       }
+      merge_company_segments: {
+        Args: { p_source: string; p_target: string }
+        Returns: number
+      }
       merge_leads: {
         Args: { p_duplicate_ids: string[]; p_primary_id: string }
         Returns: Json
@@ -1430,6 +1504,10 @@ export type Database = {
       normalize_company_key: { Args: { p: string }; Returns: string }
       record_invite_event: {
         Args: { p_event: string; p_invite_id: string; p_metadata?: Json }
+        Returns: undefined
+      }
+      reorder_company_segments: {
+        Args: { p_ids: string[]; p_org_id: string }
         Returns: undefined
       }
       reorder_custom_fields: { Args: { p_fields: Json }; Returns: undefined }
