@@ -149,8 +149,8 @@ export function LeadCompanyPanel({ lead, readOnly, onOpenLead }: Props) {
               <Tag className="h-4 w-4 text-muted-foreground shrink-0 mt-2" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-muted-foreground">Segmento</p>
-                {readOnly ? <span>{company.segment || '—'}</span> : (
-                  <SegmentCombobox value={company.segment} onChange={v => saveCompany('segment', v)} placeholder="Adicionar segmento..." />
+                {readOnly ? <span>{company.segment_ref?.label || '—'}{company.segment_ref && !company.segment_ref.is_active ? ' (inativo)' : ''}</span> : (
+                  <SegmentCombobox value={company.segment_id} current={company.segment_ref} onChange={v => saveCompany('segment_id', v)} placeholder="Adicionar segmento..." />
                 )}
               </div>
             </div>

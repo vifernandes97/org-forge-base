@@ -23,7 +23,7 @@ export const companySchema = z.object({
     .optional()
     .refine(v => !onlyDigits(v) || isValidCnpj(v), 'CNPJ inválido'),
   instagram: z.string().trim().max(100).optional(),
-  segment: z.string().trim().max(100).nullable().optional(),
+  segment_id: z.string().nullable().optional(),
 });
 
 interface Props {
@@ -41,7 +41,7 @@ export function CompanyFormDialog({ open, onOpenChange, initialName, onCreated }
   const [legalName, setLegalName] = useState('');
   const [cnpj, setCnpj] = useState('');
   const [instagram, setInstagram] = useState('');
-  const [segment, setSegment] = useState<string | null>(null);
+  const [segment, setSegment] = useState<string | null>(null); // segment id
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [existing, setExisting] = useState<Company | null>(null);
 
@@ -52,7 +52,7 @@ export function CompanyFormDialog({ open, onOpenChange, initialName, onCreated }
     }
   }, [open, initialName]);
 
-  const looksLikeSegment = (segments || []).find(s => normalizeKey(s) === normalizeKey(tradeName) && normalizeKey(tradeName));
+  const looksLikeSegment = (segments || []).find(s => s.is_active && normalizeKey(tradeName) && normalizeKey(s.label) === normalizeKey(tradeName));
 
   useEffect(() => {
     let cancelled = false;
@@ -65,7 +65,7 @@ export function CompanyFormDialog({ open, onOpenChange, initialName, onCreated }
   }, [cnpj, organization]);
 
   const handleSave = async () => {
-    const parsed = companySchema.safeParse({ trade_name: tradeName, legal_name: legalName, cnpj, instagram, segment });
+    const parsed = companySchema.safeParse({ trade_name: tradeName, legal_name: legalName, cnpj, instagram, segment_id: segment });
     if (!parsed.success) {
       const errs: Record<string, string> = {};
       parsed.error.issues.forEach(i => { errs[String(i.path[0])] = i.message; });
@@ -78,7 +78,7 @@ export function CompanyFormDialog({ open, onOpenChange, initialName, onCreated }
     }
     try {
       const c = await createCompany.mutateAsync({
-        trade_name: tradeName, legal_name: legalName, cnpj, instagram, segment,
+        trade_name: tradeName, legal_name: legalName, cnpj, instagram, segment_id: segment,
       });
       onCreated(c);
       onOpenChange(false);
@@ -102,7 +102,7 @@ export function CompanyFormDialog({ open, onOpenChange, initialName, onCreated }
                 <AlertDescription className="text-xs flex items-center justify-between gap-2">
                   <span>Isso parece um segmento, não o nome da empresa.</span>
                   <Button type="button" size="sm" variant="outline" className="h-7"
-                    onClick={() => { setSegment(looksLikeSegment); setTradeName(''); }}>
+                    onClick={() => { setSegment(looksLikeSegment.id); setTradeName(''); }}>
                     Usar como segmento
                   </Button>
                 </AlertDescription>
