@@ -20,6 +20,7 @@
 - [x] Aba Segmentos em Configurações; seletor só com ativos; criar na hora só owner/admin
 - [x] Filtro por segment_id + conversão de filtros antigos; exportação e webhook pela nova tabela
 - [x] Testes (DDATA, webhook.site) e limpeza
-- [ ] Oniplataforma: preencher segmento a partir de "Tipo de negócio" (191 empresas) — aguardando OK do usuário
-- [ ] Desativar campo "Tipo de negócio" na Oniplataforma — após conferência do usuário
+- [x] Oniplataforma: segmento preenchido a partir de "Tipo de negócio" (191 empresas)
+- [ ] Desativar campo "Tipo de negócio" na Oniplataforma — só depois da Fase 3 (pedido do usuário)
 - [ ] Fase 3: vínculo automático tipo_de_negocio dos webhooks de entrada → company_segment
+- [x] Ordenação por segmento: posição configurada, depois nome fantasia, sem segmento por último
