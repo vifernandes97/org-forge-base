@@ -43,9 +43,11 @@ interface LeadFormDialogProps {
   lead?: LeadWithRelations | null;
   /** Funnel preselected when creating a new deal */
   defaultFunnelId?: string;
+  /** Company preselected when creating a new deal */
+  defaultCompanyId?: string;
 }
 
-export function LeadFormDialog({ open, onOpenChange, lead, defaultFunnelId }: LeadFormDialogProps) {
+export function LeadFormDialog({ open, onOpenChange, lead, defaultFunnelId, defaultCompanyId }: LeadFormDialogProps) {
   const { organization } = useOrganization();
   const { data: funnels } = useFunnels();
   const { data: customFields } = useCustomFields();

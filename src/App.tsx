@@ -5,6 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { OrganizationProvider } from "@/contexts/OrganizationContext";
+import CompaniesPage from "./pages/CompaniesPage";
+import CompanyDetailPage from "./pages/CompanyDetailPage";
+import ContactsPage from "./pages/ContactsPage";
 import { PrivateRoute } from "@/components/shared/PrivateRoute";
 import { OnboardingRoute } from "@/components/shared/OnboardingRoute";
 import { PublicRoute } from "@/components/shared/PublicRoute";
@@ -50,6 +53,15 @@ const App = () => (
               } />
               <Route path="/leads" element={
                 <PrivateRoute><MainLayout><LeadsPage /></MainLayout></PrivateRoute>
+              } />
+              <Route path="/companies" element={
+                <PrivateRoute><MainLayout><CompaniesPage /></MainLayout></PrivateRoute>
+              } />
+              <Route path="/companies/:id" element={
+                <PrivateRoute><MainLayout><CompanyDetailPage /></MainLayout></PrivateRoute>
+              } />
+              <Route path="/contacts" element={
+                <PrivateRoute><MainLayout><ContactsPage /></MainLayout></PrivateRoute>
               } />
               <Route path="/tasks" element={
                 <PrivateRoute><MainLayout><TasksPage /></MainLayout></PrivateRoute>
