@@ -41,9 +41,11 @@ interface LeadFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   lead?: LeadWithRelations | null;
+  /** Funnel preselected when creating a new deal */
+  defaultFunnelId?: string;
 }
 
-export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps) {
+export function LeadFormDialog({ open, onOpenChange, lead, defaultFunnelId }: LeadFormDialogProps) {
   const { organization } = useOrganization();
   const { data: funnels } = useFunnels();
   const { data: customFields } = useCustomFields();
@@ -69,11 +71,16 @@ export function LeadFormDialog({ open, onOpenChange, lead }: LeadFormDialogProps
     if (open) {
       if (lead?.funnel_id) {
         setSelectedFunnelId(lead.funnel_id);
-      } else if (funnels?.[0]) {
-        setSelectedFunnelId(funnels[0].id);
+      } else {
+        const fid = (defaultFunnelId && funnels?.some(f => f.id === defaultFunnelId)) ? defaultFunnelId : funnels?.[0]?.id;
+        if (fid) {
+          setSelectedFunnelId(fid);
+          form.setValue('funnel_id', fid);
+          form.setValue('stage_id', '');
+        }
       }
     }
-  }, [open, lead, funnels]);
+  }, [open, lead, funnels, defaultFunnelId]);
 
   const baseSchema = z.object({
     funnel_id: z.string().min(1, 'Selecione um funil'),

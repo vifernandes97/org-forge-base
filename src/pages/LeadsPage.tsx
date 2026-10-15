@@ -292,7 +292,7 @@ export default function LeadsPage() {
           </div>
         )}
 
-        <LeadFormDialog open={createOpen} onOpenChange={setCreateOpen} />
+        <LeadFormDialog open={createOpen} onOpenChange={setCreateOpen} defaultFunnelId={selectedFunnelId} />
         <ImportLeadsDialog
           open={importOpen}
           onOpenChange={setImportOpen}
