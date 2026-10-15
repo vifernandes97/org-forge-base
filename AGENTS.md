@@ -1,1 +1,2 @@
 - Company segments live in public.company_segments (per org, managed list) referenced by companies.segment_id; companies.segment text is deprecated and must not be read or written — keeps segment names consistent and renameable.
+- Inbound webhook and spreadsheet import resolve company+contact only through public.resolve_company_contact (import preview via preview_import_resolution); deals are written with company_id + lead_contacts, never legacy lead name/email/phone/company fields — one shared rule keeps both entry points consistent.
