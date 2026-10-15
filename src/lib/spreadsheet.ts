@@ -50,7 +50,10 @@ export async function parseSpreadsheet(file: File): Promise<ParsedSheet> {
 
 /** Native lead fields available as import targets */
 export const NATIVE_TARGETS = [
-  { key: 'company', label: 'Empresa' },
+  { key: 'trade_name', label: 'Nome fantasia' },
+  { key: 'legal_name', label: 'Razão social' },
+  { key: 'cnpj', label: 'CNPJ' },
+  { key: 'segment', label: 'Segmento' },
   { key: 'name', label: 'Nome do contato' },
   { key: 'email', label: 'E-mail' },
   { key: 'phone', label: 'Telefone' },
@@ -66,7 +69,10 @@ export const NATIVE_TARGETS = [
 export type NativeTargetKey = (typeof NATIVE_TARGETS)[number]['key'];
 
 const ALIASES: Record<NativeTargetKey, string[]> = {
-  company: ['empresa', 'company', 'razaosocial', 'razao', 'nomedaempresa', 'companhia', 'negocio', 'oportunidade'],
+  trade_name: ['empresa', 'company', 'nomefantasia', 'fantasia', 'nomedaempresa', 'companhia', 'negocio', 'oportunidade'],
+  legal_name: ['razaosocial', 'razao', 'legalname'],
+  cnpj: ['cnpj', 'documento'],
+  segment: ['segmento', 'ramo', 'tipodenegocio', 'tipodeempresa', 'segment'],
   name: ['nome', 'name', 'contato', 'nomecontato', 'nomedocontato', 'cliente', 'fullname', 'nomecompleto', 'lead'],
   email: ['email', 'e-mail', 'mail', 'emailcontato'],
   phone: ['telefone', 'phone', 'celular', 'whatsapp', 'whats', 'fone', 'tel', 'numero'],
