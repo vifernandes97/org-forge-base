@@ -92,6 +92,13 @@
       "when": 1792023958543,
       "tag": "0012_company_segment_sort",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792024446765,
+      "tag": "0013_resolve_company_contact",
+      "breakpoints": true
     }
   ]
 }
