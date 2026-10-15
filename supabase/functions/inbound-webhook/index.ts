@@ -8,8 +8,11 @@ const corsHeaders = {
 };
 
 function normalizeFieldName(name: string): string {
-  return name.toLowerCase().replace(/[-_\s]/g, "");
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[-_\s]/g, "");
 }
+
+/** Form keys auto-linked to the company segment (only when the value matches an active segment). */
+const SEGMENT_HINT_KEYS = ["tipodenegocio", "segmento", "ramo"];
 
 const FIELD_ALIASES: Record<string, string[]> = {
   name: ["name", "nome", "fullname", "nomecompleto", "yourname", "contato", "nomecontato", "contactname", "nomedocontato"],
@@ -20,7 +23,20 @@ const FIELD_ALIASES: Record<string, string[]> = {
   company_instagram: ["companyinstagram", "instagram", "ig"],
   value: ["value", "valor", "budget", "orcamento"],
   notes: ["notes", "message", "mensagem", "yourmessage", "observacoes"],
+  // Fase 3: campos explícitos de Empresa e Contato
+  company_trade_name: ["companytradename", "nomefantasia", "fantasia"],
+  company_legal_name: ["companylegalname"],
+  company_cnpj: ["companycnpj", "cnpj", "documento"],
+  company_segment: ["companysegment", "tipodeempresa"],
+  contact_name: ["contactname"],
+  contact_email: ["contactemail"],
+  contact_phone: ["contactphone"],
 };
+
+const CRM_FIELDS = [
+  "name", "email", "phone", "company", "company_name", "company_instagram", "value", "notes",
+  "company_trade_name", "company_legal_name", "company_cnpj", "company_segment", "contact_name", "contact_email", "contact_phone",
+];
 
 function findFieldValue(
   payload: Record<string, any>,
@@ -172,13 +188,62 @@ Deno.serve(async (req) => {
     const fieldMapping = (webhook.field_mapping || {}) as Record<string, any>;
     const mappedData: Record<string, any> = {};
 
-    for (const crmField of ["name", "email", "phone", "company", "company_name", "company_instagram", "value", "notes"]) {
+    for (const crmField of CRM_FIELDS) {
       const val = findFieldValue(payload, fieldMapping, crmField);
       if (val && val.trim()) mappedData[crmField] = val.trim();
     }
 
     // Custom fields mapping
     const customFieldMapping = fieldMapping.custom_fields || {};
+
+    // Contact (explicit fields win over legacy keys)
+    const contactName = mappedData.contact_name || mappedData.name || null;
+    const contactEmail = mappedData.contact_email || mappedData.email || null;
+    const contactPhone = mappedData.contact_phone || mappedData.phone || null;
+    if (!contactName && !contactEmail) {
+      await logInbound(supabase, webhook, null, "error", rawPayload, mappedData, null, "At least name or email is required", ipAddress);
+      return new Response(
+        JSON.stringify({ success: false, error: "At least name or email is required" }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Segment hint (tipo_de_negocio & co.), unless that form key is explicitly mapped to a custom field
+    const explicitlyMappedFormKeys = new Set(Object.values(customFieldMapping).filter((v) => typeof v === "string") as string[]);
+    let segmentHintKey: string | null = null;
+    let segmentHint: string | null = null;
+    for (const [k, v] of Object.entries(payload)) {
+      if (explicitlyMappedFormKeys.has(k)) continue;
+      if (SEGMENT_HINT_KEYS.includes(normalizeFieldName(k)) && v !== undefined && v !== null && String(v).trim()) {
+        segmentHintKey = k; segmentHint = String(v).trim(); break;
+      }
+    }
+
+    // Resolve company + contact (single shared rule, also used by the spreadsheet import)
+    const { data: resolution, error: resErr } = await supabase.rpc("resolve_company_contact", {
+      p_org: webhook.organization_id,
+      p_trade_name: mappedData.company_trade_name || null,
+      p_legal_name: mappedData.company_legal_name || mappedData.company_name || null,
+      p_cnpj: mappedData.company_cnpj || null,
+      p_instagram: mappedData.company_instagram || null,
+      p_segment: mappedData.company_segment || null,
+      p_segment_hint: segmentHint,
+      p_company_value: mappedData.company || null,
+      p_contact_name: contactName,
+      p_email: contactEmail,
+      p_phone: contactPhone,
+    });
+    if (resErr || !resolution?.company_id) {
+      const msg = resErr?.message || "Could not resolve company";
+      await logInbound(supabase, webhook, null, "error", rawPayload, mappedData, null, msg, ipAddress);
+      return new Response(JSON.stringify({ success: false, error: msg }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const unknownSegments: string[] = resolution.unknown_segments || [];
+    const hintKnown = !!segmentHint && !unknownSegments.includes(segmentHint);
+    const logNotes: string[] = unknownSegments.map((v) => `segmento desconhecido: ${v}`);
+    if (resolution.segment_conflict) logNotes.push(`conflito de segmento: ${JSON.stringify(resolution.segment_conflict)}`);
+    const resolutionLog = { ...resolution, segment_hint_key: segmentHintKey, notes: logNotes };
     const mappedCustomFields: Record<string, string> = {};
     const autoMatchedCustomFormKeys = new Set<string>();
     for (const [cfKey, formKey] of Object.entries(customFieldMapping)) {
@@ -189,7 +254,7 @@ Deno.serve(async (req) => {
 
     // Auto-detect custom fields by matching payload keys to active definitions
     // (field_name or field_label, normalized). Only fills entries not already mapped.
-    const nativeCrmFields = ["name", "email", "phone", "company", "company_name", "company_instagram", "value", "notes"];
+    const nativeCrmFields = CRM_FIELDS;
     const nativeNormalized = new Set<string>();
     for (const f of nativeCrmFields) {
       nativeNormalized.add(normalizeFieldName(f));
@@ -209,6 +274,8 @@ Deno.serve(async (req) => {
       }
       for (const def of activeDefs) {
         if (mappedCustomFields[def.field_name] !== undefined) continue;
+        // a known segment value was used for the company segment, not the custom field
+        if (hintKnown && segmentHintKey && [normalizeFieldName(def.field_name), def.field_label ? normalizeFieldName(def.field_label) : ""].includes(normalizeFieldName(segmentHintKey))) continue;
         const candidates = [
           normalizeFieldName(def.field_name),
           def.field_label ? normalizeFieldName(def.field_label) : null,
@@ -228,7 +295,7 @@ Deno.serve(async (req) => {
 
     // Collect unmapped fields into notes
     const allMappedFormKeys = new Set<string>();
-    for (const crmField of ["name", "email", "phone", "company", "company_name", "company_instagram", "value", "notes"]) {
+    for (const crmField of CRM_FIELDS) {
       const mk = fieldMapping[crmField];
       if (mk) allMappedFormKeys.add(mk);
       // Also add auto-detected keys
@@ -241,6 +308,7 @@ Deno.serve(async (req) => {
       if (formKey && typeof formKey === "string") allMappedFormKeys.add(formKey);
     }
     for (const k of autoMatchedCustomFormKeys) allMappedFormKeys.add(k);
+    if (hintKnown && segmentHintKey) allMappedFormKeys.add(segmentHintKey);
     allMappedFormKeys.add("api_key");
 
     const extraNotes: string[] = [];
@@ -249,17 +317,12 @@ Deno.serve(async (req) => {
         extraNotes.push(`${key}: ${val}`);
       }
     }
+    // explicit company_segment that matched no active segment: never discard the value
+    if (mappedData.company_segment && unknownSegments.includes(mappedData.company_segment)) {
+      extraNotes.push(`segmento: ${mappedData.company_segment}`);
+    }
     if (extraNotes.length > 0) {
       mappedData.notes = (mappedData.notes || "") + (mappedData.notes ? "\n" : "") + extraNotes.join("\n");
-    }
-
-    // 7. Validate
-    if (!mappedData.name && !mappedData.email) {
-      await logInbound(supabase, webhook, null, "error", rawPayload, mappedData, null, "At least name or email is required", ipAddress);
-      return new Response(
-        JSON.stringify({ success: false, error: "At least name or email is required" }),
-        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
     }
 
     // 8. Resolve funnel and first stage
@@ -313,22 +376,26 @@ Deno.serve(async (req) => {
     const strategy = webhook.duplicate_strategy || "update";
     let existingLead: any = null;
 
-    if (mappedData.email && strategy !== "create_new") {
+    if (strategy !== "create_new") {
       const { data: found } = await supabase
         .from("leads")
         .select("*")
         .eq("organization_id", webhook.organization_id)
-        .eq("email", mappedData.email)
+        .eq("company_id", resolution.company_id)
+        .eq("funnel_id", funnelId)
+        .is("archived_at", null)
+        .is("merged_into_lead_id", null)
+        .order("created_at", { ascending: true })
         .limit(1)
-        .single();
+        .maybeSingle();
       existingLead = found;
     }
 
     // === IGNORE strategy ===
     if (existingLead && strategy === "ignore") {
-      await logInbound(supabase, webhook, existingLead.id, "ignored", rawPayload, mappedData, null, null, ipAddress);
+      await logInbound(supabase, webhook, existingLead.id, "ignored", rawPayload, mappedData, null, null, ipAddress, resolutionLog);
       return new Response(
-        JSON.stringify({ success: true, action: "ignored", lead_id: existingLead.id, reason: "duplicate_email" }),
+        JSON.stringify({ success: true, action: "ignored", lead_id: existingLead.id, reason: "duplicate_company" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -338,10 +405,19 @@ Deno.serve(async (req) => {
       const changes: Array<{ field: string; old_value: any; new_value: any }> = [];
       const updateData: Record<string, any> = {};
 
-      for (const field of ["name", "email", "phone", "company", "company_name", "company_instagram", "notes"]) {
-        if (mappedData[field] && mappedData[field] !== existingLead[field]) {
-          changes.push({ field, old_value: existingLead[field], new_value: mappedData[field] });
-          updateData[field] = mappedData[field];
+      if (mappedData.notes && mappedData.notes !== existingLead.notes) {
+        changes.push({ field: "notes", old_value: existingLead.notes, new_value: mappedData.notes });
+        updateData.notes = mappedData.notes;
+      }
+      // link the contact if not linked yet
+      if (resolution.contact_id) {
+        const { data: links } = await supabase.from("lead_contacts").select("contact_id, is_primary").eq("lead_id", existingLead.id);
+        if (!(links || []).some((l: any) => l.contact_id === resolution.contact_id)) {
+          await supabase.from("lead_contacts").insert({
+            organization_id: webhook.organization_id, lead_id: existingLead.id, contact_id: resolution.contact_id,
+            is_primary: !(links || []).some((l: any) => l.is_primary),
+          });
+          changes.push({ field: "contact_linked", old_value: null, new_value: resolution.contact_id });
         }
       }
 
@@ -462,7 +538,7 @@ Deno.serve(async (req) => {
       }
 
 
-      await logInbound(supabase, webhook, existingLead.id, "updated", rawPayload, mappedData, changes.length > 0 ? changes : null, null, ipAddress);
+      await logInbound(supabase, webhook, existingLead.id, "updated", rawPayload, mappedData, changes.length > 0 ? changes : null, null, ipAddress, resolutionLog);
 
       return new Response(
         JSON.stringify({ success: true, action: "updated", lead_id: existingLead.id, changes }),
@@ -475,12 +551,7 @@ Deno.serve(async (req) => {
       organization_id: webhook.organization_id,
       funnel_id: funnelId,
       stage_id: firstStage.id,
-      name: mappedData.name || mappedData.email || "Lead sem nome",
-      email: mappedData.email || null,
-      phone: mappedData.phone || null,
-      company: mappedData.company || null,
-      company_name: mappedData.company_name || null,
-      company_instagram: mappedData.company_instagram || null,
+      company_id: resolution.company_id,
       value: mappedData.value ? Number(mappedData.value) || 0 : 0,
       notes: mappedData.notes || null,
       source: webhook.default_source || "formulário",
@@ -503,6 +574,12 @@ Deno.serve(async (req) => {
         JSON.stringify({ success: false, error: errMsg }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    if (resolution.contact_id) {
+      await supabase.from("lead_contacts").insert({
+        organization_id: webhook.organization_id, lead_id: newLead.id, contact_id: resolution.contact_id, is_primary: true,
+      });
     }
 
     // Insert custom field values
@@ -554,10 +631,10 @@ Deno.serve(async (req) => {
               timestamp: new Date().toISOString(),
               lead: {
                 id: newLead.id,
-                name: newLead.name,
-                email: newLead.email,
-                phone: newLead.phone,
-                company: newLead.company,
+                name: contactName,
+                email: contactEmail,
+                phone: contactPhone,
+                company: resolution.segment || null,
                 value: newLead.value,
                 source: newLead.source,
               },
@@ -580,7 +657,7 @@ Deno.serve(async (req) => {
         organization_id: webhook.organization_id,
         lead_id: newLead.id,
         assigned_to: webhook.default_assigned_to || activityUserId,
-        title: `Follow-up: ${newLead.name}`,
+        title: `Follow-up: ${contactName || contactEmail}`,
         description: `SLA de ${firstStage.sla_hours}h para a etapa "${firstStage.name}"`,
         task_type: "follow_up",
         due_date: dueDate,
@@ -588,7 +665,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    await logInbound(supabase, webhook, newLead.id, "created", rawPayload, mappedData, null, null, ipAddress);
+    await logInbound(supabase, webhook, newLead.id, "created", rawPayload, mappedData, null, null, ipAddress, resolutionLog);
 
     return new Response(
       JSON.stringify({ success: true, action: "created", lead_id: newLead.id }),
@@ -618,7 +695,8 @@ async function logInbound(
   mappedData: any,
   changesApplied: any,
   errorMessage: string | null,
-  ipAddress: string | null
+  ipAddress: string | null,
+  resolution: any = null
 ) {
   try {
     await supabase.from("inbound_webhook_logs").insert({
@@ -631,6 +709,7 @@ async function logInbound(
       changes_applied: changesApplied,
       error_message: errorMessage,
       ip_address: ipAddress,
+      resolution,
     });
   } catch { /* silent */ }
 }

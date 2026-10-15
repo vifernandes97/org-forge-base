@@ -24,3 +24,13 @@
 - [ ] Desativar campo "Tipo de negócio" na Oniplataforma — só depois da Fase 3 (pedido do usuário)
 - [ ] Fase 3: vínculo automático tipo_de_negocio dos webhooks de entrada → company_segment
 - [x] Ordenação por segmento: posição configurada, depois nome fantasia, sem segmento por último
+
+# Fase 3 — Webhook de entrada e importação
+- [x] Função resolve_company_contact (com dry run) + coluna resolution no log
+- [x] inbound-webhook: novos campos/aliases, regras de segmento (prioridade, desconhecido → campo personalizado + log), duplicado por empresa+funil
+- [x] InboundWebhookEditPage agrupado Empresa/Contato
+- [x] Importação: novas colunas, resolução, resumo
+- [x] Testes 1-9 sem produção + limpeza
+- [x] Re-preencher segmento Oniplataforma pelo Tipo de negócio
+- [ ] Desativar campo Tipo de negócio na Oniplataforma — aguardando confirmação
+- [ ] Resumo dos 10 primeiros leads reais da Oniplataforma após publicar — aguardando recebimentos

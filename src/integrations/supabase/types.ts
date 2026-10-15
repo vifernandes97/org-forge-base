@@ -416,6 +416,7 @@ export type Database = {
           mapped_data: Json | null
           organization_id: string
           raw_payload: Json
+          resolution: Json | null
         }
         Insert: {
           action: string
@@ -429,6 +430,7 @@ export type Database = {
           mapped_data?: Json | null
           organization_id: string
           raw_payload: Json
+          resolution?: Json | null
         }
         Update: {
           action?: string
@@ -442,6 +444,7 @@ export type Database = {
           mapped_data?: Json | null
           organization_id?: string
           raw_payload?: Json
+          resolution?: Json | null
         }
         Relationships: [
           {
@@ -1297,6 +1300,10 @@ export type Database = {
     }
     Functions: {
       accept_invite: { Args: { p_token: string }; Returns: Json }
+      active_segment_id_from_value: {
+        Args: { p_org: string; p_value: string }
+        Returns: string
+      }
       add_archive_reason: {
         Args: { p_label: string; p_org_id: string }
         Returns: {
@@ -1505,6 +1512,10 @@ export type Database = {
         Returns: Json
       }
       normalize_company_key: { Args: { p: string }; Returns: string }
+      preview_import_resolution: {
+        Args: { p_funnel: string; p_org: string; p_rows: Json }
+        Returns: Json
+      }
       record_invite_event: {
         Args: { p_event: string; p_invite_id: string; p_metadata?: Json }
         Returns: undefined
@@ -1524,6 +1535,22 @@ export type Database = {
           p_org: string
         }
         Returns: string
+      }
+      resolve_company_contact: {
+        Args: {
+          p_cnpj?: string
+          p_company_value?: string
+          p_contact_name?: string
+          p_email?: string
+          p_instagram?: string
+          p_legal_name?: string
+          p_org: string
+          p_phone?: string
+          p_segment?: string
+          p_segment_hint?: string
+          p_trade_name?: string
+        }
+        Returns: Json
       }
       search_leads: {
         Args: { p_org: string; p_term: string }
