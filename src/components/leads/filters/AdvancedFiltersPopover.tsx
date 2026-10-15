@@ -165,7 +165,7 @@ export function AdvancedFiltersPopover({
     const origin =
       (draft.sources?.length || 0) +
       (draft.tags?.length || 0) +
-      (draft.segments?.length || 0) +
+      (draft.segment_ids?.length || 0) +
       (draft.company_ids?.length || 0) +
       (showArchiveReason ? draft.archive_reason_ids?.length || 0 : 0);
     const time =
@@ -190,6 +190,7 @@ export function AdvancedFiltersPopover({
       'tags',
       'archive_reason_ids',
       'segments',
+      'segment_ids',
       'company_ids',
       'created_at_from',
       'created_at_to',
@@ -314,8 +315,8 @@ export function AdvancedFiltersPopover({
                   <FilterMultiSelect
                     label="Selecionar"
                     options={segmentOptions}
-                    selected={draft.segments || []}
-                    onChange={(v) => setDraftField('segments', v)}
+                    selected={draft.segment_ids || []}
+                    onChange={(v) => setDraftField('segment_ids', v)}
                   />
                 </FilterRow>
               )}
