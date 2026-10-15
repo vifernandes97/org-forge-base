@@ -135,6 +135,7 @@ export type Database = {
           organization_id: string
           segment: string | null
           segment_id: string | null
+          segment_sort: number | null
           trade_name: string
           updated_at: string
         }
@@ -148,6 +149,7 @@ export type Database = {
           organization_id: string
           segment?: string | null
           segment_id?: string | null
+          segment_sort?: number | null
           trade_name: string
           updated_at?: string
         }
@@ -161,6 +163,7 @@ export type Database = {
           organization_id?: string
           segment?: string | null
           segment_id?: string | null
+          segment_sort?: number | null
           trade_name?: string
           updated_at?: string
         }
