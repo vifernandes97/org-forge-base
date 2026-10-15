@@ -220,7 +220,9 @@ Deno.serve(async (req) => {
     }
 
     // Resolve company + contact (single shared rule, also used by the spreadsheet import)
-    const { data: resolution, error: resErr } = await supabase.rpc("resolve_company_contact", {
+    // With "ignore", resolve in query mode first: nothing is written unless the submission is not a duplicate.
+    const resolveStrategy = webhook.duplicate_strategy || "update";
+    const resolveArgs = {
       p_org: webhook.organization_id,
       p_trade_name: mappedData.company_trade_name || null,
       p_legal_name: mappedData.company_legal_name || mappedData.company_name || null,
@@ -232,7 +234,9 @@ Deno.serve(async (req) => {
       p_contact_name: contactName,
       p_email: contactEmail,
       p_phone: contactPhone,
-    });
+    };
+    let { data: resolution, error: resErr } = await supabase.rpc(
+      resolveStrategy === "ignore" ? "resolve_company_contact_preview" : "resolve_company_contact", resolveArgs);
     if (resErr || !resolution?.company_id) {
       const msg = resErr?.message || "Could not resolve company";
       await logInbound(supabase, webhook, null, "error", rawPayload, mappedData, null, msg, ipAddress);
@@ -243,7 +247,7 @@ Deno.serve(async (req) => {
     const hintKnown = !!segmentHint && !unknownSegments.includes(segmentHint);
     const logNotes: string[] = unknownSegments.map((v) => `segmento desconhecido: ${v}`);
     if (resolution.segment_conflict) logNotes.push(`conflito de segmento: ${JSON.stringify(resolution.segment_conflict)}`);
-    const resolutionLog = { ...resolution, segment_hint_key: segmentHintKey, notes: logNotes };
+    let resolutionLog: any = { ...resolution, segment_hint_key: segmentHintKey, notes: logNotes };
     const mappedCustomFields: Record<string, string> = {};
     const autoMatchedCustomFormKeys = new Set<string>();
     for (const [cfKey, formKey] of Object.entries(customFieldMapping)) {
@@ -376,7 +380,7 @@ Deno.serve(async (req) => {
     const strategy = webhook.duplicate_strategy || "update";
     let existingLead: any = null;
 
-    if (strategy !== "create_new") {
+    if (strategy !== "create_new" && !(strategy === "ignore" && resolution.company_created)) {
       const { data: found } = await supabase
         .from("leads")
         .select("*")
@@ -391,9 +395,24 @@ Deno.serve(async (req) => {
       existingLead = found;
     }
 
+    // Not a duplicate under "ignore": now persist the resolution for real
+    if (strategy === "ignore" && !existingLead) {
+      const real = await supabase.rpc("resolve_company_contact", resolveArgs);
+      if (real.error || !real.data?.company_id) {
+        const msg = real.error?.message || "Could not resolve company";
+        await logInbound(supabase, webhook, null, "error", rawPayload, mappedData, null, msg, ipAddress);
+        return new Response(JSON.stringify({ success: false, error: msg }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      resolution = real.data;
+      resolutionLog = { ...resolutionLog, ...resolution };
+    }
+
     // === IGNORE strategy ===
     if (existingLead && strategy === "ignore") {
-      await logInbound(supabase, webhook, existingLead.id, "ignored", rawPayload, mappedData, null, null, ipAddress, resolutionLog);
+      const reason = "Duplicado: já existe negócio aberto desta empresa neste funil; nada foi criado ou alterado";
+      resolutionLog = { ...resolutionLog, notes: [...(resolutionLog.notes || []), reason] };
+      await logInbound(supabase, webhook, existingLead.id, "ignored", rawPayload, mappedData, null, reason, ipAddress, resolutionLog);
       return new Response(
         JSON.stringify({ success: true, action: "ignored", lead_id: existingLead.id, reason: "duplicate_company" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
