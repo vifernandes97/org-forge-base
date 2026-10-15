@@ -1,4 +1,4 @@
-import { LayoutDashboard, Settings, GitBranch, Contact, CheckSquare, Zap } from 'lucide-react';
+import { LayoutDashboard, Settings, GitBranch, Contact, CheckSquare, Zap, Handshake, Building2 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import {
   Sidebar,
@@ -17,7 +17,9 @@ import { Badge } from '@/components/ui/badge';
 
 const mainNav = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
-  { title: 'Negócios', url: '/leads', icon: Contact },
+  { title: 'Negócios', url: '/leads', icon: Handshake },
+  { title: 'Empresas', url: '/companies', icon: Building2 },
+  { title: 'Contatos', url: '/contacts', icon: Contact },
   { title: 'Tarefas', url: '/tasks', icon: CheckSquare },
 ];
 

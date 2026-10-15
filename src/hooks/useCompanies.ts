@@ -11,7 +11,7 @@ import {
 import { linkContact, unlinkContact, setPrimaryContact, changeLeadCompany } from '@/services/leadContacts';
 
 export function invalidateLeadData(qc: QueryClient) {
-  for (const k of ['leads', 'lead', 'leads-kanban', 'leads-list', 'companies', 'company', 'company-contacts', 'segments', 'tasks', 'activities']) {
+  for (const k of ['leads', 'lead', 'leads-kanban', 'leads-list', 'companies', 'company', 'company-contacts', 'segments', 'tasks', 'activities', 'companies-list', 'contacts-list', 'company-leads', 'company-activities', 'contact-detail']) {
     qc.invalidateQueries({ queryKey: [k] });
   }
 }
@@ -57,10 +57,7 @@ export function useCreateCompany() {
   const { organization } = useOrganization();
   return useMutation({
     mutationFn: (input: CompanyInput) => createCompany(organization!.id, input),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['companies'] });
-      qc.invalidateQueries({ queryKey: ['segments'] });
-    },
+    onSuccess: () => invalidateLeadData(qc),
   });
 }
 
@@ -94,7 +91,7 @@ export function useCreateContact() {
   return useMutation({
     mutationFn: ({ companyId, input }: { companyId: string; input: ContactInput }) =>
       createContact(organization!.id, companyId, input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['company-contacts'] }),
+    onSuccess: () => invalidateLeadData(qc),
   });
 }
 

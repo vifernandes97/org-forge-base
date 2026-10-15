@@ -43,9 +43,11 @@ interface LeadFormDialogProps {
   lead?: LeadWithRelations | null;
   /** Funnel preselected when creating a new deal */
   defaultFunnelId?: string;
+  /** Company preselected when creating a new deal */
+  defaultCompanyId?: string;
 }
 
-export function LeadFormDialog({ open, onOpenChange, lead, defaultFunnelId }: LeadFormDialogProps) {
+export function LeadFormDialog({ open, onOpenChange, lead, defaultFunnelId, defaultCompanyId }: LeadFormDialogProps) {
   const { organization } = useOrganization();
   const { data: funnels } = useFunnels();
   const { data: customFields } = useCustomFields();
@@ -139,13 +141,13 @@ export function LeadFormDialog({ open, onOpenChange, lead, defaultFunnelId }: Le
       } else {
         form.reset();
         setCfValues({});
-        setCompanyId(null);
+        setCompanyId(defaultCompanyId || null);
         setContactIds([]);
         setPrimaryContactId(null);
       }
       setCompanyError(false);
     }
-  }, [open, lead, form]);
+  }, [open, lead, form, defaultCompanyId]);
 
   // Auto-select first stage when funnel changes
   useEffect(() => {
