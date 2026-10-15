@@ -76,7 +76,7 @@ export function buildLeadRows(
     const row: Record<string, unknown> = {
       ID: l.id,
       Empresa: l.company?.trade_name || '',
-      Segmento: l.company?.segment || '',
+      Segmento: l.company?.segment_ref?.label || '',
       'Razão social': l.company?.legal_name || '',
       CNPJ: l.company?.cnpj ? formatCnpj(l.company.cnpj) : '',
       Instagram: l.company?.instagram || '',
@@ -129,7 +129,7 @@ export function buildActivityRows(leads: any[], activities: any[]): Record<strin
       return {
         'ID do negócio': l.id,
         Empresa: l.company?.trade_name || '',
-        Segmento: l.company?.segment || '',
+        Segmento: l.company?.segment_ref?.label || '',
         'Razão social': l.company?.legal_name || '',
         'Nome do contato': contact?.name || '',
         'Data/hora': dt(a.created_at),

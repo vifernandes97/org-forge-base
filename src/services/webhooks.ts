@@ -105,7 +105,7 @@ export function buildWebhookPayload({
       company_data: lead.company
         ? {
             id: lead.company.id, trade_name: lead.company.trade_name, legal_name: lead.company.legal_name,
-            cnpj: lead.company.cnpj, instagram: lead.company.instagram, segment: lead.company.segment,
+            cnpj: lead.company.cnpj, instagram: lead.company.instagram, segment: lead.company.segment_ref?.label ?? null,
           }
         : null,
       contacts: (lead.lead_contacts || []).filter((x: any) => x.contact).map((x: any) => ({
@@ -118,7 +118,7 @@ export function buildWebhookPayload({
       /** @deprecated use contacts[is_primary] */
       phone: getPrimaryContact(lead)?.phone || null,
       /** @deprecated use company_data */
-      company: lead.company?.segment || lead.company?.trade_name || null,
+      company: lead.company?.segment_ref?.label || lead.company?.trade_name || null,
       /** @deprecated use company_data.trade_name */
       company_name: lead.company?.trade_name || null,
       value: lead.value || 0,

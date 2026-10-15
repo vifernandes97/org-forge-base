@@ -300,7 +300,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
                     <TableCell className="font-medium max-w-[180px] truncate">{lead.company?.trade_name || '—'}</TableCell>
                   )}
                   {isVisible('segment') && (
-                    <TableCell className="max-w-[140px] truncate text-muted-foreground">{lead.company?.segment || '—'}</TableCell>
+                    <TableCell className="max-w-[140px] truncate text-muted-foreground">{lead.company?.segment_ref?.label || '—'}</TableCell>
                   )}
                   {isVisible('legal_name') && (
                     <TableCell className="max-w-[140px] truncate text-muted-foreground">{lead.company?.legal_name || '—'}</TableCell>
@@ -432,7 +432,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground truncate mt-0.5">
-                    {[getPrimaryContact(lead)?.name, lead.company?.segment, lead.value > 0 ? `R$ ${Number(lead.value).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}` : null]
+                    {[getPrimaryContact(lead)?.name, lead.company?.segment_ref?.label, lead.value > 0 ? `R$ ${Number(lead.value).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}` : null]
                       .filter(Boolean)
                       .join(' · ') || '—'}
                   </p>

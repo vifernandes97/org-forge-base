@@ -244,7 +244,9 @@ export interface LeadFilters {
   status_filter?: LeadStatusFilter;
   status_filters?: LeadStatusFilter[];
   archive_reason_ids?: string[];
+  /** @deprecated legacy text filter; converted to segment_ids by name */
   segments?: string[];
+  segment_ids?: string[];
   company_ids?: string[];
 }
 
@@ -255,7 +257,8 @@ export interface Company {
   legal_name: string | null;
   cnpj: string | null;
   instagram: string | null;
-  segment: string | null;
+  segment_id: string | null;
+  segment_ref?: { id: string; label: string; is_active: boolean } | null;
   created_at: string;
   updated_at: string;
 }
@@ -267,4 +270,14 @@ export interface LeadContact {
   contact_id: string;
   is_primary: boolean;
   created_at: string;
+}
+
+export interface CompanySegment {
+  id: string;
+  organization_id: string;
+  label: string;
+  position: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }

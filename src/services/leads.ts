@@ -79,22 +79,22 @@ function applyFilters(query: any, filters?: LeadFilters) {
   if (filters.company_ids?.length) {
     query = query.in('company_id', filters.company_ids);
   }
-  if (filters.segments?.length) {
+  if (filters.segment_ids?.length) {
     // requires the company embed to be !inner (see leadsQuery)
-    query = query.in('company.segment', filters.segments);
+    query = query.in('company.segment_id', filters.segment_ids);
   }
   return query;
 }
 
 /** Relations every deal screen needs: company + linked contacts. */
-export const LEAD_COMPANY_REL = 'company:companies(*), lead_contacts(id, is_primary, created_at, contact:contacts(*))';
+export const LEAD_COMPANY_REL = 'company:companies(*, segment_ref:company_segments(id, label, is_active)), lead_contacts(id, is_primary, created_at, contact:contacts(*))';
 
 /**
  * Base deals query. Uses search_leads RPC when there is a search term (accent-insensitive,
  * searches company and all linked contacts), otherwise the leads table.
  */
 function leadsQuery(select: string, filters: LeadFilters | undefined, orgId: string | undefined, opts?: { count?: 'exact' }) {
-  const sel = filters?.segments?.length ? select.replace('company:companies(*)', 'company:companies!inner(*)') : select;
+  const sel = filters?.segment_ids?.length ? select.replace('company:companies(*', 'company:companies!inner(*') : select;
   const term = filters?.search?.trim();
   if (term && orgId) {
     return (supabase as any).rpc('search_leads', { p_org: orgId, p_term: term }, opts?.count ? { count: opts.count } : undefined).select(sel);
@@ -104,7 +104,7 @@ function leadsQuery(select: string, filters: LeadFilters | undefined, orgId: str
 
 const SORT_MAP: Record<string, string> = {
   company: 'company(trade_name)',
-  segment: 'company(segment)',
+  segment: 'company(segment_id)',
 };
 
 export async function getLeads(orgId: string): Promise<Lead[]> {
