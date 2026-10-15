@@ -73,7 +73,6 @@ export default function CompanyDetailPage() {
 
   const contacts: Contact[] = company.contacts || [];
   const leadList = leads || [];
-  const contactLeadMap = new Map<string, number>();
 
   const save = async (field: keyof Company, value: string | null) => {
     if (field === 'trade_name' && !value?.trim()) { toast.error('Nome fantasia é obrigatório'); return; }
@@ -184,7 +183,6 @@ export default function CompanyDetailPage() {
               )}
             </div>
           ))}
-          {contactLeadMap.size > 0 && null}
         </TabsContent>
 
         <TabsContent value="activities" className="space-y-3">
