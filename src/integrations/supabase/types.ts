@@ -1552,6 +1552,22 @@ export type Database = {
         }
         Returns: Json
       }
+      resolve_company_contact_preview: {
+        Args: {
+          p_cnpj?: string
+          p_company_value?: string
+          p_contact_name?: string
+          p_email?: string
+          p_instagram?: string
+          p_legal_name?: string
+          p_org: string
+          p_phone?: string
+          p_segment?: string
+          p_segment_hint?: string
+          p_trade_name?: string
+        }
+        Returns: Json
+      }
       search_leads: {
         Args: { p_org: string; p_term: string }
         Returns: {
