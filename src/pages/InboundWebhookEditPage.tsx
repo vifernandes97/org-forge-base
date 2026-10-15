@@ -33,14 +33,38 @@ const DEFAULT_TEST_PAYLOAD = JSON.stringify({
   "your-message": "Tenho interesse no produto"
 }, null, 2);
 
-const CRM_FIELDS = [
-  { key: 'name', label: 'Nome', placeholder: 'ex: your-name' },
-  { key: 'email', label: 'E-mail', placeholder: 'ex: your-email' },
-  { key: 'phone', label: 'Telefone', placeholder: 'ex: your-phone' },
-  { key: 'company', label: 'Empresa', placeholder: 'ex: company' },
-  { key: 'value', label: 'Valor', placeholder: 'ex: budget' },
-  { key: 'notes', label: 'Notas', placeholder: 'ex: your-message' },
+const CRM_FIELD_GROUPS = [
+  { title: 'Empresa', fields: [
+    { key: 'company_trade_name', label: 'Nome fantasia', placeholder: 'ex: nome_fantasia' },
+    { key: 'company_legal_name', label: 'Razão social', placeholder: 'ex: razao_social' },
+    { key: 'company_cnpj', label: 'CNPJ', placeholder: 'ex: cnpj' },
+    { key: 'company_instagram', label: 'Instagram', placeholder: 'ex: instagram' },
+    { key: 'company_segment', label: 'Segmento', placeholder: 'ex: segmento' },
+    { key: 'company', label: 'Empresa (texto livre: vira segmento se for um, senão nome fantasia)', placeholder: 'ex: company' },
+  ] },
+  { title: 'Contato', fields: [
+    { key: 'contact_name', label: 'Nome', placeholder: 'ex: your-name' },
+    { key: 'contact_email', label: 'E-mail', placeholder: 'ex: your-email' },
+    { key: 'contact_phone', label: 'Telefone', placeholder: 'ex: your-phone' },
+  ] },
+  { title: 'Negócio', fields: [
+    { key: 'value', label: 'Valor', placeholder: 'ex: budget' },
+    { key: 'notes', label: 'Notas', placeholder: 'ex: your-message' },
+  ] },
 ];
+
+/** Saved mappings with legacy keys open on the matching new field. */
+const LEGACY_KEY_MAP: Record<string, string> = {
+  name: 'contact_name', email: 'contact_email', phone: 'contact_phone', company_name: 'company_legal_name',
+};
+function upgradeMapping(fm: Record<string, string>) {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(fm)) {
+    const nk = LEGACY_KEY_MAP[k] || k;
+    if (v && !out[nk]) out[nk] = v;
+  }
+  return out;
+}
 
 export default function InboundWebhookEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -82,7 +106,7 @@ export default function InboundWebhookEditPage() {
       setDuplicateStrategy((webhook as any).duplicate_strategy || 'update');
       const fm = (webhook as any).field_mapping || {};
       const { custom_fields, ...rest } = fm;
-      setFieldMapping(rest);
+      setFieldMapping(upgradeMapping(rest as Record<string, string>));
       setCustomFieldMapping(custom_fields || {});
     }
   }, [webhook]);
@@ -308,14 +332,20 @@ export default function InboundWebhookEditPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {CRM_FIELDS.map(f => (
-              <div key={f.key} className="grid grid-cols-2 gap-3 items-center">
-                <Label className="text-sm font-medium">{f.label} <span className="text-muted-foreground">({f.key})</span></Label>
-                <Input
-                  placeholder={f.placeholder}
-                  value={fieldMapping[f.key] || ''}
-                  onChange={e => setFieldMapping(prev => ({ ...prev, [f.key]: e.target.value }))}
-                />
+            {CRM_FIELD_GROUPS.map((g, gi) => (
+              <div key={g.title} className="space-y-3">
+                {gi > 0 && <Separator className="my-4" />}
+                <p className="text-sm font-semibold text-muted-foreground">{g.title}</p>
+                {g.fields.map(f => (
+                  <div key={f.key} className="grid grid-cols-2 gap-3 items-center">
+                    <Label className="text-sm font-medium">{f.label} <span className="text-muted-foreground">({f.key})</span></Label>
+                    <Input
+                      placeholder={f.placeholder}
+                      value={fieldMapping[f.key] || ''}
+                      onChange={e => setFieldMapping(prev => ({ ...prev, [f.key]: e.target.value }))}
+                    />
+                  </div>
+                ))}
               </div>
             ))}
             {activeCustomFields.length > 0 && (
