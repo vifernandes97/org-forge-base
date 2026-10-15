@@ -233,6 +233,8 @@ export function ImportLeadsDialog({ open, onOpenChange, defaultFunnelId }: Props
                       onValueChange={v => {
                         setFunnelId(v);
                         setStageId('');
+                        // duplicates depend on the funnel: recompute the summary
+                        if (orgId) buildImportPreview({ orgId, funnelId: v, rows, mapping }).then(setPreview).catch(() => {});
                       }}
                     >
                       <SelectTrigger>
