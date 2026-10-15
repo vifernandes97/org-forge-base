@@ -150,13 +150,16 @@ export function LeadFormDialog({ open, onOpenChange, lead, defaultFunnelId }: Le
   // Auto-select first stage when funnel changes
   useEffect(() => {
     if (stages?.length && !isEditing) {
+      if (selectedFunnelId && form.getValues('funnel_id') !== selectedFunnelId) {
+        form.setValue('funnel_id', selectedFunnelId);
+      }
       const currentStageId = form.getValues('stage_id');
       const stageInFunnel = stages.find(s => s.id === currentStageId);
       if (!stageInFunnel) {
         form.setValue('stage_id', stages[0].id);
       }
     }
-  }, [stages, isEditing, form]);
+  }, [stages, isEditing, form, selectedFunnelId, open]);
 
   const onSubmit = async (data: z.infer<typeof baseSchema>) => {
     if (!organization) return;
