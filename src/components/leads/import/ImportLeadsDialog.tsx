@@ -122,6 +122,10 @@ export function ImportLeadsDialog({ open, onOpenChange, defaultFunnelId }: Props
 
   const goToSummary = async () => {
     if (!orgId) return;
+    if (!funnelId) {
+      toast.error('Escolha o funil da importação.');
+      return;
+    }
     const mapped = Object.values(mapping).filter(Boolean);
     if (!mapped.length) {
       toast.error('Relacione ao menos uma coluna.');
@@ -129,7 +133,7 @@ export function ImportLeadsDialog({ open, onOpenChange, defaultFunnelId }: Props
     }
     setBusy(true);
     try {
-      const p = await buildImportPreview({ orgId, rows, mapping });
+      const p = await buildImportPreview({ orgId, funnelId, rows, mapping });
       setPreview(p);
       setStep(3);
     } catch {
