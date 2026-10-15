@@ -268,6 +268,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "contacts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies_overview"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "contacts_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
@@ -638,6 +645,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "lead_contacts_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts_overview"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "lead_contacts_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
@@ -757,6 +771,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies_overview"
             referencedColumns: ["id"]
           },
           {
@@ -1299,7 +1320,86 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      companies_overview: {
+        Row: {
+          cnpj: string | null
+          contacts_count: number | null
+          created_at: string | null
+          id: string | null
+          instagram: string | null
+          last_activity_at: string | null
+          last_lead_at: string | null
+          legal_name: string | null
+          open_leads_count: number | null
+          open_value: number | null
+          organization_id: string | null
+          segment_id: string | null
+          segment_label: string | null
+          segment_position: number | null
+          total_leads_count: number | null
+          trade_name: string | null
+          trade_name_source: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "companies_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "companies_segment_id_fkey"
+            columns: ["segment_id"]
+            isOneToOne: false
+            referencedRelation: "company_segments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contacts_overview: {
+        Row: {
+          company_id: string | null
+          company_trade_name: string | null
+          created_at: string | null
+          email: string | null
+          id: string | null
+          in_active_lead: boolean | null
+          leads_count: number | null
+          name: string | null
+          organization_id: string | null
+          phone: string | null
+          primary_count: number | null
+          segment_id: string | null
+          segment_label: string | null
+          segment_position: number | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "companies_segment_id_fkey"
+            columns: ["segment_id"]
+            isOneToOne: false
+            referencedRelation: "company_segments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies_overview"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_invite: { Args: { p_token: string }; Returns: Json }
@@ -1491,6 +1591,28 @@ export type Database = {
         Args: { p_company: string; p_company_name: string; p_org: string }
         Returns: string
       }
+      list_companies: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_org: string
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      list_contacts: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_org: string
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
       log_invite_event: {
         Args: {
           p_event: string
@@ -1509,6 +1631,10 @@ export type Database = {
       merge_company_segments: {
         Args: { p_source: string; p_target: string }
         Returns: number
+      }
+      merge_contacts: {
+        Args: { p_keep: string; p_remove: string }
+        Returns: Json
       }
       merge_leads: {
         Args: { p_duplicate_ids: string[]; p_primary_id: string }

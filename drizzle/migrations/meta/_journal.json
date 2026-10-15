@@ -113,6 +113,13 @@
       "when": 1792025817587,
       "tag": "0015_company_trade_name_source",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1792026331221,
+      "tag": "0016_companies_contacts_screens",
+      "breakpoints": true
     }
   ]
 }
