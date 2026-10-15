@@ -57,10 +57,7 @@ export function useCreateCompany() {
   const { organization } = useOrganization();
   return useMutation({
     mutationFn: (input: CompanyInput) => createCompany(organization!.id, input),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['companies'] });
-      qc.invalidateQueries({ queryKey: ['segments'] });
-    },
+    onSuccess: () => invalidateLeadData(qc),
   });
 }
 
