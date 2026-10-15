@@ -75,7 +75,7 @@ export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
         ...style,
         ...(isHighPriority && priorityColor ? { borderLeftColor: priorityColor, borderLeftWidth: 2 } : {}),
       }}
-      className={`group rounded-lg border bg-card p-3 cursor-grab active:cursor-grabbing transition-all space-y-1.5 ${
+      className={`group rounded-lg border bg-card p-3 cursor-grab active:cursor-grabbing transition-all space-y-1.5 w-full min-w-0 overflow-hidden ${
         isDragging
           ? 'opacity-50 shadow-lg'
           : 'hover:shadow-md hover:border-primary/20 hover:-translate-y-px'
@@ -118,10 +118,10 @@ export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
       {(primaryContact?.name || segment) && (
         <div className="flex items-center gap-1.5 min-w-0">
           {primaryContact?.name && primaryContact.name !== title && (
-            <p className="text-xs text-muted-foreground truncate">{primaryContact.name}</p>
+            <p className="text-xs text-muted-foreground truncate min-w-0" title={primaryContact.name}>{primaryContact.name}</p>
           )}
           {segment && (
-            <span className="shrink-0 text-[10px] rounded border px-1 py-px text-muted-foreground">{segment}</span>
+            <span className="shrink-0 max-w-[120px] truncate text-[10px] rounded border px-1 py-px text-muted-foreground" title={segment}>{segment}</span>
           )}
         </div>
       )}

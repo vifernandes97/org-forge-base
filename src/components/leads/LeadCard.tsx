@@ -23,13 +23,13 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
           <PriorityBadge priority={lead.priority} />
           {lead.status && lead.status !== 'open' && <StatusBadge status={lead.status} />}
         </div>
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <div className="flex items-center gap-3 text-sm text-muted-foreground min-w-0">
           {primaryContact?.name && primaryContact.name !== title && (
-            <span className="truncate">{primaryContact.name}</span>
+            <span className="truncate min-w-0" title={primaryContact.name}>{primaryContact.name}</span>
           )}
-          {segment && <Badge variant="outline" className="text-[10px] font-normal text-muted-foreground">{segment}</Badge>}
+          {segment && <Badge variant="outline" className="text-[10px] font-normal text-muted-foreground shrink-0 max-w-[160px] truncate" title={segment}>{segment}</Badge>}
           {lead.stage && (
-            <Badge variant="outline" className="text-xs" style={{ borderColor: lead.stage.color, color: lead.stage.color }}>
+            <Badge variant="outline" className="text-xs shrink-0 max-w-[160px] truncate" style={{ borderColor: lead.stage.color, color: lead.stage.color }}>
               {lead.stage.name}
             </Badge>
           )}

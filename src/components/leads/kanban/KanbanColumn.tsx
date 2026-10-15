@@ -95,8 +95,8 @@ export function KanbanColumn({ stage, leads, onCardClick }: KanbanColumnProps) {
       </div>
 
       {/* Cards */}
-      <ScrollArea className="flex-1 p-2">
-        <div className="space-y-2 min-h-[80px]">
+      <ScrollArea className="flex-1 p-2 [&>[data-radix-scroll-area-viewport]>div]:!block">
+        <div className="space-y-2 min-h-[80px] min-w-0 w-full">
           {leads.length === 0 ? (
             <div
               className={`flex flex-col items-center justify-center gap-1.5 py-8 rounded-md border border-dashed transition-colors ${
