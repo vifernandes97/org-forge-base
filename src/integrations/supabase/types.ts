@@ -137,6 +137,7 @@ export type Database = {
           segment_id: string | null
           segment_sort: number | null
           trade_name: string
+          trade_name_source: string
           updated_at: string
         }
         Insert: {
@@ -151,6 +152,7 @@ export type Database = {
           segment_id?: string | null
           segment_sort?: number | null
           trade_name: string
+          trade_name_source?: string
           updated_at?: string
         }
         Update: {
@@ -165,6 +167,7 @@ export type Database = {
           segment_id?: string | null
           segment_sort?: number | null
           trade_name?: string
+          trade_name_source?: string
           updated_at?: string
         }
         Relationships: [
