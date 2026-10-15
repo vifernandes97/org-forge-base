@@ -8,8 +8,11 @@ const corsHeaders = {
 };
 
 function normalizeFieldName(name: string): string {
-  return name.toLowerCase().replace(/[-_\s]/g, "");
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[-_\s]/g, "");
 }
+
+/** Form keys auto-linked to the company segment (only when the value matches an active segment). */
+const SEGMENT_HINT_KEYS = ["tipodenegocio", "segmento", "ramo"];
 
 const FIELD_ALIASES: Record<string, string[]> = {
   name: ["name", "nome", "fullname", "nomecompleto", "yourname", "contato", "nomecontato", "contactname", "nomedocontato"],
@@ -20,7 +23,20 @@ const FIELD_ALIASES: Record<string, string[]> = {
   company_instagram: ["companyinstagram", "instagram", "ig"],
   value: ["value", "valor", "budget", "orcamento"],
   notes: ["notes", "message", "mensagem", "yourmessage", "observacoes"],
+  // Fase 3: campos explícitos de Empresa e Contato
+  company_trade_name: ["companytradename", "nomefantasia", "fantasia"],
+  company_legal_name: ["companylegalname"],
+  company_cnpj: ["companycnpj", "cnpj", "documento"],
+  company_segment: ["companysegment", "tipodeempresa"],
+  contact_name: ["contactname"],
+  contact_email: ["contactemail"],
+  contact_phone: ["contactphone"],
 };
+
+const CRM_FIELDS = [
+  "name", "email", "phone", "company", "company_name", "company_instagram", "value", "notes",
+  "company_trade_name", "company_legal_name", "company_cnpj", "company_segment", "contact_name", "contact_email", "contact_phone",
+];
 
 function findFieldValue(
   payload: Record<string, any>,
@@ -172,7 +188,7 @@ Deno.serve(async (req) => {
     const fieldMapping = (webhook.field_mapping || {}) as Record<string, any>;
     const mappedData: Record<string, any> = {};
 
-    for (const crmField of ["name", "email", "phone", "company", "company_name", "company_instagram", "value", "notes"]) {
+    for (const crmField of CRM_FIELDS) {
       const val = findFieldValue(payload, fieldMapping, crmField);
       if (val && val.trim()) mappedData[crmField] = val.trim();
     }
@@ -189,7 +205,7 @@ Deno.serve(async (req) => {
 
     // Auto-detect custom fields by matching payload keys to active definitions
     // (field_name or field_label, normalized). Only fills entries not already mapped.
-    const nativeCrmFields = ["name", "email", "phone", "company", "company_name", "company_instagram", "value", "notes"];
+    const nativeCrmFields = CRM_FIELDS;
     const nativeNormalized = new Set<string>();
     for (const f of nativeCrmFields) {
       nativeNormalized.add(normalizeFieldName(f));
@@ -228,7 +244,7 @@ Deno.serve(async (req) => {
 
     // Collect unmapped fields into notes
     const allMappedFormKeys = new Set<string>();
-    for (const crmField of ["name", "email", "phone", "company", "company_name", "company_instagram", "value", "notes"]) {
+    for (const crmField of CRM_FIELDS) {
       const mk = fieldMapping[crmField];
       if (mk) allMappedFormKeys.add(mk);
       // Also add auto-detected keys
