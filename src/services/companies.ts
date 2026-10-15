@@ -20,7 +20,11 @@ function clean(input: Partial<CompanyInput>) {
   if (input.cnpj !== undefined) out.cnpj = onlyDigits(input.cnpj) || null;
   if (input.instagram !== undefined) out.instagram = input.instagram?.trim() || null;
   if (input.segment_id !== undefined) out.segment_id = input.segment_id || null;
-  if (out.trade_name !== undefined) out.match_key = normalizeKey(out.trade_name) || null;
+  if (out.trade_name !== undefined) {
+    out.match_key = normalizeKey(out.trade_name) || null;
+    // a name typed on screen is a real company name: inbound data never overwrites it
+    out.trade_name_source = 'provided';
+  }
   return out;
 }
 

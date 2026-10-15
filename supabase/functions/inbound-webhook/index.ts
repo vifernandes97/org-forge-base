@@ -247,6 +247,9 @@ Deno.serve(async (req) => {
     const hintKnown = !!segmentHint && !unknownSegments.includes(segmentHint);
     const logNotes: string[] = unknownSegments.map((v) => `segmento desconhecido: ${v}`);
     if (resolution.segment_conflict) logNotes.push(`conflito de segmento: ${JSON.stringify(resolution.segment_conflict)}`);
+    if (resolution.trade_name_replaced && !resolution.dry_run) {
+      logNotes.push(`nome fantasia substituído: ${resolution.trade_name_replaced.from} → ${resolution.trade_name_replaced.to}`);
+    }
     let resolutionLog: any = { ...resolution, segment_hint_key: segmentHintKey, notes: logNotes };
     const mappedCustomFields: Record<string, string> = {};
     const autoMatchedCustomFormKeys = new Set<string>();
@@ -406,6 +409,10 @@ Deno.serve(async (req) => {
       }
       resolution = real.data;
       resolutionLog = { ...resolutionLog, ...resolution };
+      if (resolution.trade_name_replaced) {
+        resolutionLog.notes = [...(resolutionLog.notes || []),
+          `nome fantasia substituído: ${resolution.trade_name_replaced.from} → ${resolution.trade_name_replaced.to}`];
+      }
     }
 
     // === IGNORE strategy ===
