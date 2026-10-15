@@ -79,7 +79,7 @@ export function LeadFilterBar({
     if (!filters.segments?.length || !segments) return;
     const keys = new Set(filters.segments.map(normalizeKey));
     const ids = segments.filter(s => keys.has(normalizeKey(s.label))).map(s => s.id);
-    applyMany({ ...filters, segments: undefined, segment_ids: Array.from(new Set([...(filters.segment_ids || []), ...ids])) });
+    applyMany({ segments: undefined, segment_ids: Array.from(new Set([...(filters.segment_ids || []), ...ids])) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.segments, segments]);
   const companyOptions = useMemo(
