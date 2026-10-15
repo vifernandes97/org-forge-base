@@ -5,7 +5,7 @@ import type { ImportPreview, ImportRowError } from '@/services/leadsImport';
 
 interface Props {
   preview: ImportPreview;
-  result?: { created: number; updated: number; failed: ImportRowError[] } | null;
+  result?: import('@/services/leadsImport').ImportResult | null;
 }
 
 function ErrorList({ errors }: { errors: ImportRowError[] }) {
