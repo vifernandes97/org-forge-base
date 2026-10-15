@@ -141,13 +141,13 @@ export function LeadFormDialog({ open, onOpenChange, lead, defaultFunnelId, defa
       } else {
         form.reset();
         setCfValues({});
-        setCompanyId(null);
+        setCompanyId(defaultCompanyId || null);
         setContactIds([]);
         setPrimaryContactId(null);
       }
       setCompanyError(false);
     }
-  }, [open, lead, form]);
+  }, [open, lead, form, defaultCompanyId]);
 
   // Auto-select first stage when funnel changes
   useEffect(() => {
