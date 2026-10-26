@@ -59,10 +59,22 @@ Navegador ──► crm.neosoluti.com.br (Traefik/Easypanel) ──► app (Bun,
 - **Testado em produção:** cadastro, RPCs de organização e funil, embed,
   contagem, isolamento entre organizações, convite anônimo, logout. Dados
   de teste removidos; banco zerado à espera do export.
+- **Export do Lovable (2026-10-26, pg_dump custom, PG 17.6):** schema do
+  `public` igual ao replay, exceto o drift `automations` (tabela vazia +
+  policies + `execute_automations()` + gatilho em `leads`), agora em
+  `db/20_drift_producao.sql`, idêntico ao de produção. Diferenças restantes
+  são intencionais: `dispatch_pending_webhook` (pg_net) e `handle_new_user`.
+  5 usuários, todos bcrypt (ninguém redefine senha); 5 organizações; 10.087
+  linhas. `db/importar-export.sh` ensaiado: 24 contagens iguais, RLS
+  conferido por usuário real.
+- **Fila de webhooks de saída:** a linha `pending_dispatch` é a fila e nunca
+  era atualizada (o resultado ia numa linha nova). `dispatched_at`
+  (`db/30_fila_webhooks.sql`) marca o despacho; as 1.533 pendentes antigas
+  entram despachadas na importação — senão o cron reenviaria tudo à Softeo.
 - **Bug anterior à migração:** `get_team_ranking` falha com
   `column reference "user_id" is ambiguous` (RETURNS TABLE com `user_id` e
-  `WHERE user_id = auth.uid()` sem qualificar). Conferir no export se a
-  produção tem outra versão (drift) antes de corrigir.
+  `WHERE user_id = auth.uid()` sem qualificar). O export confirmou: a
+  produção tem a mesma função, então o ranking do Dashboard já está quebrado lá.
 
 ---
 
