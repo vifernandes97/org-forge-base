@@ -53,7 +53,7 @@ export default function ContactsPage() {
   const [deleting, setDeleting] = useState<{ id: string; name: string; links: any[] }[] | null>(null);
   const [exporting, setExporting] = useState(false);
 
-  useEffect(() => { document.title = `${organization?.name || 'CRM'} — Contatos`; }, [organization?.name]);
+  useEffect(() => { document.title = `${organization?.name || 'Org Connect'} — Contatos`; }, [organization?.name]);
   useEffect(() => {
     const t = setTimeout(() => { if ((filters.q || '') !== search) st.setFilter('q', search || undefined); }, 350);
     return () => clearTimeout(t);

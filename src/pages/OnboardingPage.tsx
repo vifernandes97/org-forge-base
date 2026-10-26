@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building2 } from 'lucide-react';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 import { useToast } from '@/hooks/use-toast';
 
 const schema = z.object({
@@ -64,8 +64,8 @@ export default function OnboardingPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
-            <Building2 className="h-6 w-6 text-primary-foreground" />
+          <div className="mx-auto mb-4">
+            <BrandLogo variant="horizontal" className="mx-auto h-12 w-auto" />
           </div>
           <CardTitle className="text-2xl">Crie sua organização</CardTitle>
           <CardDescription>Configure o espaço de trabalho da sua equipe</CardDescription>

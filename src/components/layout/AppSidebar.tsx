@@ -6,6 +6,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -14,6 +15,7 @@ import {
 import { OrgSwitcher } from '@/components/layout/OrgSwitcher';
 import { useTaskBadgeCounts } from '@/hooks/useTasks';
 import { Badge } from '@/components/ui/badge';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 
 const mainNav = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
@@ -32,11 +34,20 @@ const settingsNav = [
 export function AppSidebar() {
   const { data: badgeCounts } = useTaskBadgeCounts();
   const totalBadge = (badgeCounts?.overdue || 0) + (badgeCounts?.today || 0);
-  const { isMobile, setOpenMobile } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
+  const collapsed = state === 'collapsed' && !isMobile;
   const closeOnMobile = () => { if (isMobile) setOpenMobile(false); };
 
   return (
     <Sidebar collapsible="icon" className="border-r">
+      <SidebarHeader className="h-14 justify-center border-b px-4 group-data-[collapsible=icon]:px-2">
+        <NavLink to="/dashboard" onClick={closeOnMobile} aria-label="Org Connect — Dashboard" className="flex items-center">
+          {collapsed
+            ? <BrandLogo variant="simbolo" className="mx-auto h-8 w-8" />
+            : <BrandLogo variant="horizontal" className="h-7 w-auto" />}
+        </NavLink>
+      </SidebarHeader>
+
       <OrgSwitcher />
 
       <SidebarContent>

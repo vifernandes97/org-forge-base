@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Users } from 'lucide-react';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 
 const REASON_MSG: Record<string, string> = {
   not_found: 'Convite não encontrado.',
@@ -80,8 +80,8 @@ export default function AcceptInvitePage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
-            <Users className="h-6 w-6 text-primary-foreground" />
+          <div className="mx-auto mb-4">
+            <BrandLogo variant="horizontal" className="mx-auto h-12 w-auto" />
           </div>
           <CardTitle className="text-2xl">Convite para organização</CardTitle>
           {info?.valid ? (

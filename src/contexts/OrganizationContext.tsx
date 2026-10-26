@@ -89,7 +89,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   // Dynamic document title
   useEffect(() => {
     const org = organizations.find(o => o.id === activeOrgId);
-    document.title = org ? `${org.name} — CRM` : 'CRM';
+    document.title = org ? `${org.name} — Org Connect` : 'Org Connect';
   }, [organizations, activeOrgId]);
 
   const setActiveOrg = (orgId: string) => {

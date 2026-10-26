@@ -62,7 +62,7 @@ export default function CompanyDetailPage() {
   const [contactView, setContactView] = useState<string | null>(null);
   const [deletingContact, setDeletingContact] = useState<{ contact: Contact; links: any[] } | null>(null);
 
-  useEffect(() => { if (company) document.title = `${organization?.name || 'CRM'} — ${company.trade_name}`; }, [company, organization?.name]);
+  useEffect(() => { if (company) document.title = `${organization?.name || 'Org Connect'} — ${company.trade_name}`; }, [company, organization?.name]);
   // Switching workspace: this company is not in the new one
   useEffect(() => {
     if (company && organization && company.organization_id !== organization.id) navigate('/companies', { replace: true });

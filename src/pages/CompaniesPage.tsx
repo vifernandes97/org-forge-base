@@ -58,7 +58,7 @@ export default function CompaniesPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  useEffect(() => { document.title = `${organization?.name || 'CRM'} — Empresas`; }, [organization?.name]);
+  useEffect(() => { document.title = `${organization?.name || 'Org Connect'} — Empresas`; }, [organization?.name]);
   useEffect(() => {
     const t = setTimeout(() => { if ((filters.q || '') !== search) st.setFilter('q', search || undefined); }, 350);
     return () => clearTimeout(t);

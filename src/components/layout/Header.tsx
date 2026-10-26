@@ -2,15 +2,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { LogOut, Moon, Sun } from 'lucide-react';
+import { Check, LogOut, Monitor, Moon, Sun } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useTheme } from '@/hooks/use-theme';
+import { useTheme, type ThemePreference } from '@/hooks/use-theme';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+
+const themeOptions: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
+  { value: 'light', label: 'Claro', icon: Sun },
+  { value: 'dark', label: 'Escuro', icon: Moon },
+  { value: 'system', label: 'Sistema', icon: Monitor },
+];
 
 export function Header() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, resolvedTheme, setTheme } = useTheme();
 
   const initials = user?.user_metadata?.full_name
     ?.split(' ')
@@ -30,10 +36,22 @@ export function Header() {
 
       <div className="flex-1" />
 
-      {/* Theme toggle */}
-      <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Alternar tema">
-        {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-      </Button>
+      {/* Theme */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" aria-label="Alterar tema">
+            {resolvedTheme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-40">
+          {themeOptions.map(opt => (
+            <DropdownMenuItem key={opt.value} onClick={() => setTheme(opt.value)}>
+              <opt.icon className="mr-2 h-4 w-4" /> {opt.label}
+              {theme === opt.value && <Check className="ml-auto h-4 w-4 text-primary" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {/* User menu */}
       <DropdownMenu>

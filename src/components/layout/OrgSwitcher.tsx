@@ -54,7 +54,7 @@ export function OrgSwitcher() {
               <>
                 <div className="flex min-w-0 flex-1 flex-col items-start leading-tight">
                   <span className="w-full truncate text-sm font-semibold">
-                    {organization?.name || 'CRM'}
+                    {organization?.name || 'Org Connect'}
                   </span>
                   {role && (
                     <span className="text-[11px] text-muted-foreground">{roleLabels[role]}</span>
