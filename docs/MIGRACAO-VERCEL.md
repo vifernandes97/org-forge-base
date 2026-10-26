@@ -103,6 +103,12 @@ importação.
   `functions.invoke` → `/api/<nome>`). `@supabase/supabase-js` saiu.
 - Better Auth testado em processo contra a `dev`: cadastro e login 200, JWT
   RS256 com `kid`, `/jwks` publicado, profile criado pelo trigger.
+- **Data API intermitente ("jwk not found" em ~60%)** com o JWKS servido pela
+  Function (`/api/auth/jwks`), mesmo com uma chave só, `kid` igual ao do
+  token e o Neon Auth removido. Teste: JWKS **estático** em
+  `public/.well-known/jwks.json` (CDN, sem Function nem banco). Se a chave
+  do `app_auth.jwks` for trocada, este arquivo tem que ser regerado
+  (`curl …/api/auth/jwks`) e publicado antes de o token novo sair.
 - **Deploy durante a migração:** a Production Branch da Vercel aponta para
   `migracao-vercel` (preview tem proteção de login, e o Neon precisa ler o
   JWKS). As env de Production apontam para a branch `dev` do Neon. Na
