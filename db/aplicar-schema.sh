@@ -30,4 +30,12 @@ for f in "${FILES[@]}"; do
   n=$((n+1))
 done
 for f in db/[1-9][0-9]_*.sql; do "${PSQL[@]}" -1 -f "$f"; done
+# A organização de ensaio só existia para as migrações de dados rodarem; ela
+# tem o id da Oniplataforma real e daria conflito na importação do export.
+"${PSQL[@]}" -1 <<'SQL'
+delete from public.custom_field_values where field_definition_id in
+  (select id from public.custom_field_definitions where organization_id = 'ff7bbd31-e907-4a2e-8d9f-ad1d53a35aaa');
+delete from public.custom_field_definitions where organization_id = 'ff7bbd31-e907-4a2e-8d9f-ad1d53a35aaa';
+delete from public.organizations where id = 'ff7bbd31-e907-4a2e-8d9f-ad1d53a35aaa';
+SQL
 echo "ok: $n migrações"
