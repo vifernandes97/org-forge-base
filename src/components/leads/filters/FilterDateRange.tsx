@@ -9,12 +9,13 @@ import {
   subDays, subMonths, addMonths,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, X, Check } from 'lucide-react';
+import { CalendarIcon, X, Check, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { filterFieldClass, filterPillClass } from './filterStyles';
 
 interface FilterDateRangeProps {
   label: string;
@@ -22,6 +23,8 @@ interface FilterDateRangeProps {
   to?: string;
   onChangeFrom: (v: string | undefined) => void;
   onChangeTo: (v: string | undefined) => void;
+  /** `pill` for toolbars; `field` is a full-width trigger (filters panel). */
+  variant?: 'pill' | 'field';
 }
 
 type Preset = { key: string; label: string; range: () => [Date, Date] };
@@ -59,7 +62,7 @@ function buildMonthList(): { key: string; label: string; range: [Date, Date] }[]
   return out.reverse();
 }
 
-export function FilterDateRange({ label, from, to, onChangeFrom, onChangeTo }: FilterDateRangeProps) {
+export function FilterDateRange({ label, from, to, onChangeFrom, onChangeTo, variant = 'pill' }: FilterDateRangeProps) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'preset' | 'month' | 'custom'>('preset');
   const fromDate = from ? new Date(from) : undefined;
@@ -104,11 +107,22 @@ export function FilterDateRange({ label, from, to, onChangeFrom, onChangeTo }: F
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className={cn("h-8 gap-1 text-xs", hasValue && "border-primary/50")}>
-          <CalendarIcon className="h-3 w-3" />
-          {label}
-          {summary && <span className="text-[10px] text-muted-foreground ml-1 max-w-[140px] truncate">{summary}</span>}
-        </Button>
+        {variant === 'field' ? (
+          <Button variant="outline" className={filterFieldClass(hasValue)}>
+            <span className="flex min-w-0 items-center gap-2">
+              <CalendarIcon className="h-3.5 w-3.5 shrink-0 opacity-60" />
+              <span className="truncate">{summary || 'Qualquer data'}</span>
+            </span>
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" className={filterPillClass(hasValue)}>
+            <CalendarIcon className="h-3 w-3" />
+            {label}
+            {summary && <span className="max-w-[140px] truncate font-normal opacity-80">· {summary}</span>}
+            <ChevronDown className="h-3 w-3 opacity-60" />
+          </Button>
+        )}
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <div className="flex">

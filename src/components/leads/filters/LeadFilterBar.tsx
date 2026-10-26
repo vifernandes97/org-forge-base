@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { QuickFilterPill } from './QuickFilterPill';
-import { AdvancedFiltersPopover } from './AdvancedFiltersPopover';
+import { AdvancedFiltersSheet } from './AdvancedFiltersSheet';
 import { SaveFilterDialog } from './SaveFilterDialog';
 import { SavedFiltersDropdown } from './SavedFiltersDropdown';
 import { useStages } from '@/hooks/useStages';
@@ -384,7 +384,7 @@ export function LeadFilterBar({
 
         {/* Right cluster */}
         <div className="flex items-center gap-1 ml-auto">
-          <AdvancedFiltersPopover
+          <AdvancedFiltersSheet
             filters={filters}
             activeFilterCount={activeFilterCount}
             applyMany={applyMany}

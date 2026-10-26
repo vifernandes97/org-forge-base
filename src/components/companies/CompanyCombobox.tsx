@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Check, ChevronsUpDown, Plus } from 'lucide-react';
+import { Check, ChevronDown, ChevronsUpDown, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCompanies } from '@/hooks/useCompanies';
 import { normalizeKey } from '@/lib/leadDisplay';
 import { formatCnpj, onlyDigits } from '@/lib/cnpj';
+import { filterPillClass } from '@/components/leads/filters/filterStyles';
 import type { Company } from '@/types';
 
 interface Props {
@@ -16,9 +17,11 @@ interface Props {
   onCreate?: (name: string) => void;
   excludeId?: string;
   placeholder?: string;
+  /** Toolbar filter pill instead of a form field. */
+  pill?: boolean;
 }
 
-export function CompanyCombobox({ value, onChange, onCreate, excludeId, placeholder = 'Selecione a empresa' }: Props) {
+export function CompanyCombobox({ value, onChange, onCreate, excludeId, placeholder = 'Selecione a empresa', pill }: Props) {
   const { data: companies } = useCompanies();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -40,6 +43,12 @@ export function CompanyCombobox({ value, onChange, onCreate, excludeId, placehol
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
+        {pill ? (
+          <Button variant="outline" size="sm" role="combobox" type="button" className={filterPillClass(false)}>
+            {placeholder}
+            <ChevronDown className="h-3 w-3 opacity-60" />
+          </Button>
+        ) : (
         <Button variant="outline" role="combobox" type="button"
           className={cn('w-full justify-between font-normal', !selected && 'text-muted-foreground')}>
           <span className="truncate">
@@ -48,8 +57,9 @@ export function CompanyCombobox({ value, onChange, onCreate, excludeId, placehol
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
+        )}
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[280px] p-0" align="start">
+      <PopoverContent className={cn('p-0', pill ? 'w-80' : 'w-[--radix-popover-trigger-width] min-w-[280px]')} align="start">
         <Command shouldFilter={false}>
           <CommandInput placeholder="Buscar por nome, razão social ou CNPJ..." value={search} onValueChange={setSearch} />
           <CommandList>

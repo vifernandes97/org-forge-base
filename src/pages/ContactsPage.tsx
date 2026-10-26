@@ -19,6 +19,7 @@ import { DataTable, ColumnsMenu, useVisibleColumns, type Column } from '@/compon
 import { TriFilter } from '@/components/directory/TriFilter';
 import { FilterMultiSelect } from '@/components/leads/filters/FilterMultiSelect';
 import { FilterDateRange } from '@/components/leads/filters/FilterDateRange';
+import { filterPillClass, filterSearchClass } from '@/components/leads/filters/filterStyles';
 import { CompanyCombobox } from '@/components/companies/CompanyCombobox';
 import { ContactFormDialog } from '@/components/companies/ContactFormDialog';
 import { ContactSheet } from '@/components/contacts/ContactSheet';
@@ -145,19 +146,17 @@ export default function ContactsPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar nome, e-mail ou telefone..." className="h-9 pl-8" />
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar nome, e-mail ou telefone..." className={filterSearchClass} />
         </div>
-        <div className="w-full sm:w-56">
-          {filters.company_id ? (
-            <Button variant="outline" size="sm" className="h-9 w-full justify-between border-primary text-primary" onClick={() => st.setFilter('company_id', undefined)}>
-              <span className="truncate">Empresa: {filterCompany?.trade_name || '...'}</span><X className="h-4 w-4" />
-            </Button>
-          ) : (
-            <CompanyCombobox value={null} onChange={c => st.setFilter('company_id', c.id)} placeholder="Empresa" />
-          )}
-        </div>
+        {filters.company_id ? (
+          <Button variant="outline" size="sm" className={filterPillClass(true)} onClick={() => st.setFilter('company_id', undefined)}>
+            Empresa <span className="max-w-[160px] truncate font-normal opacity-80">· {filterCompany?.trade_name || '...'}</span><X className="h-3 w-3" />
+          </Button>
+        ) : (
+          <CompanyCombobox pill value={null} onChange={c => st.setFilter('company_id', c.id)} placeholder="Empresa" />
+        )}
         <FilterMultiSelect label="Segmento" options={segOptions} selected={filters.segment_ids || []} onChange={v => st.setFilter('segment_ids', v)} />
         <TriFilter label="Com e-mail" value={filters.has_email} options={YESNO} onChange={v => st.setFilter('has_email', v as any)} />
         <TriFilter label="Com telefone" value={filters.has_phone} options={YESNO} onChange={v => st.setFilter('has_phone', v as any)} />
@@ -165,7 +164,7 @@ export default function ContactsPage() {
         <FilterDateRange label="Criado em" from={filters.created_from} to={filters.created_to}
           onChangeFrom={v => st.setFilter('created_from', v)} onChangeTo={v => st.setFilter('created_to', v)} />
         {(st.activeCount > 0 || filters.q) && (
-          <Button variant="ghost" size="sm" onClick={() => { setSearch(''); st.clearFilters(); }}><X className="mr-1 h-4 w-4" /> Limpar</Button>
+          <Button variant="ghost" size="sm" className="h-9 gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => { setSearch(''); st.clearFilters(); }}><X className="h-3.5 w-3.5" /> Limpar</Button>
         )}
         <div className="ml-auto"><ColumnsMenu columns={columns} visible={visible} onToggle={toggle} /></div>
       </div>

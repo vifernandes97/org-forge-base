@@ -4,14 +4,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Download, Merge, Plus, Search, Tag, Trash2, X } from 'lucide-react';
+import { Check, Download, Merge, Plus, Search, Tag, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useOrganization } from '@/contexts/OrganizationContext';
@@ -24,6 +22,7 @@ import { TriFilter } from '@/components/directory/TriFilter';
 import { MergeCompaniesDialog } from '@/components/directory/MergeCompaniesDialog';
 import { FilterMultiSelect } from '@/components/leads/filters/FilterMultiSelect';
 import { FilterDateRange } from '@/components/leads/filters/FilterDateRange';
+import { filterPillClass, filterSearchClass } from '@/components/leads/filters/filterStyles';
 import { CompanyFormDialog } from '@/components/companies/CompanyFormDialog';
 import { SegmentCombobox } from '@/components/companies/SegmentCombobox';
 import { listCompanies, bulkSetSegment, deleteCompaniesWithoutLeads, type CompanyOverview, type CompanyListFilters } from '@/services/directory';
@@ -147,8 +146,8 @@ export default function CompaniesPage() {
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative w-full sm:w-72">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar empresa, CNPJ ou contato..." className="h-9 pl-8" />
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar empresa, CNPJ ou contato..." className={filterSearchClass} />
         </div>
         <FilterMultiSelect label="Segmento" options={segOptions} selected={filters.segment_ids || []} onChange={v => st.setFilter('segment_ids', v)} />
         <TriFilter label="Situação" value={filters.situation} onChange={v => st.setFilter('situation', v as any)}
@@ -159,12 +158,12 @@ export default function CompaniesPage() {
           options={(funnels || []).map(f => ({ value: f.id, label: f.name }))} />
         <FilterDateRange label="Criada em" from={filters.created_from} to={filters.created_to}
           onChangeFrom={v => st.setFilter('created_from', v)} onChangeTo={v => st.setFilter('created_to', v)} />
-        <div className="flex items-center gap-2 px-1">
-          <Switch id="no-contacts" checked={!!filters.no_contacts} onCheckedChange={v => st.setFilter('no_contacts', v || undefined)} />
-          <Label htmlFor="no-contacts" className="text-sm font-normal">Sem contato</Label>
-        </div>
+        <Button variant="outline" size="sm" aria-pressed={!!filters.no_contacts} className={filterPillClass(!!filters.no_contacts)}
+          onClick={() => st.setFilter('no_contacts', filters.no_contacts ? undefined : true)}>
+          {filters.no_contacts && <Check className="h-3 w-3" />} Sem contato
+        </Button>
         {(st.activeCount > 0 || filters.q) && (
-          <Button variant="ghost" size="sm" onClick={() => { setSearch(''); st.clearFilters(); }}><X className="mr-1 h-4 w-4" /> Limpar</Button>
+          <Button variant="ghost" size="sm" className="h-9 gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => { setSearch(''); st.clearFilters(); }}><X className="h-3.5 w-3.5" /> Limpar</Button>
         )}
         <div className="ml-auto"><ColumnsMenu columns={columns} visible={visible} onToggle={toggle} /></div>
       </div>
