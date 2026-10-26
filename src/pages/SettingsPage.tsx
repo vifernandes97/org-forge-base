@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Users, ListChecks, ArrowUpFromLine, ArrowDownToLine, Archive, Settings, Tag } from 'lucide-react';
+import { Building2, Users, ListChecks, ArrowUpFromLine, ArrowDownToLine, Archive, Settings, Tag, GitBranch } from 'lucide-react';
 import OrganizationPage from '@/pages/OrganizationPage';
+import FunnelsPage from '@/pages/FunnelsPage';
 import TeamPage from '@/pages/TeamPage';
 import CustomFieldsPage from '@/pages/CustomFieldsPage';
 import WebhooksPage from '@/pages/WebhooksPage';
@@ -12,6 +13,7 @@ import SegmentsPage from '@/pages/SegmentsPage';
 
 const tabs = [
   { value: 'organization', label: 'Organização', icon: Building2 },
+  { value: 'funnels', label: 'Funis', icon: GitBranch },
   { value: 'team', label: 'Equipe', icon: Users },
   { value: 'custom-fields', label: 'Campos Personalizados', icon: ListChecks },
   { value: 'webhooks', label: 'Webhooks de Saída', icon: ArrowUpFromLine },
@@ -50,6 +52,7 @@ export default function SettingsPage() {
         </TabsList>
 
         <TabsContent value="organization"><OrganizationPage /></TabsContent>
+        <TabsContent value="funnels"><FunnelsPage /></TabsContent>
         <TabsContent value="team"><TeamPage /></TabsContent>
         <TabsContent value="custom-fields"><CustomFieldsPage /></TabsContent>
         <TabsContent value="webhooks"><WebhooksPage /></TabsContent>

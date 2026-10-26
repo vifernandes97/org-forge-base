@@ -285,7 +285,7 @@ export default function LeadsPage() {
               </p>
             </div>
             {(
-              <Button variant="outline" onClick={() => window.location.href = '/settings/funnels'}>
+              <Button variant="outline" onClick={() => window.location.href = '/settings?tab=funnels'}>
                 Configurar funil
               </Button>
             )}

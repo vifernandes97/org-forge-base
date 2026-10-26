@@ -17,7 +17,6 @@ import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
 import OnboardingPage from "@/pages/OnboardingPage";
 import DashboardPage from "@/pages/DashboardPage";
-import FunnelsPage from "@/pages/FunnelsPage";
 import FunnelEditPage from "@/pages/FunnelEditPage";
 import LeadsPage from "@/pages/LeadsPage";
 import TasksPage from "@/pages/TasksPage";
@@ -68,9 +67,7 @@ const App = () => (
               <Route path="/tasks" element={
                 <PrivateRoute><MainLayout><TasksPage /></MainLayout></PrivateRoute>
               } />
-              <Route path="/settings/funnels" element={
-                <PrivateRoute><MainLayout><FunnelsPage /></MainLayout></PrivateRoute>
-              } />
+              <Route path="/settings/funnels" element={<Navigate to="/settings?tab=funnels" replace />} />
               <Route path="/settings/funnels/:id" element={
                 <PrivateRoute><MainLayout><FunnelEditPage /></MainLayout></PrivateRoute>
               } />

@@ -57,7 +57,7 @@ export default function FunnelEditPage() {
     try {
       await deleteFunnel.mutateAsync(id!);
       toast.success('Funil deletado');
-      navigate('/settings/funnels');
+      navigate('/settings?tab=funnels');
     } catch (err: any) {
       toast.error(err.message || 'Erro ao deletar funil');
     }
@@ -73,7 +73,7 @@ export default function FunnelEditPage() {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <Button variant="ghost" size="sm" onClick={() => navigate('/settings/funnels')}>
+      <Button variant="ghost" size="sm" onClick={() => navigate('/settings?tab=funnels')}>
         <ArrowLeft className="h-4 w-4 mr-2" />Voltar
       </Button>
 
