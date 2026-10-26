@@ -1,5 +1,12 @@
 # Migração: Lovable Cloud (Supabase) → VPS própria
 
+> **Virada feita em 2026-10-26.** Produção em https://crm.neosoluti.com.br
+> com os dados do export de 2026-10-26 (último lead em 25/10 19:57); o
+> período entre o export e a troca das URLs nos n8n (Oniplataforma e ICS)
+> não foi recuperado, por decisão do dono. O deploy sai da `main`
+> (`scripts/deploy.sh`). **Remover o banco no Lovable Cloud só depois de
+> 2026-11-02**, sem incidente.
+>
 > **Mudança de rumo (2026-10-25):** o Neon foi abandonado. A Data API dele
 > recusou ~2/3 dos tokens válidos ("jwk not found") com o JWKS servido de
 > três lugares diferentes e a Data API recriada do zero — falha dentro do
