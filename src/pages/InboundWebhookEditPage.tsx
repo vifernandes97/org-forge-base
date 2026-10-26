@@ -111,7 +111,7 @@ export default function InboundWebhookEditPage() {
     }
   }, [webhook]);
 
-  const endpointUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/inbound-webhook`;
+  const endpointUrl = `${window.location.origin}/api/inbound-webhook`;
   const apiKey = (webhook as any)?.api_key || '';
 
   const handleSave = async () => {

@@ -1,9 +1,13 @@
 import { Hono } from 'hono';
 import { SignJWT } from 'jose';
 import { auth } from './auth.js';
+import { servico } from './servico.js';
+import { receberWebhook } from './webhook-entrada.js';
+import { enviarWebhook } from './webhook-saida.js';
 
 // O app inteiro atrás de um domínio só (crm.neosoluti.com.br):
 //   /api/auth/*  Better Auth (login, sessão)
+//   /api/inbound-webhook, /api/fire-webhook  webhooks (server/webhook-*.ts)
 //   /rest/*      portão do PostgREST: confere a sessão e repassa com um JWT de
 //                60 s (HS256, segredo compartilhado só com o PostgREST, que não
 //                é exposto). Sem sessão, vai sem token e o PostgREST usa anon.
@@ -27,6 +31,34 @@ export const app = new Hono();
 app.get('/health', (c) => c.json({ ok: true, commit: process.env.GIT_SHA ?? null }));
 
 app.on(['GET', 'POST'], '/api/auth/*', (c) => auth.handler(c.req.raw));
+
+// Webhook de entrada (formulários, Oniplataforma, n8n): público, a chave do
+// inbound_webhooks é a credencial. O Traefik põe o IP real em x-forwarded-for.
+app.on(['POST', 'OPTIONS'], '/api/inbound-webhook', (c) => {
+  const ip = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || c.req.header('x-real-ip') || null;
+  return receberWebhook(c.req.raw, ip);
+});
+
+// Webhook da etapa disparado pelo Kanban (supabase.functions.invoke('fire-webhook')).
+// Antes era aberto a qualquer um com a anon key, para qualquer URL. Agora: só
+// com sessão, de quem é da organização, e só para a URL cadastrada na etapa.
+app.post('/api/fire-webhook', async (c) => {
+  const sessao = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!sessao?.user) return c.json({ error: 'Não autenticado' }, 401);
+
+  const corpo = await c.req.json().catch(() => null);
+  const { webhook_url, payload, organization_id, stage_id, lead_id } = corpo ?? {};
+  if (!webhook_url || !payload || !organization_id || !stage_id) return c.json({ error: 'Missing required fields' }, 400);
+
+  const [membro, etapa] = await Promise.all([
+    servico.from('organization_members').select('id').eq('organization_id', organization_id).eq('user_id', sessao.user.id).maybeSingle(),
+    servico.from('stages').select('webhook_url').eq('id', stage_id).eq('organization_id', organization_id).maybeSingle(),
+  ]);
+  if (!membro.data) return c.json({ error: 'Sem acesso a esta organização' }, 403);
+  if (!etapa.data || etapa.data.webhook_url !== webhook_url) return c.json({ error: 'URL não é a do webhook desta etapa' }, 403);
+
+  return c.json(await enviarWebhook({ webhook_url, payload, organization_id, stage_id, lead_id }));
+});
 
 app.all('/rest/*', async (c) => {
   const req = c.req.raw;

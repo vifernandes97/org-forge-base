@@ -129,7 +129,7 @@ export async function getInboundWebhookLeadCount(webhookId: string) {
 }
 
 export async function testInboundWebhook(apiKey: string, payload: Record<string, any>) {
-  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/inbound-webhook`;
+  const url = `${window.location.origin}/api/inbound-webhook`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },

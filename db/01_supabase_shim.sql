@@ -23,12 +23,14 @@ create table if not exists app_auth.users (
   updated_at timestamptz not null default now()
 );
 
--- Substitui auth.role(): só importa reconhecer a conexão de serviço (as
--- Functions da Vercel entram com o dono do banco, que ignora RLS).
+-- Substitui auth.role(): só importa reconhecer chamada de serviço — a do
+-- servidor (webhooks, cron) pelo PostgREST com o JWT de role service_role,
+-- que só o app sabe assinar, ou uma conexão direta do dono do banco.
 create or replace function app_auth.request_role() returns text
 language sql stable security definer set search_path = pg_catalog as $$
   select case
     when (select rolbypassrls from pg_roles where rolname = session_user) then 'service_role'
+    when auth.jwt() ->> 'role' = 'service_role' then 'service_role'
     when auth.uid() is not null then 'authenticated'
     else 'anon'
   end

@@ -23,5 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# segredos locais (DATABASE_URL etc.) — o .env versionado só tem chaves públicas
+# segredos: nenhum .env vai para o repo (só o .env.example, sem valores)
+.env
 .env*.local

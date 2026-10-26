@@ -71,6 +71,21 @@ Navegador ──► crm.neosoluti.com.br (Traefik/Easypanel) ──► app (Bun,
   era atualizada (o resultado ia numa linha nova). `dispatched_at`
   (`db/30_fila_webhooks.sql`) marca o despacho; as 1.533 pendentes antigas
   entram despachadas na importação — senão o cron reenviaria tudo à Softeo.
+- **Webhooks (2026-10-26):** portados das edge functions para o app, com a
+  mesma lógica (diff conferido) — o transporte é o PostgREST com JWT de
+  `service_role` assinado só pelo servidor (`server/servico.ts`).
+  - Entrada: `POST https://crm.neosoluti.com.br/api/inbound-webhook`, mesma
+    chave (`x-api-key`, `?api_key=` ou no corpo). Remetentes ativos: a
+    Oniplataforma (servidor 24.144.96.192) e o n8n da VPS (ICS "Form Site").
+  - Saída: cron de 10 s lê a fila `pending_dispatch` (`dispatched_at`),
+    3 tentativas (1 s, 5 s), log e histórico como antes. `X-CRM-Signature`
+    agora com segredo derivado do `BETTER_AUTH_SECRET` (antes era a service
+    role key, que nenhum destino tinha).
+  - `/api/fire-webhook` (Kanban): exige sessão, ser da organização e a URL
+    ser a cadastrada na etapa — antes aceitava qualquer URL com a anon key.
+  - Testado com os dados do export, com as URLs externas trocadas por um
+    receptor local: criar, atualizar (sem duplicar), fila → cron → envio,
+    novas tentativas, travas do fire-webhook.
 - **Bug anterior à migração:** `get_team_ranking` falha com
   `column reference "user_id" is ambiguous` (RETURNS TABLE com `user_id` e
   `WHERE user_id = auth.uid()` sem qualificar). O export confirmou: a
