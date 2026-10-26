@@ -18,7 +18,6 @@ import { ContactFormDialog } from './ContactFormDialog';
 import { SegmentCombobox } from './SegmentCombobox';
 import { StatusBadge } from '@/components/leads/StatusBadge';
 import { DetailSection } from '@/components/leads/DetailSection';
-import { cn } from '@/lib/utils';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import {
   useCompany, useCompanyCounts, useUpdateCompany, useMergeCompanies, useChangeLeadCompany,
@@ -117,7 +116,7 @@ export function LeadCompanyPanel({ lead, readOnly, onOpenLead, className }: Prop
   };
 
   return (
-    <div className={cn('space-y-4', className)}>
+    <div className={className ?? 'space-y-4'}>
       {/* Empresa */}
       <DetailSection
         title="Empresa"

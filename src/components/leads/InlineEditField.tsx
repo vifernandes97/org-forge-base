@@ -109,7 +109,7 @@ export function InlineEditField(props: InlineEditFieldProps) {
             }}
             disabled={saving}
           >
-            <SelectTrigger className="h-auto w-full border-none shadow-none px-0 py-0.5 hover:bg-accent/50 rounded transition-colors focus:ring-1 text-sm font-normal">
+            <SelectTrigger className="h-auto w-full border-none bg-transparent shadow-none px-0 py-0.5 hover:bg-accent/50 rounded transition-colors focus:ring-1 text-sm font-normal">
               <SelectValue placeholder={placeholder}>
                 {currentLabel || <span className="text-muted-foreground">{placeholder}</span>}
               </SelectValue>
