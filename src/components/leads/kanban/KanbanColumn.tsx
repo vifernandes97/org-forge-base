@@ -4,7 +4,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { KanbanCard } from './KanbanCard';
 import type { Stage, LeadWithRelations } from '@/types';
 import { differenceInHours } from 'date-fns';
-import { Clock, Inbox } from 'lucide-react';
+import { AlertTriangle, Clock } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface KanbanColumnProps {
   stage: Stage;
@@ -32,81 +33,60 @@ export function KanbanColumn({ stage, leads, onCardClick }: KanbanColumnProps) {
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col w-[300px] min-w-[300px] rounded-lg border bg-muted/30 transition-all ${
-        isOver ? 'ring-2 ring-primary/60 bg-primary/5' : ''
-      }`}
+      className={cn(
+        'flex w-[296px] min-w-[296px] flex-col rounded-xl bg-muted/40 transition-colors',
+        isOver && 'bg-primary/10 ring-2 ring-inset ring-primary/40',
+      )}
     >
-      {/* Colored top accent */}
-      <div
-        className="h-1 rounded-t-lg"
-        style={{ backgroundColor: stage.color }}
-        aria-hidden
-      />
-
       {/* Header */}
-      <div className="px-3 pt-2.5 pb-2 border-b space-y-1">
-        {/* Row 1: name + count pill + sla badge */}
+      <div className="space-y-1 px-3 pb-2 pt-3">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm truncate flex-1">{stage.name}</span>
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: stage.color }} aria-hidden />
+          <span className="flex-1 truncate text-sm font-semibold">{stage.name}</span>
 
           {stage.sla_hours && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="inline-flex items-center text-muted-foreground/70">
-                  <Clock className="h-3 w-3" />
+                <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                  <Clock className="h-3 w-3" />{stage.sla_hours}h
                 </span>
               </TooltipTrigger>
-              <TooltipContent>SLA: {stage.sla_hours}h</TooltipContent>
+              <TooltipContent>SLA da etapa: {stage.sla_hours}h</TooltipContent>
             </Tooltip>
           )}
 
-          <span className="inline-flex items-center gap-1 text-xs bg-muted text-foreground/80 rounded-full px-2 py-0.5 tabular-nums">
+          <span className="rounded-full bg-background/80 px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
             {leads.length}
-            {slaExceededCount > 0 && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span
-                    className="h-1.5 w-1.5 rounded-full bg-destructive"
-                    aria-label="Leads acima do SLA"
-                  />
-                </TooltipTrigger>
-                <TooltipContent>
-                  {slaExceededCount} lead{slaExceededCount > 1 ? 's' : ''} acima do SLA
-                </TooltipContent>
-              </Tooltip>
-            )}
           </span>
         </div>
 
-        {/* Row 2: total + avg ticket */}
-        {totalValue > 0 ? (
-          <p className="text-[11px] text-muted-foreground tabular-nums">
-            {formatCurrencyCompact(totalValue)}
-            {leads.length > 1 && (
-              <>
-                <span className="mx-1.5 opacity-50">·</span>
-                ticket {formatCurrencyCompact(avgTicket)}
-              </>
-            )}
-          </p>
-        ) : (
-          <p className="text-[11px] text-muted-foreground/60">—</p>
-        )}
+        <div className="flex min-h-[16px] items-center gap-2 pl-[18px] text-[11px] text-muted-foreground tabular-nums">
+          {totalValue > 0 && (
+            <span>
+              {formatCurrencyCompact(totalValue)}
+              {leads.length > 1 && <span className="opacity-70"> · ticket {formatCurrencyCompact(avgTicket)}</span>}
+            </span>
+          )}
+          {slaExceededCount > 0 && (
+            <span className="inline-flex items-center gap-1 font-medium text-amber-600 dark:text-amber-500">
+              <AlertTriangle className="h-3 w-3" />
+              {slaExceededCount} acima do SLA
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Cards */}
-      <ScrollArea className="flex-1 p-2 [&>[data-radix-scroll-area-viewport]>div]:!block">
-        <div className="space-y-2 min-h-[80px] min-w-0 w-full">
+      <ScrollArea className="flex-1 px-2 pb-2 [&>[data-radix-scroll-area-viewport]>div]:!block">
+        <div className="min-h-[80px] w-full min-w-0 space-y-2 pt-0.5">
           {leads.length === 0 ? (
             <div
-              className={`flex flex-col items-center justify-center gap-1.5 py-8 rounded-md border border-dashed transition-colors ${
-                isOver
-                  ? 'border-primary/50 bg-primary/5 text-primary'
-                  : 'border-border/60 text-muted-foreground/50'
-              }`}
+              className={cn(
+                'flex items-center justify-center rounded-lg border border-dashed py-6 text-[11px] transition-colors',
+                isOver ? 'border-primary/50 text-primary' : 'border-border/70 text-muted-foreground/60',
+              )}
             >
-              <Inbox className="h-5 w-5 opacity-60" />
-              <span className="text-[11px]">Solte leads aqui</span>
+              {isOver ? 'Soltar aqui' : 'Nenhum negócio'}
             </div>
           ) : (
             leads.map(lead => {

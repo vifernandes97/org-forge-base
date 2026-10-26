@@ -1,8 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/lib/formatCurrency';
+import DashboardCard, { EmptyChart } from './DashboardCard';
 import type { TeamMember } from '@/services/dashboard';
 
 interface TeamRankingTableProps {
@@ -11,52 +10,56 @@ interface TeamRankingTableProps {
 }
 
 export default function TeamRankingTable({ data, isLoading }: TeamRankingTableProps) {
-  if (isLoading) {
-    return <Card><CardHeader><CardTitle>Ranking da Equipe</CardTitle></CardHeader><CardContent><Skeleton className="h-[200px] w-full" /></CardContent></Card>;
-  }
+  const rows = [...(data ?? [])].sort((a, b) => b.converted_count - a.converted_count || b.total_value - a.total_value);
 
   return (
-    <Card>
-      <CardHeader><CardTitle className="text-base">Ranking da Equipe</CardTitle></CardHeader>
-      <CardContent>
-        {!data?.length ? (
-          <p className="text-sm text-muted-foreground text-center py-8">Nenhum dado no período</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Responsável</TableHead>
-                <TableHead className="text-right">Negócios</TableHead>
-                <TableHead className="text-right">Convertidos</TableHead>
-                <TableHead className="text-right">Valor Total</TableHead>
-                <TableHead className="text-right">Conversão</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.map((m) => {
-                const rate = m.leads_count > 0 ? (m.converted_count / m.leads_count) * 100 : 0;
-                return (
-                  <TableRow key={m.user_id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-7 w-7">
-                          <AvatarImage src={m.avatar_url ?? undefined} />
-                          <AvatarFallback className="text-xs">{m.full_name?.slice(0, 2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm truncate max-w-[150px]">{m.full_name}</span>
+    <DashboardCard title="Ranking da equipe" description="Ordenado por negócios ganhos no período" isLoading={isLoading}>
+      {!rows.length ? (
+        <EmptyChart />
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-10">#</TableHead>
+              <TableHead>Responsável</TableHead>
+              <TableHead className="text-right">Negócios</TableHead>
+              <TableHead className="text-right">Ganhos</TableHead>
+              <TableHead className="text-right">Valor</TableHead>
+              <TableHead className="w-[180px]">Conversão</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((m, i) => {
+              const rate = m.leads_count > 0 ? (m.converted_count / m.leads_count) * 100 : 0;
+              return (
+                <TableRow key={m.user_id}>
+                  <TableCell className="text-muted-foreground tabular-nums">{i + 1}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-7 w-7">
+                        <AvatarImage src={m.avatar_url ?? undefined} />
+                        <AvatarFallback className="text-xs">{m.full_name?.slice(0, 2).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <span className="max-w-[200px] truncate text-sm font-medium">{m.full_name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{m.leads_count}</TableCell>
+                  <TableCell className="text-right tabular-nums">{m.converted_count}</TableCell>
+                  <TableCell className="text-right tabular-nums">{formatCurrency(m.total_value)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${rate}%` }} />
                       </div>
-                    </TableCell>
-                    <TableCell className="text-right">{m.leads_count}</TableCell>
-                    <TableCell className="text-right">{m.converted_count}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(m.total_value)}</TableCell>
-                    <TableCell className="text-right">{rate.toFixed(1)}%</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+                      <span className="w-12 text-right text-xs tabular-nums">{rate.toFixed(1)}%</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      )}
+    </DashboardCard>
   );
 }

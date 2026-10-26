@@ -71,8 +71,20 @@ export default function DashboardFilters({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      <Select value={funnelId ?? '__all__'} onValueChange={(v) => onFunnelChange(v === '__all__' ? null : v)}>
+        <SelectTrigger className="h-9 w-auto min-w-[160px] gap-2 font-medium" aria-label="Funil">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__all__">Todos os funis</SelectItem>
+          {funnels?.map(f => (
+            <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
       {isMonthMode ? (
-        <div className="flex items-center gap-1 rounded-md border bg-background p-1">
+        <div className="flex h-9 items-center gap-1 rounded-md border bg-background px-1">
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onPrevMonth} aria-label="Mês anterior">
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -112,7 +124,7 @@ export default function DashboardFilters({
           </Button>
         </div>
       ) : (
-        <div className="flex items-center gap-1 rounded-md border bg-background py-1 pl-3 pr-1">
+        <div className="flex h-9 items-center gap-1 rounded-md border bg-background pl-3 pr-1">
           <span className="text-sm font-medium">{activeLabel}</span>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onResetToCurrentMonth} aria-label="Voltar para o mês atual">
             <X className="h-4 w-4" />
@@ -150,7 +162,7 @@ export default function DashboardFilters({
 
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="icon" aria-label="Mais filtros">
+          <Button variant="outline" size="icon" className="h-9 w-9" aria-label="Outros períodos" title="Outros períodos">
             <SlidersHorizontal className="h-4 w-4" />
           </Button>
         </PopoverTrigger>
@@ -164,21 +176,6 @@ export default function DashboardFilters({
               <SelectContent>
                 {PERIOD_OPTIONS.map(o => (
                   <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Funil</p>
-            <Select value={funnelId ?? '__all__'} onValueChange={(v) => onFunnelChange(v === '__all__' ? null : v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">Todos os funis</SelectItem>
-                {funnels?.map(f => (
-                  <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

@@ -19,15 +19,13 @@ export function DragOverlayCard({ lead }: { lead: LeadWithRelations }) {
 
   return (
     <div
-      className="rounded-lg border bg-card p-3 shadow-2xl w-[280px] min-w-0 overflow-hidden space-y-1.5 rotate-2 ring-1 ring-primary/20"
-      style={
-        isHighPriority && priorityColor
-          ? { borderLeftColor: priorityColor, borderLeftWidth: 2 }
-          : undefined
-      }
+      className="relative w-[280px] min-w-0 space-y-1.5 overflow-hidden rounded-lg border border-primary/40 bg-card p-3 shadow-2xl rotate-2"
     >
+      {isHighPriority && priorityColor && (
+        <span className="absolute inset-y-0 left-0 w-[3px]" style={{ backgroundColor: priorityColor }} aria-hidden />
+      )}
       <div className="flex items-center gap-2">
-        <span className="font-medium text-sm truncate flex-1">{title}</span>
+        <span className="font-semibold text-sm truncate flex-1">{title}</span>
         {lead.assigned_profile && (
           <Avatar className="h-5 w-5 shrink-0">
             <AvatarFallback
@@ -60,7 +58,7 @@ export function DragOverlayCard({ lead }: { lead: LeadWithRelations }) {
         ) : <span />}
         <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
           <Clock className="h-2.5 w-2.5" />
-          {formatStageTime(lead.created_at)}
+          {formatStageTime(lead.stage_entered_at)}
         </span>
       </div>
     </div>

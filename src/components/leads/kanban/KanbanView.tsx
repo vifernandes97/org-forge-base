@@ -152,10 +152,9 @@ export function KanbanView({ funnelId, filters }: KanbanViewProps) {
         {[1, 2, 3, 4].map(i => (
           <div
             key={i}
-            className="flex flex-col w-[300px] min-w-[300px] rounded-lg border bg-muted/30"
+            className="flex flex-col w-[296px] min-w-[296px] rounded-xl bg-muted/40"
           >
-            <Skeleton className="h-1 rounded-t-lg rounded-b-none" />
-            <div className="px-3 pt-2.5 pb-2 border-b space-y-2">
+            <div className="px-3 pt-3 pb-2 space-y-2">
               <div className="flex items-center justify-between">
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-4 w-8 rounded-full" />
@@ -181,15 +180,7 @@ export function KanbanView({ funnelId, filters }: KanbanViewProps) {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div
-          className="flex gap-3 overflow-x-auto pb-4 h-[calc(100vh-220px)] w-full min-w-0"
-          style={{
-            maskImage:
-              'linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%)',
-            WebkitMaskImage:
-              'linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%)',
-          }}
-        >
+        <div className="flex h-[calc(100vh-220px)] w-full min-w-0 gap-3 overflow-x-auto pb-3">
           {sortedStages.map(stage => (
             <KanbanColumn
               key={stage.id}
