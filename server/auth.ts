@@ -1,12 +1,12 @@
 import { betterAuth } from 'better-auth';
 import { verifyPassword } from 'better-auth/crypto';
-import { jwt } from 'better-auth/plugins';
 import bcrypt from 'bcryptjs';
 import { authPool } from './db.js';
 
 // Identidade da app. As tabelas moram no schema app_auth (search_path do
-// papel app_auth_svc), fora do que a Data API expõe. O JWT que sai daqui é o que a
-// Data API valida pelo JWKS: sub = id do usuário = auth.uid() nas policies.
+// papel app_auth_svc), fora do que o PostgREST expõe. A sessão (cookie) é
+// conferida no portão /rest (server/app.ts), que repassa o id do usuário ao
+// PostgREST num JWT curto: sub = auth.uid() nas policies.
 
 // Só a origem (esquema + host): barra final, espaço ou caminho no valor da
 // env viram "Invalid origin" no Better Auth.
@@ -27,10 +27,7 @@ export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   basePath: '/api/auth',
   database: authPool(),
-  // O domínio de produção vem também da própria Vercel (variável de sistema).
-  trustedOrigins: [baseURL, origem(process.env.VERCEL_PROJECT_PRODUCTION_URL), origem(process.env.APP_DEV_ORIGIN)].filter(
-    Boolean,
-  ) as string[],
+  trustedOrigins: [baseURL, origem(process.env.APP_DEV_ORIGIN)].filter(Boolean) as string[],
   advanced: {
     database: { generateId: 'uuid' },
   },
@@ -43,6 +40,9 @@ export const auth = betterAuth({
     },
   },
   session: {
+    // O portão /rest confere a sessão a cada consulta: o cookie assinado
+    // segura 1 min sem ir ao banco.
+    cookieCache: { enabled: true, maxAge: 60 },
     fields: {
       expiresAt: 'expires_at',
       createdAt: 'created_at',
@@ -85,19 +85,4 @@ export const auth = betterAuth({
         hash.startsWith('$2') ? bcrypt.compare(password, hash) : verifyPassword({ hash, password }),
     },
   },
-  plugins: [
-    jwt({
-      schema: {
-        jwks: {
-          fields: { publicKey: 'public_key', privateKey: 'private_key', createdAt: 'created_at', expiresAt: 'expires_at' },
-        },
-      },
-      // RS256: o que a Data API do Neon documenta aceitar.
-      jwks: { keyPairConfig: { alg: 'RS256', modulusLength: 2048 } },
-      jwt: {
-        expirationTime: '15m',
-        definePayload: ({ user }) => ({ email: user.email, role: 'authenticated' }),
-      },
-    }),
-  ],
 });

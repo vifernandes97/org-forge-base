@@ -1,9 +1,8 @@
--- Tabelas do Better Auth 1.7 (core + plugin jwt) no schema app_auth, com
+-- Tabelas do Better Auth 1.7 no schema app_auth, com
 -- colunas em snake_case (o mapeamento está em server/auth.ts). app_auth.users
--- nasce no 00_supabase_shim.sql, porque o FK de profiles depende dela.
--- Quem acessa é o papel app_auth_svc (neon/criar-papel-auth.sh), com
--- search_path = app_auth no próprio papel: o pooler do Neon recusa
--- search_path na string de conexão.
+-- nasce no 01_supabase_shim.sql, porque o FK de profiles depende dela.
+-- Quem acessa é o papel app_auth_svc (db/criar-papeis.sh), com
+-- search_path = app_auth no próprio papel e acesso só a este schema.
 
 -- generateId 'uuid': quem gera o id é o banco (bases criadas antes deste default).
 alter table app_auth.users alter column id set default gen_random_uuid();
@@ -47,16 +46,6 @@ create table if not exists app_auth.verification (
 );
 create index if not exists verification_identifier_idx on app_auth.verification (identifier);
 
-create table if not exists app_auth.jwks (
-  id uuid primary key default gen_random_uuid(),
-  public_key text not null,
-  private_key text not null,
-  created_at timestamptz not null default now(),
-  expires_at timestamptz,
-  alg text,
-  crv text
-);
-
 -- O nome do profile vinha do raw_user_meta_data do Supabase; conta nova do
 -- Better Auth traz em users.name. Mesmo trigger, as duas origens.
 create or replace function public.handle_new_user()
@@ -76,6 +65,8 @@ begin
 end;
 $$;
 
+-- Na primeira passada (aplicar-schema.sh) o papel ainda não existe;
+-- criar-papeis.sh roda este arquivo de novo depois de criá-lo.
 do $$ begin
   if exists (select 1 from pg_roles where rolname = 'app_auth_svc') then
     grant usage on schema app_auth to app_auth_svc;

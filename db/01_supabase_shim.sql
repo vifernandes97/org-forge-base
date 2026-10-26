@@ -1,17 +1,7 @@
--- O que as migrações do Supabase supõem existir antes da primeira linha.
--- No Neon, o schema auth é da Data API (pg_session_jwt: auth.uid(),
--- auth.jwt()) e não aceita objetos nossos: o que o Supabase tinha lá e o
--- Neon não tem mora em app_auth, e neon/traduzir.sed troca as referências.
-
-do $$ begin
-  if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
-  if not exists (select 1 from pg_roles where rolname = 'anonymous') then create role anonymous nologin; end if;
-  -- anon é o nome do Supabase nos GRANT/REVOKE das migrações; anonymous (o da
-  -- Data API) herda o que for dado a ele.
-  if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin; end if;
-  if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin; end if;
-end $$;
-grant anon to anonymous;
+-- O que as migrações do Supabase supõem existir antes da primeira linha
+-- (os papéis e auth.* vêm do 00_auth.sql). O que o Supabase guardava no
+-- schema auth e não é auth.uid()/auth.jwt() mora em app_auth, e
+-- db/traduzir.sed troca as referências nas migrações e no schema do export.
 
 create schema if not exists extensions;
 grant usage on schema extensions to anon, authenticated, service_role;

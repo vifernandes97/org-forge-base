@@ -1,0 +1,33 @@
+# Dev local: o mesmo par da VPS (Postgres + PostgREST). O app roda no Vite
+# (bun run dev), que serve /api e /rest pelo server/app.ts.
+#   docker compose -f infra/docker-compose.yml up -d db
+#   db/aplicar-schema.sh postgres://postgres:postgres@localhost:54330/crm
+#   db/criar-papeis.sh   postgres://postgres:postgres@localhost:54330/crm .env.local
+#   docker compose -f infra/docker-compose.yml --env-file .env.local up -d rest
+# O PostgREST divide a rede do banco: localhost:54330 vale lá dentro e no Mac,
+# então a mesma PGRST_DB_URI serve aos dois.
+name: crm-dev
+services:
+  db:
+    image: postgres:18
+    command: ["postgres", "-p", "54330"]
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: crm
+    ports: ["54330:54330", "54331:3000"]
+    volumes: [crm-dev-db:/var/lib/postgresql]
+  rest:
+    image: postgrest/postgrest:v16.5
+    depends_on: [db]
+    network_mode: service:db
+    environment:
+      PGRST_DB_URI: ${PGRST_DB_URI:-}
+      PGRST_JWT_SECRET: ${PGRST_JWT_SECRET:-}
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_DB_EXTRA_SEARCH_PATH: public,extensions
+      # O Supabase devolve no máximo 1000 linhas por consulta; o front foi
+      # escrito sobre isso.
+      PGRST_DB_MAX_ROWS: "1000"
+volumes:
+  crm-dev-db:

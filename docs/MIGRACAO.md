@@ -1,4 +1,49 @@
-# Migração: Lovable Cloud (Supabase) → Vercel + Neon
+# Migração: Lovable Cloud (Supabase) → VPS própria
+
+> **Mudança de rumo (2026-10-25):** o Neon foi abandonado. A Data API dele
+> recusou ~2/3 dos tokens válidos ("jwk not found") com o JWKS servido de
+> três lugares diferentes e a Data API recriada do zero — falha dentro do
+> Neon, sem controle nosso. Decisão do dono: **tudo na VPS** (Easypanel), no
+> mesmo padrão do Finestro (Postgres + PostgREST). As seções abaixo da
+> arquitetura nova são o histórico da tentativa com Neon/Vercel.
+
+## Arquitetura (VPS, crm.neosoluti.com.br)
+
+```
+Navegador ──► crm.neosoluti.com.br (Traefik/Easypanel) ──► app (Bun, Dockerfile)
+                 /             front (dist/), fallback SPA
+                 /api/auth/*   Better Auth (cookie de sessão)
+                 /rest/*       portão: confere a sessão e repassa ao PostgREST
+                               com um JWT HS256 de 60 s (sem sessão: sem token = anon)
+                                   │ rede interna do projeto
+                                   ▼
+                              rest (postgrest/postgrest:v16.5, não exposto)
+                                   ▼
+                              db (postgres:18, não exposto)
+```
+
+- **PostgREST de verdade** = o mesmo servidor do Supabase: as consultas do
+  front (embeds, `!inner`, FK nomeada, `count`, `range`, RPC) passam sem
+  mudança. `db-max-rows = 1000`, como o Supabase.
+- **`auth.uid()`** lê `request.jwt.claims` (o PostgREST preenche), como no
+  Supabase (`db/00_auth.sql`).
+- **Front:** só `src/integrations/supabase/client.ts` mudou; ele fala com
+  `/rest` e `/api/auth` no mesmo domínio. Nada assado no build.
+- **Segredos:** por File mount em `/app/secrets.env` (o Easypanel imprime as
+  env de build no log; ver INFRA do Orbi).
+- **Banco:** `db/aplicar-schema.sh` (00 auth → 01 shim → 54 migrações
+  traduzidas → 10 identidade → 90 sem pg_net) e `db/criar-papeis.sh`
+  (`authenticator`, `app_auth_svc`). Dev: `infra/docker-compose.yml`.
+- **Testado localmente (Postgres 18.6 + PostgREST 16.5 + container do app):**
+  cadastro, onboarding, funil, negócio com empresa nova, arrastar card
+  (gravado + `stage_change`), isolamento entre organizações, convite anônimo.
+- **Bug anterior à migração:** `get_team_ranking` falha com
+  `column reference "user_id" is ambiguous` (RETURNS TABLE com `user_id` e
+  `WHERE user_id = auth.uid()` sem qualificar). Conferir no export se a
+  produção tem outra versão (drift) antes de corrigir.
+
+---
+
 
 > Aberto em 2026-10-25. Decisões do dono: banco no **Neon via Vercel**;
 > **manter o SQL** (RLS e funções) e trocar só o que é Supabase; auth própria

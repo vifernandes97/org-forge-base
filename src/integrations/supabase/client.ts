@@ -1,19 +1,15 @@
 // Antes: o cliente gerado do Supabase (Lovable Cloud). Agora: a mesma
-// superfície que o app usa — from/rpc (PostgREST), auth e functions — sobre a
-// Neon Data API e o nosso Better Auth (/api/auth). Os services e o
-// AuthContext seguem importando `supabase` daqui sem mudar.
+// superfície que o app usa — from/rpc (PostgREST), auth e functions — sobre o
+// nosso servidor no mesmo domínio: /rest (portão do PostgREST, que confere a
+// sessão pelo cookie) e /api/auth (Better Auth). Os services e o AuthContext
+// seguem importando `supabase` daqui sem mudar.
 import { PostgrestClient } from '@supabase/postgrest-js';
 import { createAuthClient } from 'better-auth/client';
-import { jwtClient } from 'better-auth/client/plugins';
 import type { Database } from './types';
 
-const DATA_API_URL = import.meta.env.VITE_DATA_API_URL as string;
+const origem = typeof window === 'undefined' ? 'http://localhost' : window.location.origin;
 
-const authClient = createAuthClient({
-  baseURL: typeof window === 'undefined' ? undefined : window.location.origin,
-  basePath: '/api/auth',
-  plugins: [jwtClient()],
-});
+const authClient = createAuthClient({ baseURL: origem, basePath: '/api/auth' });
 
 // ---------- usuário no formato que os componentes já leem ----------
 
@@ -24,47 +20,13 @@ export interface User {
 }
 export interface Session {
   user: User;
-  access_token: string | null;
 }
 
 type BetterUser = { id: string; email: string; name: string };
 const toUser = (u: BetterUser): User => ({ id: u.id, email: u.email, user_metadata: { full_name: u.name } });
 
-// ---------- JWT da Data API (15 min), renovado antes de vencer ----------
-
-let jwt: { token: string; exp: number } | null = null;
-let pending: Promise<string | null> | null = null;
-
-function expOf(token: string): number {
-  try {
-    return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).exp * 1000;
-  } catch {
-    return 0;
-  }
-}
-
-async function getJwt(): Promise<string | null> {
-  if (jwt && jwt.exp - Date.now() > 60_000) return jwt.token;
-  pending ??= authClient
-    .token({ query: {} })
-    .then(({ data }) => {
-      jwt = data?.token ? { token: data.token, exp: expOf(data.token) } : null;
-      return jwt?.token ?? null;
-    })
-    .finally(() => {
-      pending = null;
-    });
-  return pending;
-}
-
-const rest = new PostgrestClient<Database>(DATA_API_URL, {
-  fetch: async (input, init) => {
-    const token = await getJwt();
-    const headers = new Headers(init?.headers);
-    if (token) headers.set('Authorization', `Bearer ${token}`);
-    return fetch(input, { ...init, headers });
-  },
-});
+// Mesmo domínio: o cookie de sessão vai junto, e o portão /rest cuida do resto.
+const rest = new PostgrestClient<Database>(`${origem}/rest`);
 
 // ---------- auth no formato do supabase-js (só o que o app usa) ----------
 
@@ -75,11 +37,10 @@ const listeners = new Set<Listener>();
 async function currentSession(): Promise<Session | null> {
   const { data } = await authClient.getSession({ query: {} });
   if (!data?.user) return null;
-  return { user: toUser(data.user as BetterUser), access_token: await getJwt() };
+  return { user: toUser(data.user as BetterUser) };
 }
 
 async function announce(event: AuthEvent) {
-  if (event === 'SIGNED_OUT') jwt = null;
   const session = event === 'SIGNED_OUT' ? null : await currentSession();
   listeners.forEach((l) => l(event, session));
 }

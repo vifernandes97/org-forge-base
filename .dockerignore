@@ -1,0 +1,11 @@
+node_modules
+dist
+.git
+.env*
+!.env.example
+.claude
+infra
+db
+supabase
+drizzle
+docs
