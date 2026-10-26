@@ -23,7 +23,8 @@ const HEADERS_DE_VOLTA = ['content-type', 'content-range', 'content-location', '
 
 export const app = new Hono();
 
-app.get('/health', (c) => c.json({ ok: true }));
+// GIT_SHA vem do Easypanel em runtime: é o que scripts/deploy.sh espera ver.
+app.get('/health', (c) => c.json({ ok: true, commit: process.env.GIT_SHA ?? null }));
 
 app.on(['GET', 'POST'], '/api/auth/*', (c) => auth.handler(c.req.raw));
 
