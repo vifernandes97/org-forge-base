@@ -4,12 +4,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { MobileFab } from '@/components/shared/MobileFab';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Download, Merge, Plus, Search, Trash2, X } from 'lucide-react';
+import { Download, MoreHorizontal, Merge, Plus, Search, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useOrganization } from '@/contexts/OrganizationContext';
@@ -138,10 +140,20 @@ export default function ContactsPage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold tracking-tight">Contatos</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-9" onClick={exportCsv} disabled={exporting}>
+          <Button variant="outline" size="sm" className="hidden h-9 md:inline-flex" onClick={exportCsv} disabled={exporting}>
             <Download className="mr-1.5 h-4 w-4" /> {exporting ? 'Exportando...' : 'Exportar CSV'}
           </Button>
-          {!isViewer && <Button size="sm" className="h-9" onClick={() => { setNewCompany(null); setNewOpen(true); }}><Plus className="mr-1.5 h-4 w-4" /> Novo contato</Button>}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9 md:hidden" aria-label="Mais ações"><MoreHorizontal className="h-4 w-4" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={exportCsv} disabled={exporting}>
+                <Download className="mr-2 h-4 w-4" /> {exporting ? 'Exportando...' : 'Exportar CSV'}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {!isViewer && <Button size="sm" className="hidden h-9 md:inline-flex" onClick={() => { setNewCompany(null); setNewOpen(true); }}><Plus className="mr-1.5 h-4 w-4" /> Novo contato</Button>}
         </div>
       </div>
 
@@ -150,23 +162,26 @@ export default function ContactsPage() {
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar nome, e-mail ou telefone..." className={filterSearchClass} />
         </div>
-        {filters.company_id ? (
-          <Button variant="outline" size="sm" className={filterPillClass(true)} onClick={() => st.setFilter('company_id', undefined)}>
-            Empresa <span className="max-w-[160px] truncate font-normal opacity-80">· {filterCompany?.trade_name || '...'}</span><X className="h-3 w-3" />
-          </Button>
-        ) : (
-          <CompanyCombobox pill value={null} onChange={c => st.setFilter('company_id', c.id)} placeholder="Empresa" />
-        )}
-        <FilterMultiSelect label="Segmento" options={segOptions} selected={filters.segment_ids || []} onChange={v => st.setFilter('segment_ids', v)} />
-        <TriFilter label="Com e-mail" value={filters.has_email} options={YESNO} onChange={v => st.setFilter('has_email', v as any)} />
-        <TriFilter label="Com telefone" value={filters.has_phone} options={YESNO} onChange={v => st.setFilter('has_phone', v as any)} />
-        <TriFilter label="Em negócio ativo" value={filters.in_active} options={YESNO} onChange={v => st.setFilter('in_active', v as any)} />
-        <FilterDateRange label="Criado em" from={filters.created_from} to={filters.created_to}
-          onChangeFrom={v => st.setFilter('created_from', v)} onChangeTo={v => st.setFilter('created_to', v)} />
-        {(st.activeCount > 0 || filters.q) && (
-          <Button variant="ghost" size="sm" className="h-9 gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => { setSearch(''); st.clearFilters(); }}><X className="h-3.5 w-3.5" /> Limpar</Button>
-        )}
-        <div className="ml-auto"><ColumnsMenu columns={columns} visible={visible} onToggle={toggle} /></div>
+        {/* Phones: one sideways-scrolling row; from sm up the wrapper dissolves into the wrapping toolbar */}
+        <div className="-mx-4 flex w-[calc(100%+2rem)] items-center gap-2 overflow-x-auto px-4 scrollbar-none sm:contents [&>*]:shrink-0">
+          {filters.company_id ? (
+            <Button variant="outline" size="sm" className={filterPillClass(true)} onClick={() => st.setFilter('company_id', undefined)}>
+              Empresa <span className="max-w-[160px] truncate font-normal opacity-80">· {filterCompany?.trade_name || '...'}</span><X className="h-3 w-3" />
+            </Button>
+          ) : (
+            <CompanyCombobox pill value={null} onChange={c => st.setFilter('company_id', c.id)} placeholder="Empresa" />
+          )}
+          <FilterMultiSelect label="Segmento" options={segOptions} selected={filters.segment_ids || []} onChange={v => st.setFilter('segment_ids', v)} />
+          <TriFilter label="Com e-mail" value={filters.has_email} options={YESNO} onChange={v => st.setFilter('has_email', v as any)} />
+          <TriFilter label="Com telefone" value={filters.has_phone} options={YESNO} onChange={v => st.setFilter('has_phone', v as any)} />
+          <TriFilter label="Em negócio ativo" value={filters.in_active} options={YESNO} onChange={v => st.setFilter('in_active', v as any)} />
+          <FilterDateRange label="Criado em" from={filters.created_from} to={filters.created_to}
+            onChangeFrom={v => st.setFilter('created_from', v)} onChangeTo={v => st.setFilter('created_to', v)} />
+          {(st.activeCount > 0 || filters.q) && (
+            <Button variant="ghost" size="sm" className="h-9 gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => { setSearch(''); st.clearFilters(); }}><X className="h-3.5 w-3.5" /> Limpar</Button>
+          )}
+        </div>
+        <div className="ml-auto hidden md:block"><ColumnsMenu columns={columns} visible={visible} onToggle={toggle} /></div>
       </div>
 
       {selected.length > 0 && canManage && (
@@ -197,6 +212,8 @@ export default function ContactsPage() {
           </div>
         )}
       />
+
+      {!isViewer && <MobileFab label="Novo contato" onClick={() => { setNewCompany(null); setNewOpen(true); }} />}
 
       <ContactSheet contactId={openContactId} onClose={() => st.setParam('contact', null)} />
       <MergeContactsDialog open={mergeOpen} onOpenChange={setMergeOpen} contacts={selRows} onMerged={() => setSelected([])} />

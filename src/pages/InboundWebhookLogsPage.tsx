@@ -44,26 +44,27 @@ export default function InboundWebhookLogsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/settings/inbound-webhooks')} aria-label="Voltar">
+        <Button variant="ghost" size="icon" onClick={() => navigate('/settings?tab=inbound-webhooks')} aria-label="Voltar">
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-2xl font-bold">Logs de Webhooks de Entrada</h1>
+        <h1 className="text-xl font-bold sm:text-2xl">Logs de Webhooks de Entrada</h1>
       </div>
 
       <Card>
         <CardHeader>
-          <div className="flex flex-wrap gap-3">
-            <Select value={webhookFilter} onValueChange={v => { setWebhookFilter(v); setPage(0); }}>
-              <SelectTrigger className="w-[200px]"><SelectValue placeholder="Todos os webhooks" /></SelectTrigger>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
+            {/* Radix Select rejects value="": "all" stands for no filter */}
+            <Select value={webhookFilter || 'all'} onValueChange={v => { setWebhookFilter(v === 'all' ? '' : v); setPage(0); }}>
+              <SelectTrigger className="sm:w-[200px]"><SelectValue placeholder="Todos os webhooks" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
                 {webhooks?.map((wh: any) => <SelectItem key={wh.id} value={wh.id}>{wh.name}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Select value={actionFilter} onValueChange={v => { setActionFilter(v); setPage(0); }}>
-              <SelectTrigger className="w-[150px]"><SelectValue placeholder="Todas as ações" /></SelectTrigger>
+            <Select value={actionFilter || 'all'} onValueChange={v => { setActionFilter(v === 'all' ? '' : v); setPage(0); }}>
+              <SelectTrigger className="sm:w-[150px]"><SelectValue placeholder="Todas as ações" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas</SelectItem>
+                <SelectItem value="all">Todas</SelectItem>
                 <SelectItem value="created">Criado</SelectItem>
                 <SelectItem value="updated">Atualizado</SelectItem>
                 <SelectItem value="ignored">Ignorado</SelectItem>
@@ -80,7 +81,7 @@ export default function InboundWebhookLogsPage() {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <Table>
+                <Table className="table-stack">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Data/Hora</TableHead>
@@ -98,18 +99,18 @@ export default function InboundWebhookLogsPage() {
                           <TableCell className="text-xs whitespace-nowrap">
                             {format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss', { locale: ptBR })}
                           </TableCell>
-                          <TableCell className="text-sm">{(log as any).inbound_webhooks?.name || '—'}</TableCell>
+                          <TableCell className="text-sm max-sm:order-last max-sm:w-full">{(log as any).inbound_webhooks?.name || '—'}</TableCell>
                           <TableCell><Badge variant={actionColor(log.action) as any}>{log.action}</Badge></TableCell>
-                          <TableCell className="text-xs font-mono">{log.lead_id ? log.lead_id.slice(0, 8) + '...' : '—'}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{log.ip_address || '—'}</TableCell>
-                          <TableCell>
+                          <TableCell className="text-xs font-mono max-sm:hidden">{log.lead_id ? log.lead_id.slice(0, 8) + '...' : '—'}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground max-sm:hidden">{log.ip_address || '—'}</TableCell>
+                          <TableCell className="max-sm:ml-auto">
                             {expandedId === log.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </TableCell>
                         </TableRow>
                         {expandedId === log.id && (
                           <TableRow key={`${log.id}-detail`}>
                             <TableCell colSpan={6}>
-                              <div className="grid gap-3 md:grid-cols-2 p-2 text-xs">
+                              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 p-2 text-xs max-sm:p-0">
                                 <div>
                                   <p className="font-semibold mb-1">Raw Payload</p>
                                   <pre className="bg-muted p-2 rounded overflow-auto max-h-48">{JSON.stringify(log.raw_payload, null, 2)}</pre>

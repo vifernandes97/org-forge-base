@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { FilterMultiSelect } from './FilterMultiSelect';
 import { FilterDateRange } from './FilterDateRange';
 import { CustomFieldFilters } from './CustomFieldFilters';
@@ -147,6 +148,7 @@ export function AdvancedFiltersSheet({
 }: AdvancedFiltersSheetProps) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<LeadFilters>(filters);
+  const isMobile = useIsMobile();
 
   // Sync draft when popover opens
   useEffect(() => {
@@ -259,7 +261,10 @@ export function AdvancedFiltersSheet({
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-[440px]">
+      <SheetContent
+        side={isMobile ? 'bottom' : 'right'}
+        className="flex w-full flex-col gap-0 p-0 sm:max-w-[440px] max-md:h-[92dvh] max-md:max-w-none max-md:rounded-t-2xl"
+      >
         <SheetHeader className="space-y-0.5 border-b px-5 py-4 text-left">
           <SheetTitle className="flex items-center gap-2 text-base">
             <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
@@ -452,7 +457,7 @@ export function AdvancedFiltersSheet({
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-2 border-t bg-muted/30 px-5 py-3">
+        <div className="flex items-center justify-between gap-2 border-t bg-muted/30 px-5 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={handleClear} disabled={draftCount === 0}>
             Limpar tudo
           </Button>

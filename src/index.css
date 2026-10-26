@@ -93,5 +93,52 @@
 
   body {
     @apply bg-background text-foreground;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* iOS dá zoom ao focar campos com fonte < 16px; em telas de toque, 16px. */
+  @media (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]),
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+}
+
+@layer components {
+  /* Tabela que vira lista no celular: cabeçalho oculto, cada linha um bloco,
+     e o rótulo da coluna vem de data-label nas células que precisam dele. */
+  @media (max-width: 639px) {
+    .table-stack thead {
+      display: none;
+    }
+    .table-stack tbody tr {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.375rem 0.75rem;
+      padding: 0.75rem 1rem;
+    }
+    .table-stack tbody td {
+      padding: 0;
+    }
+    .table-stack tbody td[colspan] {
+      width: 100%;
+      padding: 1rem 0;
+    }
+    .table-stack td[data-label]::before {
+      content: attr(data-label) ": ";
+      color: hsl(var(--muted-foreground));
+    }
+  }
+}
+
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
   }
 }

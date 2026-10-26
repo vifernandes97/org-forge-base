@@ -43,13 +43,13 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+          <div className="hidden h-10 w-10 items-center justify-center rounded-lg bg-primary/10 sm:flex">
             <LayoutDashboard className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold leading-tight">Dashboard</h1>
+            <h1 className="text-xl font-semibold leading-tight sm:text-2xl">Dashboard</h1>
             <p className="text-sm text-muted-foreground">{funnelId ? `Funil ${funnelChartName}` : 'Todos os funis'}</p>
           </div>
         </div>

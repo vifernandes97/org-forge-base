@@ -4,6 +4,7 @@ import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 import { QuickFilterPill } from './QuickFilterPill';
 import { AdvancedFiltersSheet } from './AdvancedFiltersSheet';
 import { SaveFilterDialog } from './SaveFilterDialog';
@@ -347,10 +348,10 @@ export function LeadFilterBar({
 
   return (
     <div className="space-y-2.5">
-      {/* Toolbar */}
+      {/* Toolbar: on phones, search + filters on one row and quick pills on a scrolling row below */}
       <div className="flex items-center gap-2 flex-wrap">
         {/* Search */}
-        <div className="relative flex-1 min-w-[200px] max-w-[360px]">
+        <div className="relative min-w-0 flex-1 sm:min-w-[200px] sm:max-w-[360px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Buscar empresa, CNPJ ou contato..."
@@ -361,7 +362,7 @@ export function LeadFilterBar({
         </div>
 
         {/* Quick pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+        <div className="order-last -mx-4 flex w-[calc(100%+2rem)] items-center gap-1.5 overflow-x-auto px-4 scrollbar-none sm:order-none sm:mx-0 sm:w-auto sm:px-0">
           <QuickFilterPill
             label="Etapa"
             options={stageOptions}
@@ -383,7 +384,7 @@ export function LeadFilterBar({
         </div>
 
         {/* Right cluster */}
-        <div className="flex items-center gap-1 ml-auto">
+        <div className="flex items-center gap-1 sm:ml-auto">
           <AdvancedFiltersSheet
             filters={filters}
             activeFilterCount={activeFilterCount}
@@ -405,7 +406,7 @@ export function LeadFilterBar({
           />
           <SavedFiltersDropdown onApply={applyFilters} />
           {activeFilterCount > 0 && (
-            <>
+            <div className="hidden items-center sm:flex">
               <Separator orientation="vertical" className="h-5 mx-0.5" />
               <Button
                 variant="ghost"
@@ -415,7 +416,7 @@ export function LeadFilterBar({
               >
                 <X className="h-3.5 w-3.5" /> Limpar
               </Button>
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -440,11 +441,15 @@ export function LeadFilterBar({
               <X className="h-3 w-3 text-muted-foreground group-hover:text-foreground" />
             </button>
           ))}
-          {chips.length >= 3 && (
+          {/* Phones have no "Limpar" in the toolbar, so it always shows here */}
+          {chips.length > 0 && (
             <button
               type="button"
               onClick={clearFilters}
-              className="inline-flex items-center gap-1 h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              className={cn(
+                'inline-flex items-center gap-1 h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors',
+                chips.length < 3 && 'sm:hidden',
+              )}
             >
               Limpar tudo
             </button>

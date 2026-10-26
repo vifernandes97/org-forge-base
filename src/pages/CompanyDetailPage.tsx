@@ -115,14 +115,14 @@ export default function CompanyDetailPage() {
             )}
           </div>
           {isViewer ? (
-            <div className="grid gap-2 text-sm sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
               <p><span className="text-muted-foreground">Razão social: </span>{company.legal_name || '—'}</p>
               <p><span className="text-muted-foreground">CNPJ: </span>{company.cnpj ? formatCnpj(company.cnpj) : '—'}</p>
               <p><span className="text-muted-foreground">Instagram: </span>{company.instagram || '—'}</p>
               <p><span className="text-muted-foreground">Segmento: </span>{company.segment_ref?.label || '—'}</p>
             </div>
           ) : (
-            <div className="grid gap-x-6 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
               <InlineEditField type="text" label="Nome fantasia" value={company.trade_name} icon={<Building2 className="h-4 w-4" />} onSave={v => save('trade_name', v)} />
               <div className="flex items-start gap-3 py-1 text-sm">
                 <Tag className="mt-2 h-4 w-4 shrink-0 text-muted-foreground" />

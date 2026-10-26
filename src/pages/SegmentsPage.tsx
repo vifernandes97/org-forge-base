@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Merge, Pencil, Plus, Tag, Trash2 } from 'lucide-react';
+import { GripVertical, Merge, MoreHorizontal, Pencil, Plus, Tag, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -26,18 +27,35 @@ function Row({ seg, count, canManage, onRename, onToggle, onDelete, onMerge }: {
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}
       className="flex items-center justify-between gap-2 p-3 border rounded-lg bg-card">
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         {canManage && (
-          <button type="button" className="cursor-grab text-muted-foreground" aria-label="Arrastar" {...attributes} {...listeners}>
+          <button type="button" className="cursor-grab touch-none text-muted-foreground" aria-label="Arrastar" {...attributes} {...listeners}>
             <GripVertical className="h-4 w-4" />
           </button>
         )}
         <Switch checked={seg.is_active} disabled={!canManage} onCheckedChange={onToggle} aria-label="Ativo" />
         <span className={seg.is_active ? 'truncate' : 'truncate text-muted-foreground line-through'}>{seg.label}</span>
-        <Badge variant="secondary" className="shrink-0">{count} empresa{count === 1 ? '' : 's'}</Badge>
+        <Badge variant="secondary" className="shrink-0" title={`${count} empresa${count === 1 ? '' : 's'}`}>
+          {count}<span className="max-sm:hidden">&nbsp;empresa{count === 1 ? '' : 's'}</span>
+        </Badge>
       </div>
+      {/* Phones: actions under "⋯" so the segment name keeps its room */}
       {canManage && (
-        <div className="flex items-center gap-1 shrink-0">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="shrink-0 sm:hidden" aria-label="Ações do segmento"><MoreHorizontal className="h-4 w-4" /></Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onRename}><Pencil className="mr-2 h-4 w-4" /> Renomear</DropdownMenuItem>
+            <DropdownMenuItem onClick={onMerge}><Merge className="mr-2 h-4 w-4" /> Mesclar</DropdownMenuItem>
+            <DropdownMenuItem onClick={onDelete} disabled={count > 0} className="text-destructive focus:text-destructive">
+              <Trash2 className="mr-2 h-4 w-4" /> {count > 0 ? 'Em uso: desative' : 'Excluir'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+      {canManage && (
+        <div className="hidden items-center gap-1 shrink-0 sm:flex">
           <Button variant="ghost" size="icon" onClick={onRename} aria-label="Renomear"><Pencil className="h-4 w-4" /></Button>
           <Button variant="ghost" size="icon" onClick={onMerge} aria-label="Mesclar segmento"><Merge className="h-4 w-4" /></Button>
           <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={onDelete}
@@ -98,7 +116,7 @@ export default function SegmentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><Tag className="h-6 w-6" /> Segmentos</h1>
           <p className="text-muted-foreground text-sm mt-1">

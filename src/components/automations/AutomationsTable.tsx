@@ -61,7 +61,7 @@ interface AutomationsTableProps {
 export function AutomationsTable({ templates, stageMap, funnelMap, onEdit, onDelete, onToggle }: AutomationsTableProps) {
   return (
     <div className="rounded-lg border bg-card">
-      <Table>
+      <Table className="table-stack">
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead className="w-16">Ativa</TableHead>
@@ -85,7 +85,7 @@ export function AutomationsTable({ templates, stageMap, funnelMap, onEdit, onDel
                 className={cn('cursor-pointer', !t.is_active && 'text-muted-foreground [&_td]:opacity-70')}
                 onClick={() => onEdit(t)}
               >
-                <TableCell onClick={e => e.stopPropagation()}>
+                <TableCell className="max-sm:order-1" onClick={e => e.stopPropagation()}>
                   <Switch
                     checked={t.is_active}
                     onCheckedChange={active => onToggle(t.id, active)}
@@ -93,7 +93,7 @@ export function AutomationsTable({ templates, stageMap, funnelMap, onEdit, onDel
                   />
                 </TableCell>
 
-                <TableCell className="max-w-[260px]">
+                <TableCell className="max-w-[260px] max-sm:order-4 max-sm:w-full max-sm:max-w-full">
                   <div className="flex items-center gap-2">
                     <Zap className="h-3.5 w-3.5 shrink-0 text-amber-500" />
                     {t.trigger_type === 'status_change' ? (
@@ -111,11 +111,11 @@ export function AutomationsTable({ templates, stageMap, funnelMap, onEdit, onDel
                   </div>
                 </TableCell>
 
-                <TableCell className="px-0">
+                <TableCell className="px-0 max-sm:hidden">
                   <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
                 </TableCell>
 
-                <TableCell className="max-w-[280px]">
+                <TableCell className="max-w-[280px] max-sm:order-2 max-sm:min-w-0 max-sm:max-w-none max-sm:flex-1">
                   <div className="flex items-center gap-2.5">
                     <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-md', action.className)}>
                       <ActionIcon className="h-3.5 w-3.5" />
@@ -127,7 +127,7 @@ export function AutomationsTable({ templates, stageMap, funnelMap, onEdit, onDel
                   </div>
                 </TableCell>
 
-                <TableCell className="max-w-[320px]">
+                <TableCell className="max-w-[320px] max-sm:order-5 max-sm:w-full max-sm:max-w-full">
                   {t.action_type === 'send_webhook' ? (
                     <code className="block truncate text-xs text-muted-foreground" title={t.webhook_url || ''}>
                       {t.webhook_url}
@@ -148,7 +148,7 @@ export function AutomationsTable({ templates, stageMap, funnelMap, onEdit, onDel
                   )}
                 </TableCell>
 
-                <TableCell className="text-right" onClick={e => e.stopPropagation()}>
+                <TableCell className="text-right max-sm:order-3" onClick={e => e.stopPropagation()}>
                   <div className="inline-flex gap-0.5">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(t)} aria-label="Editar automação">
                       <Pencil className="h-3.5 w-3.5" />

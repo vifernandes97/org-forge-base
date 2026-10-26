@@ -82,8 +82,9 @@ export default function TeamPage() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
+            {/* Phones: each row stacks into a card-like block (header hidden) */}
             <Table>
-              <TableHeader>
+              <TableHeader className="max-sm:hidden">
                 <TableRow>
                   <TableHead>Membro</TableHead>
                   <TableHead>E-mail</TableHead>
@@ -112,8 +113,8 @@ export default function TeamPage() {
                   const canRemove = canManage && !isCurrentUser && !isMemberOwner;
 
                   return (
-                    <TableRow key={member.id}>
-                      <TableCell>
+                    <TableRow key={member.id} className="max-sm:flex max-sm:flex-wrap max-sm:items-center max-sm:gap-x-3 max-sm:gap-y-1.5 max-sm:px-4 max-sm:py-3">
+                      <TableCell className="max-sm:order-1 max-sm:flex-1 max-sm:p-0">
                         <div className="flex items-center gap-2">
                           <Avatar className="h-8 w-8">
                             <AvatarFallback className="text-xs">
@@ -123,8 +124,8 @@ export default function TeamPage() {
                           <span className="font-medium text-sm">{member.profile?.full_name || '—'}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{member.profile?.email || member.invited_email || '—'}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-sm:order-3 max-sm:w-full max-sm:truncate max-sm:p-0 max-sm:pl-10">{member.profile?.email || member.invited_email || '—'}</TableCell>
+                      <TableCell className="max-sm:order-4 max-sm:p-0 max-sm:pl-10">
                         {canEditRole ? (
                           <Select value={member.role} onValueChange={(v) => handleRoleChange(member.id, v as OrgRole)}>
                             <SelectTrigger className="w-[140px] h-7 text-xs">
@@ -142,16 +143,16 @@ export default function TeamPage() {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="text-sm text-muted-foreground max-sm:order-6 max-sm:p-0 max-sm:text-xs">
                         {format(new Date(member.accepted_at || member.created_at), 'dd/MM/yyyy', { locale: ptBR })}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="max-sm:order-5 max-sm:p-0">
                         <Badge variant={member.accepted_at ? 'default' : 'outline'}>
                           {member.accepted_at ? 'Ativo' : 'Pendente'}
                         </Badge>
                       </TableCell>
                       {canManage && (
-                        <TableCell>
+                        <TableCell className="max-sm:order-2 max-sm:p-0">
                           {canRemove && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>

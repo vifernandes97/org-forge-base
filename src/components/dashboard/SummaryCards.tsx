@@ -23,8 +23,8 @@ interface Kpi {
 export default function SummaryCards({ summary, qualifiedRate, isLoading }: SummaryCardsProps) {
   if (isLoading) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[112px] rounded-lg" />)}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[100px] rounded-lg sm:h-[112px]" />)}
       </div>
     );
   }
@@ -53,17 +53,17 @@ export default function SummaryCards({ summary, qualifiedRate, isLoading }: Summ
   ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
       {kpis.map((k) => (
-        <Card key={k.title} className="p-5">
+        <Card key={k.title} className="min-w-0 p-3.5 sm:p-5">
           <div className="flex items-center justify-between gap-2">
-            <p className="truncate text-sm text-muted-foreground">{k.title}</p>
-            <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', k.tone)}>
+            <p className="line-clamp-2 min-w-0 text-xs leading-snug text-muted-foreground sm:line-clamp-1 sm:text-sm">{k.title}</p>
+            <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg sm:h-8 sm:w-8', k.tone)}>
               <k.icon className="h-4 w-4" />
             </span>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <p className="text-3xl font-bold tracking-tight tabular-nums">{k.value}</p>
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <p className="text-2xl font-bold tracking-tight tabular-nums sm:text-3xl">{k.value}</p>
             {k.delta && (
               <span
                 className={cn(

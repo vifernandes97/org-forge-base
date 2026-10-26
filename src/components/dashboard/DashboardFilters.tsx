@@ -70,9 +70,9 @@ export default function DashboardFilters({
   const activeLabel = PERIOD_OPTIONS.find(o => o.value === periodKey)?.label ?? 'Período';
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2 max-sm:w-full">
       <Select value={funnelId ?? '__all__'} onValueChange={(v) => onFunnelChange(v === '__all__' ? null : v)}>
-        <SelectTrigger className="h-9 w-auto min-w-[160px] gap-2 font-medium" aria-label="Funil">
+        <SelectTrigger className="h-9 w-auto min-w-[160px] gap-2 font-medium max-sm:w-full" aria-label="Funil">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -84,13 +84,13 @@ export default function DashboardFilters({
       </Select>
 
       {isMonthMode ? (
-        <div className="flex h-9 items-center gap-1 rounded-md border bg-background px-1">
+        <div className="flex h-9 items-center gap-1 rounded-md border bg-background px-1 max-sm:flex-1">
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onPrevMonth} aria-label="Mês anterior">
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 min-w-[130px] font-medium">
+              <Button variant="ghost" size="sm" className="h-7 min-w-[130px] font-medium max-sm:flex-1">
                 {monthLabel(targetMonth)}
               </Button>
             </PopoverTrigger>
@@ -124,8 +124,8 @@ export default function DashboardFilters({
           </Button>
         </div>
       ) : (
-        <div className="flex h-9 items-center gap-1 rounded-md border bg-background pl-3 pr-1">
-          <span className="text-sm font-medium">{activeLabel}</span>
+        <div className="flex h-9 items-center gap-1 rounded-md border bg-background pl-3 pr-1 max-sm:flex-1">
+          <span className="text-sm font-medium max-sm:flex-1">{activeLabel}</span>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onResetToCurrentMonth} aria-label="Voltar para o mês atual">
             <X className="h-4 w-4" />
           </Button>
@@ -133,7 +133,7 @@ export default function DashboardFilters({
       )}
 
       {periodKey === 'custom' && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 max-sm:order-last max-sm:w-full [&>button]:max-sm:flex-1">
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className={cn('w-[130px] justify-start text-left font-normal', !customFrom && 'text-muted-foreground')}>

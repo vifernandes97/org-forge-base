@@ -264,12 +264,13 @@ export function LeadFormDialog({ open, onOpenChange, lead, defaultFunnelId, defa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] p-0">
+      <DialogContent className="max-w-2xl max-h-[90vh] p-0 max-sm:flex max-sm:flex-col max-sm:pb-[env(safe-area-inset-bottom)]">
         <DialogHeader className="px-6 pt-6">
           <DialogTitle>{isEditing ? 'Editar Negócio' : 'Novo Negócio'}</DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-140px)] px-6">
+        {/* !block: Radix's table wrapper would let wide rows push the form past the dialog width */}
+        <ScrollArea className="max-h-[calc(90vh-140px)] px-6 max-sm:max-h-none max-sm:min-h-0 max-sm:flex-1 [&>[data-radix-scroll-area-viewport]>div]:!block">
           <form id="lead-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pb-4">
             {/* Empresa */}
             <div className="space-y-3">

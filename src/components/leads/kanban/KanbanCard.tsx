@@ -79,7 +79,7 @@ export function KanbanCard({ lead, onClick, slaExceeded }: KanbanCardProps) {
       {...attributes}
       style={style}
       className={cn(
-        'group relative w-full min-w-0 cursor-grab space-y-2 overflow-hidden rounded-lg border bg-card p-3 shadow-sm transition-[box-shadow,border-color] active:cursor-grabbing',
+        'group relative w-full min-w-0 cursor-grab touch-manipulation select-none space-y-2 overflow-hidden rounded-lg border bg-card p-3 shadow-sm transition-[box-shadow,border-color] [-webkit-touch-callout:none] active:cursor-grabbing',
         isDragging ? 'opacity-40' : 'hover:border-primary/30 hover:shadow-md',
       )}
       onClick={e => { e.stopPropagation(); onClick(); }}

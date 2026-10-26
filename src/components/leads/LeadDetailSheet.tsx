@@ -3,7 +3,7 @@ import { LeadCompanyPanel } from '@/components/companies/LeadCompanyPanel';
 import { getLeadDisplay } from '@/lib/leadDisplay';
 import { TaskList } from '@/components/tasks/TaskList';
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
-import { Plus, Archive, ArchiveRestore, Trophy, Merge } from 'lucide-react';
+import { Plus, Archive, ArchiveRestore, Trophy, Merge, ChevronLeft, MoreHorizontal } from 'lucide-react';
 import { QuickActivityForm } from './activities/QuickActivityForm';
 import { ActivityTimeline } from './activities/ActivityTimeline';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -11,9 +11,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 import { PriorityBadge } from './PriorityBadge';
 import { StatusBadge } from './StatusBadge';
 import { useLead, useDeleteLead, useArchiveLead, useUnarchiveLead, useUpdateLead, useUpsertCustomFieldValue, useMoveLeadToFunnel } from '@/hooks/useLeads';
@@ -70,6 +72,10 @@ export function LeadDetailSheet({ leadId: propLeadId, onClose }: LeadDetailSheet
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [mergeOpen, setMergeOpen] = useState(false);
   const [moveFunnelOpen, setMoveFunnelOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  // Below lg the body is one column: phones switch between panes instead of scrolling past every card.
+  const [pane, setPane] = useState<'details' | 'activities' | 'tasks'>('details');
+  useEffect(() => { setPane('details'); }, [propLeadId]);
   const [selectedReasonId, setSelectedReasonId] = useState<string>('');
   const [archiveDetails, setArchiveDetails] = useState('');
   const moveToFunnelMut = useMoveLeadToFunnel();
@@ -243,7 +249,7 @@ export function LeadDetailSheet({ leadId: propLeadId, onClose }: LeadDetailSheet
   return (
     <TooltipProvider>
       <Sheet open={!!leadId} onOpenChange={open => { if (!open) onClose(); }}>
-        <SheetContent className="w-full sm:max-w-[90vw] p-0 flex flex-col overflow-hidden">
+        <SheetContent className="w-full sm:max-w-[90vw] p-0 flex flex-col overflow-hidden" closeClassName="max-sm:hidden">
           {isLoading || !typedLead ? (
             <div className="px-6 pt-6 pb-4 space-y-4">
               <div className="flex items-start justify-between">
@@ -260,7 +266,7 @@ export function LeadDetailSheet({ leadId: propLeadId, onClose }: LeadDetailSheet
             <>
               {/* Archived banner */}
               {isArchived && (
-                <div className="bg-muted border-b px-6 py-3 flex items-center justify-between gap-2">
+                <div className="bg-muted border-b px-4 py-3 flex items-center justify-between gap-2 sm:px-6">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Archive className="h-4 w-4" />
                     <span>Este negócio está arquivado.</span>
@@ -272,15 +278,59 @@ export function LeadDetailSheet({ leadId: propLeadId, onClose }: LeadDetailSheet
               )}
 
               {/* Header */}
-              <SheetHeader className="px-6 pt-6 pb-4 border-b space-y-3 shrink-0">
+              <SheetHeader className="px-4 pt-2 pb-4 sm:px-6 sm:pt-6 border-b space-y-3 shrink-0 text-left">
+                {/* Phones: back + main actions, the rest under "⋯" */}
+                <div className="-mx-2 flex items-center gap-0.5 sm:hidden">
+                  <Button variant="ghost" size="icon" onClick={onClose} aria-label="Voltar">
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                  <div className="flex-1" />
+                  {!isArchived && typedLead.status !== 'won' && (
+                    <Button variant="ghost" size="icon" onClick={handleToggleWon} aria-label="Marcar como ganho" className="text-green-600 hover:text-green-600">
+                      <Trophy className="h-5 w-5" />
+                    </Button>
+                  )}
+                  {typedLead.status === 'won' && (
+                    <Button variant="ghost" size="sm" onClick={handleToggleWon} className="text-muted-foreground">Reabrir</Button>
+                  )}
+                  <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)} aria-label="Editar negócio">
+                    <Pencil className="h-5 w-5" />
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" aria-label="Mais ações">
+                        <MoreHorizontal className="h-5 w-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      {!isArchived && (
+                        <>
+                          <DropdownMenuItem onClick={() => setMoveFunnelOpen(true)}>
+                            <GitBranch className="mr-2 h-4 w-4" /> Mover para outro funil
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setMergeOpen(true)}>
+                            <Merge className="mr-2 h-4 w-4" /> Mesclar negócio
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setArchiveDialogOpen(true)}>
+                            <Archive className="mr-2 h-4 w-4" /> Arquivar
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
+                      <DropdownMenuItem onClick={() => setDeleteOpen(true)} className="text-destructive focus:text-destructive">
+                        <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <h2 className="text-xl font-semibold leading-tight truncate">{getLeadDisplay(typedLead).title}</h2>
+                    <h2 className="text-xl font-semibold leading-tight line-clamp-2 sm:truncate">{getLeadDisplay(typedLead).title}</h2>
                     {getLeadDisplay(typedLead).primaryContact?.name && (
                       <p className="text-sm text-muted-foreground truncate">{getLeadDisplay(typedLead).primaryContact!.name}</p>
                     )}
                   </div>
-                  <div className="flex gap-1.5 shrink-0">
+                  <div className="hidden gap-1.5 shrink-0 sm:mr-6 sm:flex">
                     {!isArchived && typedLead.status !== 'won' && (
                       <Button variant="ghost" size="icon" onClick={handleToggleWon} aria-label="Marcar como ganho" className="text-green-600 hover:text-green-600">
                         <Trophy className="h-4 w-4" />
@@ -309,12 +359,10 @@ export function LeadDetailSheet({ leadId: propLeadId, onClose }: LeadDetailSheet
                     <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)} aria-label="Editar negócio">
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" aria-label="Excluir negócio">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
+                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" aria-label="Excluir negócio" onClick={() => setDeleteOpen(true)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>Excluir negócio?</AlertDialogTitle>
@@ -357,7 +405,7 @@ export function LeadDetailSheet({ leadId: propLeadId, onClose }: LeadDetailSheet
 
               {/* Stage Pipeline - Bitrix style */}
               {stages && stages.length > 0 && (
-                <div className="px-6 py-3 border-b shrink-0">
+                <div className="px-4 py-3 border-b shrink-0 sm:px-6">
                   <StagePipeline
                     stages={stages}
                     currentStageId={typedLead.stage_id}
@@ -367,9 +415,27 @@ export function LeadDetailSheet({ leadId: propLeadId, onClose }: LeadDetailSheet
                 </div>
               )}
 
+              <div className="flex shrink-0 border-b px-4 lg:hidden" role="tablist" aria-label="Seções do negócio">
+                {([['details', 'Detalhes'], ['activities', 'Atividades'], ['tasks', 'Tarefas']] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="tab"
+                    aria-selected={pane === value}
+                    onClick={() => setPane(value)}
+                    className={cn(
+                      '-mb-px flex-1 border-b-2 py-2.5 text-sm font-medium transition-colors',
+                      pane === value ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground',
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
               {/* Body: deal data cards (primary) + activity column (secondary) */}
               <div className="flex-1 min-h-0 grid grid-cols-1 overflow-auto lg:overflow-hidden lg:grid-cols-[minmax(0,1fr)_400px] 2xl:grid-cols-[minmax(0,1fr)_460px]">
-                <div className="bg-muted/30 p-4 lg:overflow-auto lg:p-5">
+                <div className={cn('bg-muted/30 p-4 lg:block lg:overflow-auto lg:p-5', pane !== 'details' && 'hidden')}>
                   <div className="space-y-4">
                     <LeadCompanyPanel
                       lead={typedLead}
@@ -528,9 +594,13 @@ export function LeadDetailSheet({ leadId: propLeadId, onClose }: LeadDetailSheet
                 </div>
 
                 {/* Activities & Tasks */}
-                <aside className="flex min-h-[480px] flex-col overflow-hidden border-t lg:min-h-0 lg:border-l lg:border-t-0">
-                  <Tabs defaultValue="activities" className="flex-1 flex flex-col overflow-hidden">
-                    <div className="flex h-12 shrink-0 items-center border-b px-4">
+                <aside className={cn('flex flex-col overflow-hidden lg:flex lg:min-h-0 lg:border-l', pane === 'details' && 'hidden')}>
+                  <Tabs
+                    value={pane === 'tasks' ? 'tasks' : 'activities'}
+                    onValueChange={v => setPane(v as 'activities' | 'tasks')}
+                    className="flex-1 flex flex-col overflow-hidden"
+                  >
+                    <div className="hidden h-12 shrink-0 items-center border-b px-4 lg:flex">
                       <TabsList className="h-8">
                         <TabsTrigger value="activities" className="text-xs">Atividades</TabsTrigger>
                         <TabsTrigger value="tasks" className="text-xs">Tarefas</TabsTrigger>

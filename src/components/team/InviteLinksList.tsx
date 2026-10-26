@@ -47,7 +47,7 @@ export function InviteLinksList() {
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
-          <Table>
+          <Table className="table-stack">
             <TableHeader>
               <TableRow>
                 <TableHead>Papel</TableHead>
@@ -78,17 +78,17 @@ export function InviteLinksList() {
                 return (
                   <TableRow key={inv.id}>
                     <TableCell><Badge variant="secondary">{ROLE_LABEL[inv.role]}</Badge></TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell className="text-sm max-sm:order-3 max-sm:text-xs" data-label="Usos">
                       {inv.uses_count}{inv.max_uses !== null ? ` / ${inv.max_uses}` : ' / ∞'}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell className="text-sm text-muted-foreground max-sm:order-3 max-sm:text-xs" data-label="Expira">
                       {inv.expires_at ? format(new Date(inv.expires_at), 'dd/MM/yyyy', { locale: ptBR }) : 'Nunca'}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell className="text-sm text-muted-foreground max-sm:order-3 max-sm:text-xs" data-label="Criado">
                       {format(new Date(inv.created_at), 'dd/MM/yyyy', { locale: ptBR })}
                     </TableCell>
                     <TableCell>{statusBadge(inv)}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right max-sm:ml-auto">
                       <div className="flex justify-end gap-1">
                         {active && (
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopy(inv.id, inv.token)} aria-label="Copiar link">

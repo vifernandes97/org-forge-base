@@ -1,4 +1,4 @@
-import { LayoutDashboard, Settings, Contact, CheckSquare, Zap, Handshake, Building2 } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import {
   Sidebar,
@@ -16,19 +16,7 @@ import { OrgSwitcher } from '@/components/layout/OrgSwitcher';
 import { useTaskBadgeCounts } from '@/hooks/useTasks';
 import { Badge } from '@/components/ui/badge';
 import { BrandLogo } from '@/components/brand/BrandLogo';
-
-const mainNav = [
-  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
-  { title: 'Negócios', url: '/leads', icon: Handshake },
-  { title: 'Empresas', url: '/companies', icon: Building2 },
-  { title: 'Contatos', url: '/contacts', icon: Contact },
-  { title: 'Tarefas', url: '/tasks', icon: CheckSquare },
-];
-
-const settingsNav = [
-  { title: 'Automações', url: '/settings/automations', icon: Zap },
-  { title: 'Configurações', url: '/settings', icon: Settings },
-];
+import { mainNav, settingsNav } from './navItems';
 
 export function AppSidebar() {
   const { data: badgeCounts } = useTaskBadgeCounts();

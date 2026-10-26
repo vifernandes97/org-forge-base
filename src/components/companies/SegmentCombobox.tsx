@@ -47,7 +47,7 @@ export function SegmentCombobox({ value, current, onChange, placeholder = 'Selec
       <div className="flex items-center gap-1">
         <PopoverTrigger asChild>
           <Button variant={compact ? 'ghost' : 'outline'} role="combobox" type="button"
-            className={cn('w-full justify-between font-normal', compact && 'h-7 px-1 -mx-1 hover:bg-accent/50', !selected && 'text-muted-foreground', !selected && compact && 'italic')}>
+            className={cn('w-full min-w-0 justify-between font-normal', compact && 'h-7 px-1 -mx-1 hover:bg-accent/50', !selected && 'text-muted-foreground', !selected && compact && 'italic')}>
             <span className="truncate">
               {selected ? selected.label : placeholder}
               {selected && !selected.is_active && <span className="ml-1 text-xs text-muted-foreground">(inativo)</span>}

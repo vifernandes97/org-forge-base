@@ -4,12 +4,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { MobileFab } from '@/components/shared/MobileFab';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Check, Download, Merge, Plus, Search, Tag, Trash2, X } from 'lucide-react';
+import { Check, Download, Merge, MoreHorizontal, Plus, Search, Tag, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useOrganization } from '@/contexts/OrganizationContext';
@@ -137,10 +139,20 @@ export default function CompaniesPage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold tracking-tight">Empresas</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-9" onClick={exportCsv} disabled={exporting}>
+          <Button variant="outline" size="sm" className="hidden h-9 md:inline-flex" onClick={exportCsv} disabled={exporting}>
             <Download className="mr-1.5 h-4 w-4" /> {exporting ? 'Exportando...' : 'Exportar CSV'}
           </Button>
-          {!isViewer && <Button size="sm" className="h-9" onClick={() => setCreating(true)}><Plus className="mr-1.5 h-4 w-4" /> Nova empresa</Button>}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9 md:hidden" aria-label="Mais ações"><MoreHorizontal className="h-4 w-4" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={exportCsv} disabled={exporting}>
+                <Download className="mr-2 h-4 w-4" /> {exporting ? 'Exportando...' : 'Exportar CSV'}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {!isViewer && <Button size="sm" className="hidden h-9 md:inline-flex" onClick={() => setCreating(true)}><Plus className="mr-1.5 h-4 w-4" /> Nova empresa</Button>}
         </div>
       </div>
 
@@ -149,23 +161,26 @@ export default function CompaniesPage() {
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar empresa, CNPJ ou contato..." className={filterSearchClass} />
         </div>
-        <FilterMultiSelect label="Segmento" options={segOptions} selected={filters.segment_ids || []} onChange={v => st.setFilter('segment_ids', v)} />
-        <TriFilter label="Situação" value={filters.situation} onChange={v => st.setFilter('situation', v as any)}
-          options={[{ value: 'open', label: 'com negócio aberto' }, { value: 'no_open', label: 'sem negócio aberto' }, { value: 'no_leads', label: 'sem nenhum negócio' }]} />
-        <FilterMultiSelect label="Responsável" selected={filters.assigned_to || []} onChange={v => st.setFilter('assigned_to', v)}
-          options={(members || []).map((m: any) => ({ value: m.user_id, label: m.profile?.full_name || m.profile?.email || 'Membro' }))} />
-        <FilterMultiSelect label="Funil" selected={filters.funnel_ids || []} onChange={v => st.setFilter('funnel_ids', v)}
-          options={(funnels || []).map(f => ({ value: f.id, label: f.name }))} />
-        <FilterDateRange label="Criada em" from={filters.created_from} to={filters.created_to}
-          onChangeFrom={v => st.setFilter('created_from', v)} onChangeTo={v => st.setFilter('created_to', v)} />
-        <Button variant="outline" size="sm" aria-pressed={!!filters.no_contacts} className={filterPillClass(!!filters.no_contacts)}
-          onClick={() => st.setFilter('no_contacts', filters.no_contacts ? undefined : true)}>
-          {filters.no_contacts && <Check className="h-3 w-3" />} Sem contato
-        </Button>
-        {(st.activeCount > 0 || filters.q) && (
-          <Button variant="ghost" size="sm" className="h-9 gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => { setSearch(''); st.clearFilters(); }}><X className="h-3.5 w-3.5" /> Limpar</Button>
-        )}
-        <div className="ml-auto"><ColumnsMenu columns={columns} visible={visible} onToggle={toggle} /></div>
+        {/* Phones: one sideways-scrolling row; from sm up the wrapper dissolves into the wrapping toolbar */}
+        <div className="-mx-4 flex w-[calc(100%+2rem)] items-center gap-2 overflow-x-auto px-4 scrollbar-none sm:contents [&>*]:shrink-0">
+          <FilterMultiSelect label="Segmento" options={segOptions} selected={filters.segment_ids || []} onChange={v => st.setFilter('segment_ids', v)} />
+          <TriFilter label="Situação" value={filters.situation} onChange={v => st.setFilter('situation', v as any)}
+            options={[{ value: 'open', label: 'com negócio aberto' }, { value: 'no_open', label: 'sem negócio aberto' }, { value: 'no_leads', label: 'sem nenhum negócio' }]} />
+          <FilterMultiSelect label="Responsável" selected={filters.assigned_to || []} onChange={v => st.setFilter('assigned_to', v)}
+            options={(members || []).map((m: any) => ({ value: m.user_id, label: m.profile?.full_name || m.profile?.email || 'Membro' }))} />
+          <FilterMultiSelect label="Funil" selected={filters.funnel_ids || []} onChange={v => st.setFilter('funnel_ids', v)}
+            options={(funnels || []).map(f => ({ value: f.id, label: f.name }))} />
+          <FilterDateRange label="Criada em" from={filters.created_from} to={filters.created_to}
+            onChangeFrom={v => st.setFilter('created_from', v)} onChangeTo={v => st.setFilter('created_to', v)} />
+          <Button variant="outline" size="sm" aria-pressed={!!filters.no_contacts} className={filterPillClass(!!filters.no_contacts)}
+            onClick={() => st.setFilter('no_contacts', filters.no_contacts ? undefined : true)}>
+            {filters.no_contacts && <Check className="h-3 w-3" />} Sem contato
+          </Button>
+          {(st.activeCount > 0 || filters.q) && (
+            <Button variant="ghost" size="sm" className="h-9 gap-1 text-xs text-muted-foreground hover:text-foreground" onClick={() => { setSearch(''); st.clearFilters(); }}><X className="h-3.5 w-3.5" /> Limpar</Button>
+          )}
+        </div>
+        <div className="ml-auto hidden md:block"><ColumnsMenu columns={columns} visible={visible} onToggle={toggle} /></div>
       </div>
 
       {selected.length > 0 && !isViewer && (
@@ -202,6 +217,8 @@ export default function CompaniesPage() {
           </div>
         )}
       />
+
+      {!isViewer && <MobileFab label="Nova empresa" onClick={() => setCreating(true)} />}
 
       <CompanyFormDialog open={creating} onOpenChange={setCreating} onCreated={c => navigate(`/companies/${c.id}`)} />
       <MergeCompaniesDialog open={mergeOpen} onOpenChange={setMergeOpen} companies={selRows} onMerged={() => setSelected([])} />

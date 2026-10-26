@@ -59,10 +59,10 @@ export function InviteAuditLog() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-4">
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <CardTitle className="text-lg">Histórico de convites</CardTitle>
         <Select value={eventFilter} onValueChange={(v) => { setEventFilter(v); setPage(0); }}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-full sm:w-48">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -75,7 +75,7 @@ export function InviteAuditLog() {
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
-          <Table>
+          <Table className="table-stack">
             <TableHeader>
               <TableRow>
                 <TableHead>Data/hora</TableHead>
@@ -111,12 +111,12 @@ export function InviteAuditLog() {
                       {EVENT_LABEL[r.event_type] ?? r.event_type}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm">{r.actor_email ?? '—'}</TableCell>
-                  <TableCell className="text-sm">{r.role ? ROLE_LABEL[r.role] : '—'}</TableCell>
-                  <TableCell className="text-sm font-mono text-muted-foreground">
+                  <TableCell className="text-sm max-sm:w-full max-sm:text-xs" data-label="Autor">{r.actor_email ?? '—'}</TableCell>
+                  <TableCell className="text-sm max-sm:text-xs" data-label="Papel">{r.role ? ROLE_LABEL[r.role] : '—'}</TableCell>
+                  <TableCell className="text-sm font-mono text-muted-foreground max-sm:text-xs" data-label="Token">
                     {r.invite_token_preview ? `••••${r.invite_token_preview}` : '—'}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className="text-sm text-muted-foreground max-sm:w-full max-sm:text-xs">
                     {formatDetails(r.event_type, r.metadata || {})}
                   </TableCell>
                 </TableRow>

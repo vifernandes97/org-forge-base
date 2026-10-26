@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Users, ListChecks, ArrowUpFromLine, ArrowDownToLine, Archive, Settings, Tag, GitBranch } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Building2, Users, ListChecks, ArrowUpFromLine, ArrowDownToLine, Archive, Settings, Tag, GitBranch, ChevronLeft, ChevronRight } from 'lucide-react';
 import OrganizationPage from '@/pages/OrganizationPage';
 import FunnelsPage from '@/pages/FunnelsPage';
 import TeamPage from '@/pages/TeamPage';
@@ -12,27 +12,72 @@ import ArchiveReasonsPage from '@/pages/ArchiveReasonsPage';
 import SegmentsPage from '@/pages/SegmentsPage';
 
 const tabs = [
-  { value: 'organization', label: 'Organização', icon: Building2 },
-  { value: 'funnels', label: 'Funis', icon: GitBranch },
-  { value: 'team', label: 'Equipe', icon: Users },
-  { value: 'custom-fields', label: 'Campos Personalizados', icon: ListChecks },
-  { value: 'webhooks', label: 'Webhooks de Saída', icon: ArrowUpFromLine },
-  { value: 'inbound-webhooks', label: 'Webhooks de Entrada', icon: ArrowDownToLine },
-  { value: 'archive-reasons', label: 'Motivos de Arquivamento', icon: Archive },
-  { value: 'segments', label: 'Segmentos', icon: Tag },
+  { value: 'organization', label: 'Organização', hint: 'Nome, identificador e logo', icon: Building2 },
+  { value: 'funnels', label: 'Funis', hint: 'Etapas e SLAs dos funis de venda', icon: GitBranch },
+  { value: 'team', label: 'Equipe', hint: 'Membros, papéis e convites', icon: Users },
+  { value: 'custom-fields', label: 'Campos Personalizados', hint: 'Campos extras dos negócios', icon: ListChecks },
+  { value: 'webhooks', label: 'Webhooks de Saída', hint: 'Avisos enviados a outros sistemas', icon: ArrowUpFromLine },
+  { value: 'inbound-webhooks', label: 'Webhooks de Entrada', hint: 'Leads recebidos de outros sistemas', icon: ArrowDownToLine },
+  { value: 'archive-reasons', label: 'Motivos de Arquivamento', hint: 'Opções ao arquivar um negócio', icon: Archive },
+  { value: 'segments', label: 'Segmentos', hint: 'Lista de segmentos das empresas', icon: Tag },
 ];
 
+/**
+ * Desktop: one page with tabs. Phones (below md): /settings is a section list and
+ * /settings?tab=x opens that section full screen with a back button.
+ */
 export default function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const currentTab = searchParams.get('tab') || 'organization';
+  const navigate = useNavigate();
+  const location = useLocation();
+  const tabParam = searchParams.get('tab');
+  const currentTab = tabParam || 'organization';
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value }, { replace: true });
   };
 
+  // Came from the section list: go back in history so the phone's back gesture stays consistent.
+  const backToList = () => {
+    if ((location.state as { fromList?: boolean } | null)?.fromList) navigate(-1);
+    else navigate('/settings', { replace: true });
+  };
+
   return (
     <div className="space-y-6">
-      <div>
+      {!tabParam && (
+        <nav className="space-y-4 md:hidden" aria-label="Seções das configurações">
+          <h1 className="text-2xl font-bold">Configurações</h1>
+          <ul className="divide-y overflow-hidden rounded-xl border bg-card">
+            {tabs.map(tab => (
+              <li key={tab.value}>
+                <Link
+                  to={`/settings?tab=${tab.value}`}
+                  state={{ fromList: true }}
+                  className="flex items-center gap-3 px-4 py-3.5 active:bg-accent"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                    <tab.icon className="h-4 w-4 text-muted-foreground" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium">{tab.label}</span>
+                    <span className="block truncate text-xs text-muted-foreground">{tab.hint}</span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
+
+      {tabParam && (
+        <Button variant="ghost" size="sm" className="-ml-2 -mb-2 gap-1 px-2 text-muted-foreground md:hidden" onClick={backToList}>
+          <ChevronLeft className="h-4 w-4" /> Configurações
+        </Button>
+      )}
+
+      <div className="hidden md:block">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Settings className="h-6 w-6" />
           Configurações
@@ -40,13 +85,12 @@ export default function SettingsPage() {
         <p className="text-muted-foreground">Gerencie as configurações da sua organização.</p>
       </div>
 
-      <Tabs value={currentTab} onValueChange={handleTabChange}>
-        <TabsList className="flex flex-wrap h-auto gap-1">
+      <Tabs value={currentTab} onValueChange={handleTabChange} className={tabParam ? undefined : 'hidden md:block'}>
+        <TabsList className="hidden h-auto flex-wrap gap-1 md:flex">
           {tabs.map(tab => (
-            <TabsTrigger key={tab.value} value={tab.value} className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <TabsTrigger key={tab.value} value={tab.value} className="flex items-center gap-1.5 text-sm">
               <tab.icon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{tab.label}</span>
-              <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
+              {tab.label}
             </TabsTrigger>
           ))}
         </TabsList>

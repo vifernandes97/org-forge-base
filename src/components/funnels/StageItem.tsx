@@ -50,9 +50,9 @@ export function StageItem({ stage, canEdit, isOnly }: StageItemProps) {
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-2 rounded-lg border bg-card p-3">
+    <div ref={setNodeRef} style={style} className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3 lg:flex-nowrap">
       {canEdit && (
-        <button {...attributes} {...listeners} className="cursor-grab text-muted-foreground hover:text-foreground">
+        <button {...attributes} {...listeners} className="cursor-grab touch-none text-muted-foreground hover:text-foreground">
           <GripVertical className="h-4 w-4" />
         </button>
       )}
@@ -90,7 +90,7 @@ export function StageItem({ stage, canEdit, isOnly }: StageItemProps) {
       <Input
         value={webhookUrl}
         disabled={!canEdit}
-        className="w-48 hidden lg:flex"
+        className="max-lg:order-last max-lg:basis-full lg:w-48"
         placeholder="Webhook URL"
         onChange={(e) => { setWebhookUrl(e.target.value); save({ webhook_url: e.target.value || null }); }}
       />

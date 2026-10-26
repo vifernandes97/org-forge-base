@@ -2,29 +2,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Check, LogOut, Monitor, Moon, Sun } from 'lucide-react';
+import { Check, LogOut, Moon, Sun } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useTheme, type ThemePreference } from '@/hooks/use-theme';
+import { useTheme } from '@/hooks/use-theme';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { NotificationBell } from './NotificationBell';
+import { themeOptions, userInitials } from './menuOptions';
 
-const themeOptions: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
-  { value: 'light', label: 'Claro', icon: Sun },
-  { value: 'dark', label: 'Escuro', icon: Moon },
-  { value: 'system', label: 'Sistema', icon: Monitor },
-];
-
+/** Desktop top bar; on mobile MobileHeader + MobileTabBar take its place. */
 export function Header() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { theme, resolvedTheme, setTheme } = useTheme();
 
-  const initials = user?.user_metadata?.full_name
-    ?.split(' ')
-    .map((n: string) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2) || 'U';
+  const initials = userInitials(user?.user_metadata?.full_name);
 
   const handleSignOut = async () => {
     await signOut();
@@ -32,7 +23,7 @@ export function Header() {
   };
 
   return (
-    <header className="flex h-14 items-center gap-3 border-b bg-background px-4">
+    <header className="hidden h-14 items-center gap-3 border-b bg-background px-4 md:flex">
       <SidebarTrigger />
 
       <div className="flex-1" />

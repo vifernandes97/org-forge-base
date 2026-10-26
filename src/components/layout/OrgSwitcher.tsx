@@ -13,13 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { CreateOrganizationDialog } from '@/components/organizations/CreateOrganizationDialog';
-
-const roleLabels: Record<string, string> = {
-  owner: 'Proprietário',
-  admin: 'Admin',
-  member: 'Membro',
-  viewer: 'Visualizador',
-};
+import { roleLabels } from './menuOptions';
 
 export function OrgSwitcher() {
   const { organization, organizations, role, setActiveOrg } = useOrganization();

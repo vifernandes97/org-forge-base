@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import type { Stage } from '@/types';
@@ -11,6 +12,14 @@ interface StagePipelineProps {
 
 export function StagePipeline({ stages, currentStageId, onStageChange, disabled }: StagePipelineProps) {
   const currentIndex = stages.findIndex(s => s.id === currentStageId);
+  const currentRef = useRef<HTMLButtonElement>(null);
+
+  // On narrow screens the pipeline scrolls: keep the current stage centered in view.
+  useEffect(() => {
+    const btn = currentRef.current;
+    const viewport = btn?.closest<HTMLElement>('[data-radix-scroll-area-viewport]');
+    if (btn && viewport) viewport.scrollLeft = btn.offsetLeft - (viewport.clientWidth - btn.offsetWidth) / 2;
+  }, [currentStageId, stages.length]);
 
   return (
     <ScrollArea className="w-full">
@@ -23,6 +32,7 @@ export function StagePipeline({ stages, currentStageId, onStageChange, disabled 
           return (
             <button
               key={stage.id}
+              ref={isCurrent ? currentRef : undefined}
               disabled={disabled || isCurrent}
               onClick={() => onStageChange(stage.id)}
               className={cn(

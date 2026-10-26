@@ -24,6 +24,7 @@ import { Separator } from '@/components/ui/separator';
 import type { LeadFilters, CustomFieldDefinition } from '@/types';
 import { getLeadDisplay, getPrimaryContact } from '@/lib/leadDisplay';
 import { formatCnpj } from '@/lib/cnpj';
+import { cn } from '@/lib/utils';
 
 interface ListViewProps {
   funnelId: string;
@@ -187,7 +188,7 @@ export function ListView({ funnelId, filters }: ListViewProps) {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-2">
+      <div className={cn('flex items-center justify-between mb-2', selectedIds.length === 0 && 'max-md:hidden')}>
         {selectedIds.length > 0 && (
           <BulkActionsBar
             selectedIds={selectedIds}

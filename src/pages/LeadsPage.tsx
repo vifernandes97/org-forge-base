@@ -35,6 +35,7 @@ import {
   MoreHorizontal,
 } from 'lucide-react';
 import { ImportLeadsDialog } from '@/components/leads/import/ImportLeadsDialog';
+import { MobileFab } from '@/components/shared/MobileFab';
 import { getLeadsForExport, getCustomFieldValuesForLeads } from '@/services/leads';
 import { getActivitiesForLeads } from '@/services/activities';
 import { useStages } from '@/hooks/useStages';
@@ -146,16 +147,16 @@ export default function LeadsPage() {
     <TooltipProvider delayDuration={200}>
       <div className="space-y-4 min-w-0 w-full">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-2 sm:gap-3">
           {/* Title + funnel breadcrumb + counter */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-2xl font-bold tracking-tight">Negócios</h1>
+          <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+            <h1 className="shrink-0 text-xl font-bold tracking-tight sm:text-2xl">Negócios</h1>
             {!funnelsLoading && funnels && funnels.length > 0 && (
               <>
-                <span className="text-muted-foreground/50 mx-1">/</span>
+                <span className="text-muted-foreground/50 sm:mx-1">/</span>
                 <Select value={selectedFunnelId} onValueChange={setSelectedFunnelId}>
                   <SelectTrigger
-                    className="h-8 border-0 bg-transparent hover:bg-muted/60 px-2 text-sm font-medium gap-1 w-auto focus:ring-0 focus:ring-offset-0 [&>svg]:hidden"
+                    className="h-8 min-w-0 border-0 bg-transparent hover:bg-muted/60 px-2 text-sm font-medium gap-1 w-auto focus:ring-0 focus:ring-offset-0 [&>svg]:hidden"
                   >
                     <SelectValue placeholder="Selecionar funil" />
                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
@@ -171,7 +172,7 @@ export default function LeadsPage() {
           </div>
 
           {/* Right actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <ToggleGroup
               type="single"
               value={viewMode}
@@ -233,7 +234,7 @@ export default function LeadsPage() {
             )}
 
             {canCreate && (
-              <Button onClick={() => setCreateOpen(true)} size="sm">
+              <Button onClick={() => setCreateOpen(true)} size="sm" className="hidden md:inline-flex">
                 <Plus className="mr-1.5 h-4 w-4" />
                 Novo Negócio
               </Button>
@@ -292,6 +293,7 @@ export default function LeadsPage() {
           </div>
         )}
 
+        {canCreate && <MobileFab label="Novo negócio" onClick={() => setCreateOpen(true)} />}
         <LeadFormDialog open={createOpen} onOpenChange={setCreateOpen} defaultFunnelId={selectedFunnelId} />
         <ImportLeadsDialog
           open={importOpen}

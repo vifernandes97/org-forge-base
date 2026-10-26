@@ -178,7 +178,7 @@ export default function InboundWebhookEditPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/settings/inbound-webhooks')} aria-label="Voltar">
+        <Button variant="ghost" size="icon" onClick={() => navigate('/settings?tab=inbound-webhooks')} aria-label="Voltar">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-2xl font-bold">{isNew ? 'Novo Webhook de Entrada' : 'Editar Webhook'}</h1>
@@ -337,8 +337,8 @@ export default function InboundWebhookEditPage() {
                 {gi > 0 && <Separator className="my-4" />}
                 <p className="text-sm font-semibold text-muted-foreground">{g.title}</p>
                 {g.fields.map(f => (
-                  <div key={f.key} className="grid grid-cols-2 gap-3 items-center">
-                    <Label className="text-sm font-medium">{f.label} <span className="text-muted-foreground">({f.key})</span></Label>
+                  <div key={f.key} className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 sm:items-center sm:gap-3">
+                    <Label className="break-all text-sm font-medium">{f.label} <span className="text-muted-foreground">({f.key})</span></Label>
                     <Input
                       placeholder={f.placeholder}
                       value={fieldMapping[f.key] || ''}
@@ -353,8 +353,8 @@ export default function InboundWebhookEditPage() {
                 <Separator className="my-4" />
                 <p className="text-sm font-semibold text-muted-foreground">Campos Personalizados</p>
                 {activeCustomFields.map((cf: any) => (
-                  <div key={cf.id} className="grid grid-cols-2 gap-3 items-center">
-                    <Label className="text-sm font-medium">{cf.field_label} <span className="text-muted-foreground">({cf.field_name})</span></Label>
+                  <div key={cf.id} className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 sm:items-center sm:gap-3">
+                    <Label className="break-all text-sm font-medium">{cf.field_label} <span className="text-muted-foreground">({cf.field_name})</span></Label>
                     <Input
                       placeholder={`ex: ${cf.field_name}`}
                       value={customFieldMapping[cf.field_name] || ''}

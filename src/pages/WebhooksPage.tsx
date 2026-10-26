@@ -35,43 +35,43 @@ export default function WebhooksPage() {
       <h1 className="text-2xl font-bold">Webhooks</h1>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Disparados</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between gap-1 p-3 pb-1 sm:p-6 sm:pb-2">
+            <CardTitle className="text-xs font-medium leading-tight text-muted-foreground sm:text-sm">Total Disparados</CardTitle>
+            <Activity className="h-4 w-4 shrink-0 text-muted-foreground max-sm:hidden" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.total || 0}</div>
+          <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+            <div className="text-xl font-bold sm:text-2xl">{stats?.total || 0}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Taxa de Sucesso</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between gap-1 p-3 pb-1 sm:p-6 sm:pb-2">
+            <CardTitle className="text-xs font-medium leading-tight text-muted-foreground sm:text-sm">Taxa de Sucesso</CardTitle>
+            <TrendingUp className="h-4 w-4 shrink-0 text-muted-foreground max-sm:hidden" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.successRate || 0}%</div>
+          <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+            <div className="text-xl font-bold sm:text-2xl">{stats?.successRate || 0}%</div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Falhas (24h)</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between gap-1 p-3 pb-1 sm:p-6 sm:pb-2">
+            <CardTitle className="text-xs font-medium leading-tight text-muted-foreground sm:text-sm">Falhas (24h)</CardTitle>
+            <AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground max-sm:hidden" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">{stats?.failures24h || 0}</div>
+          <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+            <div className="text-xl font-bold sm:text-2xl text-destructive">{stats?.failures24h || 0}</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
         <Select
           value={filters.success === null || filters.success === undefined ? 'all' : String(filters.success)}
           onValueChange={v => setFilters(f => ({ ...f, success: v === 'all' ? null : v === 'true', page: 0 }))}
         >
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="sm:w-[160px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -85,7 +85,7 @@ export default function WebhooksPage() {
           value={filters.stageId || 'all'}
           onValueChange={v => setFilters(f => ({ ...f, stageId: v === 'all' ? null : v, page: 0 }))}
         >
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="sm:w-[200px]">
             <SelectValue placeholder="Etapa" />
           </SelectTrigger>
           <SelectContent>
@@ -100,7 +100,7 @@ export default function WebhooksPage() {
       {/* Table */}
       <Card>
         <CardContent className="p-0">
-          <Table>
+          <Table className="table-stack">
             <TableHeader>
               <TableRow>
                 <TableHead>Data/Hora</TableHead>
@@ -139,10 +139,10 @@ export default function WebhooksPage() {
                       {log.stages?.name || '—'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground" title={log.webhook_url}>
+                  <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground max-sm:order-last max-sm:w-full max-sm:max-w-full max-sm:text-xs" title={log.webhook_url}>
                     {log.webhook_url}
                   </TableCell>
-                  <TableCell className="text-sm">{log.response_status || '—'}</TableCell>
+                  <TableCell className="text-sm max-sm:text-xs" data-label="HTTP">{log.response_status || '—'}</TableCell>
                   <TableCell>
                     {log.success ? (
                       <CheckCircle2 className="h-4 w-4 text-emerald-500" />
@@ -150,8 +150,8 @@ export default function WebhooksPage() {
                       <XCircle className="h-4 w-4 text-destructive" />
                     )}
                   </TableCell>
-                  <TableCell className="text-sm">{log.attempt_number}/3</TableCell>
-                  <TableCell>
+                  <TableCell className="text-sm max-sm:text-xs" data-label="Tentativa">{log.attempt_number}/3</TableCell>
+                  <TableCell className="max-sm:ml-auto">
                     <Button variant="ghost" size="icon" onClick={() => setDetailLog(log)} aria-label="Ver detalhes">
                       <Eye className="h-4 w-4" />
                     </Button>
@@ -197,7 +197,7 @@ export default function WebhooksPage() {
           </DialogHeader>
           {detailLog && (
             <div className="space-y-4">
-              <div className="flex gap-4 text-sm">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                 <div><span className="font-medium">Status:</span> {detailLog.response_status || 'N/A'}</div>
                 <div><span className="font-medium">Tentativa:</span> {detailLog.attempt_number}/3</div>
                 <div>

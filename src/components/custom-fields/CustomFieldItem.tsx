@@ -46,7 +46,7 @@ export function CustomFieldItem({ field, canEdit }: CustomFieldItemProps) {
   return (
     <div ref={setNodeRef} style={style} className="flex items-center gap-3 rounded-lg border bg-card p-3">
       {canEdit && (
-        <button {...attributes} {...listeners} className="cursor-grab text-muted-foreground hover:text-foreground">
+        <button {...attributes} {...listeners} className="cursor-grab touch-none text-muted-foreground hover:text-foreground">
           <GripVertical className="h-4 w-4" />
         </button>
       )}

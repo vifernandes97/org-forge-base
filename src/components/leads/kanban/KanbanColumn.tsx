@@ -34,7 +34,7 @@ export function KanbanColumn({ stage, leads, onCardClick }: KanbanColumnProps) {
     <div
       ref={setNodeRef}
       className={cn(
-        'flex w-[296px] min-w-[296px] flex-col rounded-xl bg-muted/40 transition-colors',
+        'flex w-[calc(100vw-3.5rem)] min-w-[calc(100vw-3.5rem)] snap-start flex-col rounded-xl bg-muted/40 transition-colors sm:w-[296px] sm:min-w-[296px]',
         isOver && 'bg-primary/10 ring-2 ring-inset ring-primary/40',
       )}
     >
@@ -78,7 +78,8 @@ export function KanbanColumn({ stage, leads, onCardClick }: KanbanColumnProps) {
 
       {/* Cards */}
       <ScrollArea className="flex-1 px-2 pb-2 [&>[data-radix-scroll-area-viewport]>div]:!block">
-        <div className="min-h-[80px] w-full min-w-0 space-y-2 pt-0.5">
+        {/* pb on phones: room to scroll the last card out from under the floating "+" button */}
+        <div className="min-h-[80px] w-full min-w-0 space-y-2 pt-0.5 max-sm:pb-14">
           {leads.length === 0 ? (
             <div
               className={cn(

@@ -70,11 +70,11 @@ export function BulkActionsBar({ selectedIds, stages, onClear }: BulkActionsBarP
   };
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">
-      <span className="text-sm font-medium">{selectedIds.length} selecionado(s)</span>
+    <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border bg-muted/50 p-3 max-sm:grid max-sm:grid-cols-2 sm:w-auto sm:gap-3">
+      <span className="text-sm font-medium max-sm:col-span-2">{selectedIds.length} selecionado(s)</span>
 
       <Select onValueChange={handleMove}>
-        <SelectTrigger className="w-[180px] h-8">
+        <SelectTrigger className="h-8 w-full sm:w-[180px]">
           <ArrowRight className="h-3.5 w-3.5 mr-1" />
           <SelectValue placeholder="Mover para etapa" />
         </SelectTrigger>
@@ -91,7 +91,7 @@ export function BulkActionsBar({ selectedIds, stages, onClear }: BulkActionsBarP
       </Select>
 
       <Select onValueChange={handleAssign}>
-        <SelectTrigger className="w-[180px] h-8">
+        <SelectTrigger className="h-8 w-full sm:w-[180px]">
           <UserPlus className="h-3.5 w-3.5 mr-1" />
           <SelectValue placeholder="Atribuir" />
         </SelectTrigger>
@@ -109,7 +109,7 @@ export function BulkActionsBar({ selectedIds, stages, onClear }: BulkActionsBarP
       </Select>
 
       <Select onValueChange={handleArchive}>
-        <SelectTrigger className="w-[180px] h-8">
+        <SelectTrigger className="h-8 w-full sm:w-[180px]">
           <Archive className="h-3.5 w-3.5 mr-1" />
           <SelectValue placeholder="Arquivar" />
         </SelectTrigger>
