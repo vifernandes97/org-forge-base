@@ -16,9 +16,11 @@ interface Props {
   current?: { id: string; label: string; is_active: boolean } | null;
   onChange: (segmentId: string | null) => void;
   placeholder?: string;
+  /** Borderless trigger for inline field rows (deal modal). */
+  compact?: boolean;
 }
 
-export function SegmentCombobox({ value, current, onChange, placeholder = 'Selecione um segmento' }: Props) {
+export function SegmentCombobox({ value, current, onChange, placeholder = 'Selecione um segmento', compact }: Props) {
   const { data: segments } = useSegments();
   const { isOwner, isAdmin } = useOrganization();
   const addSegment = useAddSegment();
@@ -42,10 +44,10 @@ export function SegmentCombobox({ value, current, onChange, placeholder = 'Selec
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <div className="flex gap-1">
+      <div className="flex items-center gap-1">
         <PopoverTrigger asChild>
-          <Button variant="outline" role="combobox" type="button"
-            className={cn('w-full justify-between font-normal', !selected && 'text-muted-foreground')}>
+          <Button variant={compact ? 'ghost' : 'outline'} role="combobox" type="button"
+            className={cn('w-full justify-between font-normal', compact && 'h-7 px-1 -mx-1 hover:bg-accent/50', !selected && 'text-muted-foreground', !selected && compact && 'italic')}>
             <span className="truncate">
               {selected ? selected.label : placeholder}
               {selected && !selected.is_active && <span className="ml-1 text-xs text-muted-foreground">(inativo)</span>}
@@ -54,7 +56,7 @@ export function SegmentCombobox({ value, current, onChange, placeholder = 'Selec
           </Button>
         </PopoverTrigger>
         {value && (
-          <Button type="button" variant="ghost" size="icon" aria-label="Limpar segmento" onClick={() => onChange(null)}>
+          <Button type="button" variant="ghost" size="icon" className={cn(compact && 'h-7 w-7')} aria-label="Limpar segmento" onClick={() => onChange(null)}>
             <X className="h-4 w-4" />
           </Button>
         )}

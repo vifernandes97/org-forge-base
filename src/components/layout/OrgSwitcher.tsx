@@ -24,7 +24,7 @@ const roleLabels: Record<string, string> = {
 export function OrgSwitcher() {
   const { organization, organizations, role, setActiveOrg } = useOrganization();
   const { state, isMobile, setOpenMobile } = useSidebar();
-  const collapsed = state === 'collapsed';
+  const collapsed = state === 'collapsed' && !isMobile;
   const closeOnMobile = () => { if (isMobile) setOpenMobile(false); };
   const [createOpen, setCreateOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -39,12 +39,12 @@ export function OrgSwitcher() {
   const initial = organization?.name?.[0]?.toUpperCase() || 'C';
 
   return (
-    <div className="flex h-14 items-center border-b px-2">
+    <div className="flex h-14 items-center justify-center border-b px-2">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="h-10 w-full justify-start gap-2 px-2"
+            className={collapsed ? 'h-8 w-8 p-0' : 'h-10 w-full justify-start gap-2 px-2 text-left'}
             aria-label="Trocar de empresa"
           >
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">

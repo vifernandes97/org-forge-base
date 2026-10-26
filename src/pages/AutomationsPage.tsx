@@ -12,7 +12,7 @@ import {
   useUpdateStageTaskTemplate,
   useDeleteStageTaskTemplate,
 } from '@/hooks/useStageTaskTemplates';
-import { AutomationCard } from '@/components/automations/AutomationCard';
+import { AutomationsTable } from '@/components/automations/AutomationsTable';
 import { StageTaskTemplateDialog } from '@/components/automations/StageTaskTemplateDialog';
 import type { StageTaskTemplate } from '@/types';
 import {
@@ -103,9 +103,9 @@ export default function AutomationsPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2">
-          {[1, 2].map(i => (
-            <div key={i} className="h-36 rounded-xl border bg-muted/30 animate-pulse" />
+        <div className="space-y-2">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-14 rounded-lg border bg-muted/30 animate-pulse" />
           ))}
         </div>
       ) : !templates?.length ? (
@@ -195,26 +195,13 @@ function AutomationsList({
   const funnelMap = Object.fromEntries(funnels.map(f => [f.id, f]));
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {templates.map(t => {
-        const stage = t.stage_id ? stageMap[t.stage_id] : undefined;
-        const funnel = stage ? funnelMap[stage.funnel_id] : undefined;
-        const targetFunnel = t.target_funnel_id ? funnelMap[t.target_funnel_id] : undefined;
-        const targetStage = t.target_stage_id ? stageMap[t.target_stage_id] : undefined;
-        return (
-          <AutomationCard
-            key={t.id}
-            template={t}
-            stage={stage}
-            funnel={funnel}
-            targetFunnel={targetFunnel}
-            targetStage={targetStage}
-            onEdit={() => onEdit(t)}
-            onDelete={() => onDelete(t.id)}
-            onToggle={(active) => onToggle(t.id, active)}
-          />
-        );
-      })}
-    </div>
+    <AutomationsTable
+      templates={templates}
+      stageMap={stageMap}
+      funnelMap={funnelMap}
+      onEdit={onEdit}
+      onDelete={onDelete}
+      onToggle={onToggle}
+    />
   );
 }

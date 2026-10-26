@@ -24,6 +24,7 @@ import { useStages } from '@/hooks/useStages';
 import { InlineEditField } from './InlineEditField';
 import { CustomFieldInlineEdit } from './CustomFieldInlineEdit';
 import { StagePipeline } from './StagePipeline';
+import { DetailSection } from './DetailSection';
 
 import { LeadFormDialog } from './LeadFormDialog';
 import { MergeLeadsDialog } from './MergeLeadsDialog';
@@ -31,7 +32,7 @@ import { MoveToFunnelDialog } from './MoveToFunnelDialog';
 import { ArchiveReasonCombobox } from './ArchiveReasonCombobox';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Pencil, Trash2, Clock, AlertTriangle, Building2, Mail, Tag, User, DollarSign, FileText, Instagram, FileBadge, GitBranch } from 'lucide-react';
+import { Pencil, Trash2, Clock, AlertTriangle, Tag, User, DollarSign, FileText, GitBranch, Handshake, Star, StickyNote, ListChecks } from 'lucide-react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { differenceInHours, formatDistanceToNow } from 'date-fns';
@@ -237,6 +238,7 @@ export function LeadDetailSheet({ leadId: propLeadId, onClose }: LeadDetailSheet
   const slaExceeded = slaHours && hoursInStage > slaHours;
 
   const isArchived = !!typedLead?.archived_at;
+  const activeCustomFields = (customFields || []).filter(d => d.is_active);
 
   return (
     <TooltipProvider>
@@ -365,194 +367,176 @@ export function LeadDetailSheet({ leadId: propLeadId, onClose }: LeadDetailSheet
                 </div>
               )}
 
-              {/* Two-column Bitrix-style layout */}
-              <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-3">
-                {/* Left panel - Lead info */}
-                <div className="lg:col-span-1 border-r overflow-auto p-6 space-y-4">
-                  <LeadCompanyPanel lead={typedLead} readOnly={isArchived} onOpenLead={setOverrideLeadId} />
+              {/* Body: deal data cards (primary) + activity column (secondary) */}
+              <div className="flex-1 min-h-0 grid grid-cols-1 overflow-auto lg:overflow-hidden lg:grid-cols-[minmax(0,1fr)_400px] 2xl:grid-cols-[minmax(0,1fr)_460px]">
+                <div className="bg-muted/30 p-4 lg:overflow-auto lg:p-5">
+                  <div className="grid items-start gap-4 xl:grid-cols-2">
+                    <LeadCompanyPanel lead={typedLead} readOnly={isArchived} onOpenLead={setOverrideLeadId} className="contents" />
 
-                  <Separator />
-
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Negócio</p>
-                    <InlineEditField
-                      type="currency"
-                      label="Valor"
-                      value={Number(typedLead.value || 0)}
-                      icon={<DollarSign className="h-4 w-4" />}
-                      placeholder="Valor"
-                      onSave={(v) => handleInlineSave('value', v)}
-                    />
-                  </div>
-
-                  <Separator />
-
-                  {/* Assignment & details */}
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Detalhes</p>
-                    <InlineEditField
-                      type="select"
-                      label="Responsável"
-                      value={typedLead.assigned_to || ''}
-                      icon={<User className="h-4 w-4" />}
-                      placeholder="Sem responsável"
-                      options={(teamMembers || []).map((m: any) => ({
-                        value: m.user_id,
-                        label: m.profile?.full_name || m.profile?.email || 'Membro',
-                      }))}
-                      onSave={(v) => handleInlineSave('assigned_to', v)}
-                    />
-                    {typedLead.funnel && (
-                      <div className="flex items-center gap-3 text-sm">
-                        <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span>{typedLead.funnel.name}</span>
-                      </div>
-                    )}
-                    <InlineEditField
-                      type="text"
-                      label="Fonte"
-                      value={typedLead.source || ''}
-                      icon={<Tag className="h-4 w-4" />}
-                      placeholder="Adicionar fonte..."
-                      onSave={(v) => handleInlineSave('source', v)}
-                    />
-                    <InlineEditField
-                      type="select"
-                      label="Prioridade"
-                      value={typedLead.priority || 'medium'}
-                      icon={<AlertTriangle className="h-4 w-4" />}
-                      placeholder="Prioridade"
-                      options={[
-                        { value: 'low', label: 'Baixa' },
-                        { value: 'medium', label: 'Média' },
-                        { value: 'high', label: 'Alta' },
-                        { value: 'urgent', label: 'Urgente' },
-                      ]}
-                      onSave={(v) => handleInlineSave('priority', v)}
-                    />
-                    <InlineEditField
-                      type="select"
-                      label="Qualificação"
-                      value={String((typedLead as any).qualification || '')}
-                      icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>}
-                      placeholder="Qualificação"
-                      options={[
-                        { value: '1', label: '1 - Muito Baixa' },
-                        { value: '2', label: '2 - Baixa' },
-                        { value: '3', label: '3 - Média' },
-                        { value: '4', label: '4 - Alta' },
-                        { value: '5', label: '5 - Muito Alta' },
-                      ]}
-                      onSave={(v) => handleInlineSave('qualification', v)}
-                    />
-                  </div>
-
-                  {/* Tags */}
-                  {typedLead.tags?.length > 0 && (
-                    <>
-                      <Separator />
-                      <div>
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Tags</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {typedLead.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                    <DetailSection title="Negócio" icon={<Handshake className="h-3.5 w-3.5" />}>
+                      <InlineEditField
+                        type="currency"
+                        label="Valor"
+                        value={Number(typedLead.value || 0)}
+                        icon={<DollarSign className="h-4 w-4" />}
+                        placeholder="Valor"
+                        onSave={(v) => handleInlineSave('value', v)}
+                      />
+                      <InlineEditField
+                        type="select"
+                        label="Responsável"
+                        value={typedLead.assigned_to || ''}
+                        icon={<User className="h-4 w-4" />}
+                        placeholder="Sem responsável"
+                        options={(teamMembers || []).map((m: any) => ({
+                          value: m.user_id,
+                          label: m.profile?.full_name || m.profile?.email || 'Membro',
+                        }))}
+                        onSave={(v) => handleInlineSave('assigned_to', v)}
+                      />
+                      {typedLead.funnel && (
+                        <div className="flex items-center gap-3 py-0.5 text-sm">
+                          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="w-28 shrink-0 text-xs font-medium text-muted-foreground">Funil</span>
+                          <span className="truncate">{typedLead.funnel.name}</span>
                         </div>
+                      )}
+                      <div className="flex items-center gap-3 py-0.5 text-sm">
+                        <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="w-28 shrink-0 text-xs font-medium text-muted-foreground">Na etapa há</span>
+                        <span className={slaExceeded ? 'text-destructive font-medium' : ''}>
+                          {formatDistanceToNow(new Date(typedLead.stage_entered_at), { locale: ptBR })}
+                          {slaExceeded && ` (SLA: ${slaHours}h)`}
+                        </span>
                       </div>
-                    </>
-                  )}
+                      <InlineEditField
+                        type="text"
+                        label="Fonte"
+                        value={typedLead.source || ''}
+                        icon={<Tag className="h-4 w-4" />}
+                        placeholder="Adicionar fonte..."
+                        onSave={(v) => handleInlineSave('source', v)}
+                      />
+                      <InlineEditField
+                        type="select"
+                        label="Prioridade"
+                        value={typedLead.priority || 'medium'}
+                        icon={<AlertTriangle className="h-4 w-4" />}
+                        placeholder="Prioridade"
+                        options={[
+                          { value: 'low', label: 'Baixa' },
+                          { value: 'medium', label: 'Média' },
+                          { value: 'high', label: 'Alta' },
+                          { value: 'urgent', label: 'Urgente' },
+                        ]}
+                        onSave={(v) => handleInlineSave('priority', v)}
+                      />
+                      <InlineEditField
+                        type="select"
+                        label="Qualificação"
+                        value={String((typedLead as any).qualification || '')}
+                        icon={<Star className="h-4 w-4" />}
+                        placeholder="Qualificação"
+                        options={[
+                          { value: '1', label: '1 - Muito Baixa' },
+                          { value: '2', label: '2 - Baixa' },
+                          { value: '3', label: '3 - Média' },
+                          { value: '4', label: '4 - Alta' },
+                          { value: '5', label: '5 - Muito Alta' },
+                        ]}
+                        onSave={(v) => handleInlineSave('qualification', v)}
+                      />
+                      {typedLead.tags?.length > 0 && (
+                        <div className="flex items-start gap-3 pt-1 text-sm">
+                          <Tag className="mt-0.5 h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="w-28 shrink-0 text-xs font-medium text-muted-foreground">Tags</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {typedLead.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                          </div>
+                        </div>
+                      )}
+                    </DetailSection>
 
-                  {/* Time in stage */}
-                  <Separator />
-                  <div className="flex items-center gap-3 text-sm">
-                    <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className={slaExceeded ? 'text-destructive font-medium' : ''}>
-                      Na etapa há {formatDistanceToNow(new Date(typedLead.stage_entered_at), { locale: ptBR })}
-                      {slaExceeded && ` (SLA: ${slaHours}h)`}
-                    </span>
-                  </div>
+                    <DetailSection title="Notas" icon={<StickyNote className="h-3.5 w-3.5" />}>
+                      <InlineEditField
+                        type="textarea"
+                        value={typedLead.notes || ''}
+                        placeholder="Adicionar notas..."
+                        onSave={(v) => handleInlineSave('notes', v)}
+                      />
+                    </DetailSection>
 
-                  {/* Notes */}
-                  <Separator />
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Notas</p>
-                    <InlineEditField
-                      type="textarea"
-                      value={typedLead.notes || ''}
-                      placeholder="Adicionar notas..."
-                      onSave={(v) => handleInlineSave('notes', v)}
-                    />
-                  </div>
+                    {activeCustomFields.length > 0 && (
+                      <DetailSection title="Campos personalizados" icon={<ListChecks className="h-3.5 w-3.5" />} className="xl:col-span-2">
+                        <div className="grid gap-x-8 gap-y-1.5 xl:grid-cols-2">
+                          {activeCustomFields.map((def) => {
+                            const cfv = (typedLead.custom_field_values || []).find((v: any) => v.field_definition_id === def.id);
+                            const currentValue = cfv?.value || '';
+                            const fieldType = def.field_type;
 
-                  {/* Custom fields */}
-                  {customFields && customFields.filter(d => d.is_active).length > 0 && (
-                    <>
-                      <Separator />
-                      <div className="space-y-2">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Campos Personalizados</p>
-                        {customFields.filter(d => d.is_active).map((def) => {
-                          const cfv = (typedLead.custom_field_values || []).find((v: any) => v.field_definition_id === def.id);
-                          const currentValue = cfv?.value || '';
-                          const fieldType = def.field_type;
+                            if (fieldType === 'select' && Array.isArray(def.options)) {
+                              const opts = (def.options as any[]).map((o: any) =>
+                                typeof o === 'string' ? { value: o, label: o } : { value: o.value ?? o.label, label: o.label ?? o.value }
+                              );
+                              return (
+                                <InlineEditField
+                                  key={def.id}
+                                  type="select"
+                                  label={def.field_label}
+                                  value={currentValue}
+                                  options={opts}
+                                  icon={<Tag className="h-4 w-4" />}
+                                  placeholder={`Adicionar ${def.field_label.toLowerCase()}...`}
+                                  onSave={(v) => handleCustomFieldSave(def.id, v)}
+                                />
+                              );
+                            }
 
-                          if (fieldType === 'select' && Array.isArray(def.options)) {
-                            const opts = (def.options as any[]).map((o: any) =>
-                              typeof o === 'string' ? { value: o, label: o } : { value: o.value ?? o.label, label: o.label ?? o.value }
-                            );
+                            if (fieldType === 'multi_select' || fieldType === 'date' || fieldType === 'checkbox') {
+                              return (
+                                <CustomFieldInlineEdit
+                                  key={def.id}
+                                  def={def}
+                                  value={currentValue}
+                                  onSave={(v) => handleCustomFieldSave(def.id, v)}
+                                />
+                              );
+                            }
+
                             return (
                               <InlineEditField
                                 key={def.id}
-                                type="select"
+                                type="text"
                                 label={def.field_label}
                                 value={currentValue}
-                                options={opts}
                                 icon={<Tag className="h-4 w-4" />}
                                 placeholder={`Adicionar ${def.field_label.toLowerCase()}...`}
                                 onSave={(v) => handleCustomFieldSave(def.id, v)}
                               />
                             );
-                          }
-
-                          if (fieldType === 'multi_select' || fieldType === 'date' || fieldType === 'checkbox') {
-                            return (
-                              <CustomFieldInlineEdit
-                                key={def.id}
-                                def={def}
-                                value={currentValue}
-                                onSave={(v) => handleCustomFieldSave(def.id, v)}
-                              />
-                            );
-                          }
-
-                          return (
-                            <InlineEditField
-                              key={def.id}
-                              type="text"
-                              label={def.field_label}
-                              value={currentValue}
-                              icon={<Tag className="h-4 w-4" />}
-                              placeholder={`Adicionar ${def.field_label.toLowerCase()}...`}
-                              onSave={(v) => handleCustomFieldSave(def.id, v)}
-                            />
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
+                          })}
+                        </div>
+                      </DetailSection>
+                    )}
+                  </div>
                 </div>
 
-                {/* Right panel - Activities & Tasks */}
-                <div className="lg:col-span-2 overflow-hidden flex flex-col">
+                {/* Activities & Tasks */}
+                <aside className="flex min-h-[480px] flex-col overflow-hidden border-t lg:min-h-0 lg:border-l lg:border-t-0">
                   <Tabs defaultValue="activities" className="flex-1 flex flex-col overflow-hidden">
-                    <TabsList className="mx-6 mt-4 mb-2 justify-start shrink-0">
-                      <TabsTrigger value="activities">Atividades</TabsTrigger>
-                      <TabsTrigger value="tasks">Tarefas</TabsTrigger>
-                    </TabsList>
+                    <div className="flex h-12 shrink-0 items-center border-b px-4">
+                      <TabsList className="h-8">
+                        <TabsTrigger value="activities" className="text-xs">Atividades</TabsTrigger>
+                        <TabsTrigger value="tasks" className="text-xs">Tarefas</TabsTrigger>
+                      </TabsList>
+                    </div>
 
-                    <TabsContent value="activities" className="flex-1 overflow-auto px-6 py-4 space-y-4 m-0">
+                    <TabsContent value="activities" className="flex-1 overflow-auto p-4 space-y-4 m-0">
                       <QuickActivityForm leadId={typedLead.id} />
                       <ActivityTimeline leadId={typedLead.id} />
                     </TabsContent>
 
-                    <TabsContent value="tasks" className="flex-1 overflow-auto px-6 py-4 space-y-4 m-0">
+                    <TabsContent value="tasks" className="flex-1 overflow-auto p-4 space-y-4 m-0">
                       <div className="flex justify-end">
                         <Button size="sm" onClick={() => setTaskFormOpen(true)}>
                           <Plus className="h-4 w-4 mr-1" />Nova Tarefa
@@ -562,7 +546,7 @@ export function LeadDetailSheet({ leadId: propLeadId, onClose }: LeadDetailSheet
                       <TaskFormDialog open={taskFormOpen} onOpenChange={setTaskFormOpen} leadId={typedLead.id} />
                     </TabsContent>
                   </Tabs>
-                </div>
+                </aside>
               </div>
             </>
           )}

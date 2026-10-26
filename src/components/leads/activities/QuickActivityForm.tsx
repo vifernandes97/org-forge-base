@@ -73,7 +73,7 @@ export function QuickActivityForm({ leadId }: { leadId: string }) {
             variant={activeType === b.type ? 'default' : 'outline'}
             size="sm"
             onClick={() => setActiveType(activeType === b.type ? null : b.type)}
-            className="gap-1.5"
+            className="h-8 gap-1.5 px-2.5 text-xs"
           >
             <b.icon className="h-3.5 w-3.5" />
             {b.label}

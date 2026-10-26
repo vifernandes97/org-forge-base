@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -10,7 +9,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Building2, FileBadge, Hash, Instagram, Mail, MoreHorizontal, Plus, Star, Tag, Trash2, Pencil, Unlink, ArrowLeftRight, Merge, Phone } from 'lucide-react';
+import { Building2, FileBadge, Hash, Instagram, Mail, MoreHorizontal, Plus, Star, Tag, Trash2, Pencil, Unlink, ArrowLeftRight, Merge, Phone, Users, Briefcase } from 'lucide-react';
 import { toast } from 'sonner';
 import { InlineEditField } from '@/components/leads/InlineEditField';
 import { CompanyCombobox } from './CompanyCombobox';
@@ -18,6 +17,8 @@ import { CompanyFormDialog } from './CompanyFormDialog';
 import { ContactFormDialog } from './ContactFormDialog';
 import { SegmentCombobox } from './SegmentCombobox';
 import { StatusBadge } from '@/components/leads/StatusBadge';
+import { DetailSection } from '@/components/leads/DetailSection';
+import { cn } from '@/lib/utils';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import {
   useCompany, useCompanyCounts, useUpdateCompany, useMergeCompanies, useChangeLeadCompany,
@@ -36,9 +37,11 @@ interface Props {
   lead: LeadWithRelations;
   readOnly?: boolean;
   onOpenLead?: (leadId: string) => void;
+  /** Root class; pass `contents` to lay the section cards out in the parent's grid. */
+  className?: string;
 }
 
-export function LeadCompanyPanel({ lead, readOnly, onOpenLead }: Props) {
+export function LeadCompanyPanel({ lead, readOnly, onOpenLead, className }: Props) {
   const { isOwner, isAdmin } = useOrganization() as any;
   const companyId = lead.company_id;
   const { data: company } = useCompany(companyId);
@@ -114,12 +117,12 @@ export function LeadCompanyPanel({ lead, readOnly, onOpenLead }: Props) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className={cn('space-y-4', className)}>
       {/* Empresa */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Empresa</p>
-          {!readOnly && (
+      <DetailSection
+        title="Empresa"
+        icon={<Building2 className="h-3.5 w-3.5" />}
+        action={!readOnly && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Ações da empresa">
@@ -137,20 +140,20 @@ export function LeadCompanyPanel({ lead, readOnly, onOpenLead }: Props) {
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-          )}
-        </div>
+        )}
+      >
         {!company ? (
           <p className="text-sm text-muted-foreground">Sem empresa.</p>
         ) : (
           <>
             <InlineEditField type="text" label="Nome fantasia" value={company.trade_name}
               icon={<Building2 className="h-4 w-4" />} onSave={v => saveCompany('trade_name', v)} />
-            <div className="flex items-start gap-3 text-sm">
-              <Tag className="h-4 w-4 text-muted-foreground shrink-0 mt-2" />
+            <div className="flex items-center gap-3 text-sm">
+              <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="w-28 shrink-0 text-xs font-medium text-muted-foreground">Segmento</span>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-muted-foreground">Segmento</p>
                 {readOnly ? <span>{company.segment_ref?.label || '—'}{company.segment_ref && !company.segment_ref.is_active ? ' (inativo)' : ''}</span> : (
-                  <SegmentCombobox value={company.segment_id} current={company.segment_ref} onChange={v => saveCompany('segment_id', v)} placeholder="Adicionar segmento..." />
+                  <SegmentCombobox compact value={company.segment_id} current={company.segment_ref} onChange={v => saveCompany('segment_id', v)} placeholder="Adicionar segmento..." />
                 )}
               </div>
             </div>
@@ -160,9 +163,7 @@ export function LeadCompanyPanel({ lead, readOnly, onOpenLead }: Props) {
             <InlineEditField type="text" label="CNPJ" value={formatCnpj(company.cnpj)}
               icon={<Hash className="h-4 w-4" />} placeholder="Adicionar CNPJ..."
               onSave={v => saveCompany('cnpj', maskCnpj(v))} />
-            <div className="flex items-start gap-1">
-              <div className="flex-1 min-w-0">
-                <InlineEditField type="text" label="Instagram" value={company.instagram || ''}
+            <InlineEditField type="text" label="Instagram" value={company.instagram || ''}
                   icon={
                     company.instagram ? (
                       <a href={`https://instagram.com/${company.instagram.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '')}`}
@@ -173,22 +174,18 @@ export function LeadCompanyPanel({ lead, readOnly, onOpenLead }: Props) {
                     ) : <Instagram className="h-4 w-4" />
                   }
                   placeholder="Adicionar Instagram..." onSave={v => saveCompany('instagram', v)} />
-              </div>
-            </div>
             {leadsCount > 1 && (
-              <p className="text-[11px] text-muted-foreground">Alterações valem para os {leadsCount} negócios desta empresa.</p>
+              <p className="pt-1 text-[11px] text-muted-foreground">Alterações valem para os {leadsCount} negócios desta empresa.</p>
             )}
           </>
         )}
-      </div>
-
-      <Separator />
+      </DetailSection>
 
       {/* Contatos */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Contatos</p>
-          {!readOnly && company && (
+      <DetailSection
+        title={links.length > 1 ? `Contatos (${links.length})` : 'Contatos'}
+        icon={<Users className="h-3.5 w-3.5" />}
+        action={!readOnly && company && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-7 text-xs"><Plus className="mr-1 h-3.5 w-3.5" /> Adicionar</Button>
@@ -205,16 +202,16 @@ export function LeadCompanyPanel({ lead, readOnly, onOpenLead }: Props) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          )}
-        </div>
+        )}
+      >
         {!links.length && <p className="text-sm text-muted-foreground">Nenhum contato neste negócio.</p>}
         {links.map(({ contact, is_primary }) => {
           const c = contact!;
           const digits = (c.phone || '').replace(/\D/g, '');
           return (
-            <div key={c.id} className="rounded-md border p-2.5 space-y-1">
+            <div key={c.id} className="rounded-md bg-muted/40 p-3 space-y-1.5">
               <div className="flex items-center gap-2">
-                <span className="font-medium text-sm truncate flex-1">{c.name || '(sem nome)'}</span>
+                <span className="font-semibold text-sm truncate flex-1">{c.name || '(sem nome)'}</span>
                 {is_primary && <Badge variant="secondary" className="text-[10px]">Principal</Badge>}
                 {!readOnly && (
                   <DropdownMenu>
@@ -243,8 +240,8 @@ export function LeadCompanyPanel({ lead, readOnly, onOpenLead }: Props) {
                 )}
               </div>
               {c.phone && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Phone className="h-3.5 w-3.5" />
+                <div className="flex items-center gap-2 text-sm">
+                  <Phone className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="truncate">{c.phone}</span>
                   {digits && (
                     <a href={`https://wa.me/${digits}`} target="_blank" rel="noopener noreferrer"
@@ -255,20 +252,18 @@ export function LeadCompanyPanel({ lead, readOnly, onOpenLead }: Props) {
                 </div>
               )}
               {c.email && (
-                <a href={`mailto:${c.email}`} className="flex items-center gap-2 text-xs text-primary hover:underline truncate">
-                  <Mail className="h-3.5 w-3.5" /> {c.email}
+                <a href={`mailto:${c.email}`} className="flex items-center gap-2 text-sm text-primary hover:underline min-w-0">
+                  <Mail className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{c.email}</span>
                 </a>
               )}
             </div>
           );
         })}
-      </div>
+      </DetailSection>
 
       {otherLeads.length > 0 && (
-        <>
-          <Separator />
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Outros negócios desta empresa</p>
+        <DetailSection title="Outros negócios desta empresa" icon={<Briefcase className="h-3.5 w-3.5" />} className="order-last">
+          <div className="grid gap-2 sm:grid-cols-2">
             {otherLeads.map((l: any) => (
               <button key={l.id} type="button" onClick={() => onOpenLead?.(l.id)}
                 className="w-full text-left rounded-md border p-2 hover:bg-accent/50 transition-colors">
@@ -285,7 +280,7 @@ export function LeadCompanyPanel({ lead, readOnly, onOpenLead }: Props) {
               </button>
             ))}
           </div>
-        </>
+        </DetailSection>
       )}
 
       {/* Trocar empresa */}
