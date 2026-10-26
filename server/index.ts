@@ -7,7 +7,9 @@ app.use('/assets/*', serveStatic({ root: './dist' }));
 app.use('*', serveStatic({ root: './dist' }));
 app.get('*', serveStatic({ path: './dist/index.html' }));
 
-const port = Number(process.env.PORT ?? 3000);
+// Variável própria: o Easypanel injeta PORT=80 em todo app, e o domínio
+// aponta para a 3000.
+const port = Number(process.env.CRM_PORT ?? 3000);
 console.log(`crm no ar na porta ${port}`);
 
 export default { port, fetch: app.fetch };

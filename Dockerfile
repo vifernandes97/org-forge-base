@@ -9,7 +9,7 @@ RUN bun run build
 
 FROM oven/bun:1.4.4-slim
 WORKDIR /app
-ENV NODE_ENV=production PORT=3000
+ENV NODE_ENV=production CRM_PORT=3000
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production
 COPY server ./server
