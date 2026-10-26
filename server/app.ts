@@ -4,10 +4,12 @@ import { auth } from './auth.js';
 import { servico } from './servico.js';
 import { receberWebhook } from './webhook-entrada.js';
 import { enviarWebhook } from './webhook-saida.js';
+import { chavePublicaVapid, removerInscricao, salvarInscricao } from './notificacoes.js';
 
 // O app inteiro atrás de um domínio só (crm.neosoluti.com.br):
 //   /api/auth/*  Better Auth (login, sessão)
 //   /api/inbound-webhook, /api/fire-webhook  webhooks (server/webhook-*.ts)
+//   /api/push/*  Web Push: chave pública VAPID e inscrição do aparelho
 //   /rest/*      portão do PostgREST: confere a sessão e repassa com um JWT de
 //                60 s (HS256, segredo compartilhado só com o PostgREST, que não
 //                é exposto). Sem sessão, vai sem token e o PostgREST usa anon.
@@ -58,6 +60,27 @@ app.post('/api/fire-webhook', async (c) => {
   if (!etapa.data || etapa.data.webhook_url !== webhook_url) return c.json({ error: 'URL não é a do webhook desta etapa' }, 403);
 
   return c.json(await enviarWebhook({ webhook_url, payload, organization_id, stage_id, lead_id }));
+});
+
+app.get('/api/push/vapid-public-key', (c) => c.json({ key: chavePublicaVapid() }));
+
+app.post('/api/push/subscribe', async (c) => {
+  const sessao = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!sessao?.user) return c.json({ error: 'Não autenticado' }, 401);
+  try {
+    await salvarInscricao(sessao.user.id, await c.req.json(), c.req.header('user-agent') ?? null);
+    return c.json({ ok: true });
+  } catch (err) {
+    return c.json({ error: (err as Error).message }, 400);
+  }
+});
+
+app.post('/api/push/unsubscribe', async (c) => {
+  const sessao = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!sessao?.user) return c.json({ error: 'Não autenticado' }, 401);
+  const { endpoint } = (await c.req.json().catch(() => ({}))) as { endpoint?: string };
+  if (endpoint) await removerInscricao(sessao.user.id, endpoint);
+  return c.json({ ok: true });
 });
 
 app.all('/rest/*', async (c) => {

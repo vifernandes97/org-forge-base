@@ -7,6 +7,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, prefer-const -- portado verbatim, sem tipos do banco */
 import { servico as supabase } from "./servico.js";
 import { enviarWebhook } from "./webhook-saida.js";
+import { notificarNovoLead } from "./notificacoes.js";
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -684,6 +685,14 @@ export async function receberWebhook(req: Request, ipAddress: string | null): Pr
     }
 
     await logInbound(supabase, webhook, newLead.id, "created", rawPayload, mappedData, null, null, ipAddress, resolutionLog);
+
+    // Central de notificações + push: não segura a resposta ao formulário.
+    notificarNovoLead({
+      organizationId: webhook.organization_id,
+      leadId: newLead.id,
+      companyId: resolution.company_id ?? null,
+      contactName,
+    }).catch((e) => console.error("[push] notificarNovoLead", e));
 
     return new Response(
       JSON.stringify({ success: true, action: "created", lead_id: newLead.id }),

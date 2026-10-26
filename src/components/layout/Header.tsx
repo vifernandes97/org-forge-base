@@ -6,6 +6,7 @@ import { Check, LogOut, Monitor, Moon, Sun } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme, type ThemePreference } from '@/hooks/use-theme';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { NotificationBell } from './NotificationBell';
 
 const themeOptions: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
   { value: 'light', label: 'Claro', icon: Sun },
@@ -35,6 +36,8 @@ export function Header() {
       <SidebarTrigger />
 
       <div className="flex-1" />
+
+      <NotificationBell />
 
       {/* Theme */}
       <DropdownMenu>
