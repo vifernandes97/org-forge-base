@@ -7,10 +7,11 @@ interface DetailSectionProps {
   action?: ReactNode;
   children: ReactNode;
   className?: string;
+  bodyClassName?: string;
 }
 
 /** Card used to group fields in the deal detail modal. */
-export function DetailSection({ title, icon, action, children, className }: DetailSectionProps) {
+export function DetailSection({ title, icon, action, children, className, bodyClassName }: DetailSectionProps) {
   return (
     <section className={cn('rounded-lg border bg-card', className)}>
       <header className="flex h-10 items-center justify-between gap-2 border-b px-4">
@@ -20,7 +21,7 @@ export function DetailSection({ title, icon, action, children, className }: Deta
         </h3>
         {action}
       </header>
-      <div className="space-y-1.5 p-4">{children}</div>
+      <div className={cn('space-y-1.5 p-4', bodyClassName)}>{children}</div>
     </section>
   );
 }

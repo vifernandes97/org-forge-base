@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -36,11 +36,12 @@ interface Props {
   lead: LeadWithRelations;
   readOnly?: boolean;
   onOpenLead?: (leadId: string) => void;
-  /** Root class; pass `contents` to lay the section cards out in the parent's grid. */
-  className?: string;
+  /** Extra cards stacked under Empresa / Contatos (the two columns scroll as one but grow independently). */
+  companyColumn?: ReactNode;
+  contactsColumn?: ReactNode;
 }
 
-export function LeadCompanyPanel({ lead, readOnly, onOpenLead, className }: Props) {
+export function LeadCompanyPanel({ lead, readOnly, onOpenLead, companyColumn, contactsColumn }: Props) {
   const { isOwner, isAdmin } = useOrganization() as any;
   const companyId = lead.company_id;
   const { data: company } = useCompany(companyId);
@@ -116,152 +117,174 @@ export function LeadCompanyPanel({ lead, readOnly, onOpenLead, className }: Prop
   };
 
   return (
-    <div className={className ?? 'space-y-4'}>
-      {/* Empresa */}
-      <DetailSection
-        title="Empresa"
-        icon={<Building2 className="h-3.5 w-3.5" />}
-        action={!readOnly && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Ações da empresa">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setChangeOpen(true)}>
-                  <ArrowLeftRight className="mr-2 h-4 w-4" /> Trocar empresa
-                </DropdownMenuItem>
-                {(isOwner || isAdmin) && company && (
-                  <DropdownMenuItem onClick={() => setMergeOpen(true)}>
-                    <Merge className="mr-2 h-4 w-4" /> Mesclar com outra empresa
+    <div className="space-y-4">
+      <div className="grid items-start gap-4 xl:grid-cols-2">
+        <div className="space-y-4">
+          {/* Empresa */}
+          <DetailSection
+            title="Empresa"
+            icon={<Building2 className="h-3.5 w-3.5" />}
+            action={!readOnly && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Ações da empresa">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setChangeOpen(true)}>
+                    <ArrowLeftRight className="mr-2 h-4 w-4" /> Trocar empresa
                   </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-        )}
-      >
-        {!company ? (
-          <p className="text-sm text-muted-foreground">Sem empresa.</p>
-        ) : (
-          <>
-            <InlineEditField type="text" label="Nome fantasia" value={company.trade_name}
-              icon={<Building2 className="h-4 w-4" />} onSave={v => saveCompany('trade_name', v)} />
-            <div className="flex items-center gap-3 text-sm">
-              <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="w-28 shrink-0 text-xs font-medium text-muted-foreground">Segmento</span>
-              <div className="flex-1 min-w-0">
-                {readOnly ? <span>{company.segment_ref?.label || '—'}{company.segment_ref && !company.segment_ref.is_active ? ' (inativo)' : ''}</span> : (
-                  <SegmentCombobox compact value={company.segment_id} current={company.segment_ref} onChange={v => saveCompany('segment_id', v)} placeholder="Adicionar segmento..." />
-                )}
-              </div>
-            </div>
-            <InlineEditField type="text" label="Razão social" value={company.legal_name || ''}
-              icon={<FileBadge className="h-4 w-4" />} placeholder="Adicionar razão social..."
-              onSave={v => saveCompany('legal_name', v)} />
-            <InlineEditField type="text" label="CNPJ" value={formatCnpj(company.cnpj)}
-              icon={<Hash className="h-4 w-4" />} placeholder="Adicionar CNPJ..."
-              onSave={v => saveCompany('cnpj', maskCnpj(v))} />
-            <InlineEditField type="text" label="Instagram" value={company.instagram || ''}
-                  icon={
-                    company.instagram ? (
-                      <a href={`https://instagram.com/${company.instagram.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '')}`}
-                        target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                        className="text-primary" title="Abrir Instagram">
-                        <Instagram className="h-4 w-4" />
-                      </a>
-                    ) : <Instagram className="h-4 w-4" />
-                  }
-                  placeholder="Adicionar Instagram..." onSave={v => saveCompany('instagram', v)} />
-            {leadsCount > 1 && (
-              <p className="pt-1 text-[11px] text-muted-foreground">Alterações valem para os {leadsCount} negócios desta empresa.</p>
-            )}
-          </>
-        )}
-      </DetailSection>
-
-      {/* Contatos */}
-      <DetailSection
-        title={links.length > 1 ? `Contatos (${links.length})` : 'Contatos'}
-        icon={<Users className="h-3.5 w-3.5" />}
-        action={!readOnly && company && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 text-xs"><Plus className="mr-1 h-3.5 w-3.5" /> Adicionar</Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="max-w-[260px]">
-                {unlinked.map(c => (
-                  <DropdownMenuItem key={c.id}
-                    onClick={() => run(linkContact.mutateAsync({ leadId: lead.id, contactId: c.id }), 'Contato adicionado')}>
-                    <span className="truncate">{c.name || c.email || c.phone}</span>
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuItem onClick={() => setContactDialog({ open: true, contact: null })}>
-                  <Plus className="mr-2 h-4 w-4" /> Novo contato
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-        )}
-      >
-        {!links.length && <p className="text-sm text-muted-foreground">Nenhum contato neste negócio.</p>}
-        {links.map(({ contact, is_primary }) => {
-          const c = contact!;
-          const digits = (c.phone || '').replace(/\D/g, '');
-          return (
-            <div key={c.id} className="rounded-md bg-muted/40 p-3 space-y-1.5">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm truncate flex-1">{c.name || '(sem nome)'}</span>
-                {is_primary && <Badge variant="secondary" className="text-[10px]">Principal</Badge>}
-                {!readOnly && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Ações do contato">
-                        <MoreHorizontal className="h-3.5 w-3.5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {!is_primary && (
-                        <DropdownMenuItem onClick={() => run(setPrimary.mutateAsync({ leadId: lead.id, contactId: c.id }), 'Contato principal definido')}>
-                          <Star className="mr-2 h-4 w-4" /> Definir como principal
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem onClick={() => setContactDialog({ open: true, contact: c })}>
-                        <Pencil className="mr-2 h-4 w-4" /> Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => run(unlinkContact.mutateAsync({ leadId: lead.id, contactId: c.id }), 'Contato removido do negócio')}>
-                        <Unlink className="mr-2 h-4 w-4" /> Remover do negócio
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive" onClick={() => askDelete(c)}>
-                        <Trash2 className="mr-2 h-4 w-4" /> Excluir contato
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
-              {c.phone && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="truncate">{c.phone}</span>
-                  {digits && (
-                    <a href={`https://wa.me/${digits}`} target="_blank" rel="noopener noreferrer"
-                      className="text-green-600 hover:text-green-700" title="Abrir conversa no WhatsApp">
-                      <WhatsIcon />
-                    </a>
+                  {(isOwner || isAdmin) && company && (
+                    <DropdownMenuItem onClick={() => setMergeOpen(true)}>
+                      <Merge className="mr-2 h-4 w-4" /> Mesclar com outra empresa
+                    </DropdownMenuItem>
                   )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          >
+            {!company ? (
+              <p className="text-sm text-muted-foreground">Sem empresa.</p>
+            ) : (
+              <>
+                <InlineEditField type="text" label="Nome fantasia" value={company.trade_name}
+                  icon={<Building2 className="h-4 w-4" />} onSave={v => saveCompany('trade_name', v)} />
+                <div className="flex items-center gap-3 text-sm">
+                  <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="w-28 shrink-0 text-xs font-medium text-muted-foreground">Segmento</span>
+                  <div className="flex-1 min-w-0">
+                    {readOnly ? <span>{company.segment_ref?.label || '—'}{company.segment_ref && !company.segment_ref.is_active ? ' (inativo)' : ''}</span> : (
+                      <SegmentCombobox compact value={company.segment_id} current={company.segment_ref} onChange={v => saveCompany('segment_id', v)} placeholder="Adicionar segmento..." />
+                    )}
+                  </div>
                 </div>
-              )}
-              {c.email && (
-                <a href={`mailto:${c.email}`} className="flex items-center gap-2 text-sm text-primary hover:underline min-w-0">
-                  <Mail className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{c.email}</span>
-                </a>
-              )}
-            </div>
-          );
-        })}
-      </DetailSection>
+                <InlineEditField type="text" label="Razão social" value={company.legal_name || ''}
+                  icon={<FileBadge className="h-4 w-4" />} placeholder="Adicionar razão social..."
+                  onSave={v => saveCompany('legal_name', v)} />
+                <InlineEditField type="text" label="CNPJ" value={formatCnpj(company.cnpj)}
+                  icon={<Hash className="h-4 w-4" />} placeholder="Adicionar CNPJ..."
+                  onSave={v => saveCompany('cnpj', maskCnpj(v))} />
+                <InlineEditField type="text" label="Instagram" value={company.instagram || ''}
+                      icon={
+                        company.instagram ? (
+                          <a href={`https://instagram.com/${company.instagram.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '')}`}
+                            target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                            className="text-primary" title="Abrir Instagram">
+                            <Instagram className="h-4 w-4" />
+                          </a>
+                        ) : <Instagram className="h-4 w-4" />
+                      }
+                      placeholder="Adicionar Instagram..." onSave={v => saveCompany('instagram', v)} />
+                {leadsCount > 1 && (
+                  <p className="pt-1 text-[11px] text-muted-foreground">Alterações valem para os {leadsCount} negócios desta empresa.</p>
+                )}
+              </>
+            )}
+          </DetailSection>
+          {companyColumn}
+        </div>
+
+        <div className="space-y-4">
+          {/* Contatos */}
+          <DetailSection
+            bodyClassName="p-0"
+            title={links.length > 1 ? `Contatos (${links.length})` : 'Contatos'}
+            icon={<Users className="h-3.5 w-3.5" />}
+            action={!readOnly && company && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs"><Plus className="mr-1 h-3.5 w-3.5" /> Adicionar</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="max-w-[260px]">
+                  {unlinked.map(c => (
+                    <DropdownMenuItem key={c.id}
+                      onClick={() => run(linkContact.mutateAsync({ leadId: lead.id, contactId: c.id }), 'Contato adicionado')}>
+                      <span className="truncate">{c.name || c.email || c.phone}</span>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuItem onClick={() => setContactDialog({ open: true, contact: null })}>
+                    <Plus className="mr-2 h-4 w-4" /> Novo contato
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          >
+            {!links.length && <p className="p-4 text-sm text-muted-foreground">Nenhum contato neste negócio.</p>}
+            {links.length > 0 && (
+              <ul className="max-h-[296px] divide-y overflow-y-auto">
+                {links.map(({ contact, is_primary }) => {
+                  const c = contact!;
+                  const digits = (c.phone || '').replace(/\D/g, '');
+                  const initials = (c.name || c.email || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+                  return (
+                    <li key={c.id} className="flex items-start gap-3 px-4 py-2.5">
+                      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-muted-foreground">
+                        {initials}
+                      </div>
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate text-sm font-medium">{c.name || '(sem nome)'}</span>
+                          {is_primary && <Badge variant="secondary" className="h-5 shrink-0 px-1.5 text-[10px]">Principal</Badge>}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                          {c.phone && (
+                            <span className="flex items-center gap-1.5">
+                              <Phone className="h-3 w-3" />
+                              <span>{c.phone}</span>
+                              {digits && (
+                                <a href={`https://wa.me/${digits}`} target="_blank" rel="noopener noreferrer"
+                                  className="text-green-600 hover:text-green-700 [&_svg]:h-3.5 [&_svg]:w-3.5" title="Abrir conversa no WhatsApp">
+                                  <WhatsIcon />
+                                </a>
+                              )}
+                            </span>
+                          )}
+                          {c.email && (
+                            <a href={`mailto:${c.email}`} className="flex min-w-0 items-center gap-1.5 text-primary hover:underline">
+                              <Mail className="h-3 w-3 shrink-0" /> <span className="truncate">{c.email}</span>
+                            </a>
+                          )}
+                          {!c.phone && !c.email && <span className="italic">Sem telefone ou e-mail</span>}
+                        </div>
+                      </div>
+                      {!readOnly && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Ações do contato">
+                              <MoreHorizontal className="h-3.5 w-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {!is_primary && (
+                              <DropdownMenuItem onClick={() => run(setPrimary.mutateAsync({ leadId: lead.id, contactId: c.id }), 'Contato principal definido')}>
+                                <Star className="mr-2 h-4 w-4" /> Definir como principal
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onClick={() => setContactDialog({ open: true, contact: c })}>
+                              <Pencil className="mr-2 h-4 w-4" /> Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => run(unlinkContact.mutateAsync({ leadId: lead.id, contactId: c.id }), 'Contato removido do negócio')}>
+                              <Unlink className="mr-2 h-4 w-4" /> Remover do negócio
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => askDelete(c)}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Excluir contato
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </DetailSection>
+          {contactsColumn}
+        </div>
+      </div>
 
       {otherLeads.length > 0 && (
-        <DetailSection title="Outros negócios desta empresa" icon={<Briefcase className="h-3.5 w-3.5" />} className="order-last">
+        <DetailSection title="Outros negócios desta empresa" icon={<Briefcase className="h-3.5 w-3.5" />}>
           <div className="grid gap-2 sm:grid-cols-2">
             {otherLeads.map((l: any) => (
               <button key={l.id} type="button" onClick={() => onOpenLead?.(l.id)}

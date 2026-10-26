@@ -370,104 +370,110 @@ export function LeadDetailSheet({ leadId: propLeadId, onClose }: LeadDetailSheet
               {/* Body: deal data cards (primary) + activity column (secondary) */}
               <div className="flex-1 min-h-0 grid grid-cols-1 overflow-auto lg:overflow-hidden lg:grid-cols-[minmax(0,1fr)_400px] 2xl:grid-cols-[minmax(0,1fr)_460px]">
                 <div className="bg-muted/30 p-4 lg:overflow-auto lg:p-5">
-                  <div className="grid items-start gap-4 xl:grid-cols-2">
-                    <LeadCompanyPanel lead={typedLead} readOnly={isArchived} onOpenLead={setOverrideLeadId} className="contents" />
-
-                    <DetailSection title="Negócio" icon={<Handshake className="h-3.5 w-3.5" />}>
-                      <InlineEditField
-                        type="currency"
-                        label="Valor"
-                        value={Number(typedLead.value || 0)}
-                        icon={<DollarSign className="h-4 w-4" />}
-                        placeholder="Valor"
-                        onSave={(v) => handleInlineSave('value', v)}
-                      />
-                      <InlineEditField
-                        type="select"
-                        label="Responsável"
-                        value={typedLead.assigned_to || ''}
-                        icon={<User className="h-4 w-4" />}
-                        placeholder="Sem responsável"
-                        options={(teamMembers || []).map((m: any) => ({
-                          value: m.user_id,
-                          label: m.profile?.full_name || m.profile?.email || 'Membro',
-                        }))}
-                        onSave={(v) => handleInlineSave('assigned_to', v)}
-                      />
-                      {typedLead.funnel && (
-                        <div className="flex items-center gap-3 py-0.5 text-sm">
-                          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className="w-28 shrink-0 text-xs font-medium text-muted-foreground">Funil</span>
-                          <span className="truncate">{typedLead.funnel.name}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-3 py-0.5 text-sm">
-                        <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="w-28 shrink-0 text-xs font-medium text-muted-foreground">Na etapa há</span>
-                        <span className={slaExceeded ? 'text-destructive font-medium' : ''}>
-                          {formatDistanceToNow(new Date(typedLead.stage_entered_at), { locale: ptBR })}
-                          {slaExceeded && ` (SLA: ${slaHours}h)`}
-                        </span>
-                      </div>
-                      <InlineEditField
-                        type="text"
-                        label="Fonte"
-                        value={typedLead.source || ''}
-                        icon={<Tag className="h-4 w-4" />}
-                        placeholder="Adicionar fonte..."
-                        onSave={(v) => handleInlineSave('source', v)}
-                      />
-                      <InlineEditField
-                        type="select"
-                        label="Prioridade"
-                        value={typedLead.priority || 'medium'}
-                        icon={<AlertTriangle className="h-4 w-4" />}
-                        placeholder="Prioridade"
-                        options={[
-                          { value: 'low', label: 'Baixa' },
-                          { value: 'medium', label: 'Média' },
-                          { value: 'high', label: 'Alta' },
-                          { value: 'urgent', label: 'Urgente' },
-                        ]}
-                        onSave={(v) => handleInlineSave('priority', v)}
-                      />
-                      <InlineEditField
-                        type="select"
-                        label="Qualificação"
-                        value={String((typedLead as any).qualification || '')}
-                        icon={<Star className="h-4 w-4" />}
-                        placeholder="Qualificação"
-                        options={[
-                          { value: '1', label: '1 - Muito Baixa' },
-                          { value: '2', label: '2 - Baixa' },
-                          { value: '3', label: '3 - Média' },
-                          { value: '4', label: '4 - Alta' },
-                          { value: '5', label: '5 - Muito Alta' },
-                        ]}
-                        onSave={(v) => handleInlineSave('qualification', v)}
-                      />
-                      {typedLead.tags?.length > 0 && (
-                        <div className="flex items-start gap-3 pt-1 text-sm">
-                          <Tag className="mt-0.5 h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className="w-28 shrink-0 text-xs font-medium text-muted-foreground">Tags</span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {typedLead.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                  <div className="space-y-4">
+                    <LeadCompanyPanel
+                      lead={typedLead}
+                      readOnly={isArchived}
+                      onOpenLead={setOverrideLeadId}
+                      companyColumn={
+                        <DetailSection title="Negócio" icon={<Handshake className="h-3.5 w-3.5" />}>
+                          <InlineEditField
+                            type="currency"
+                            label="Valor"
+                            value={Number(typedLead.value || 0)}
+                            icon={<DollarSign className="h-4 w-4" />}
+                            placeholder="Valor"
+                            onSave={(v) => handleInlineSave('value', v)}
+                          />
+                          <InlineEditField
+                            type="select"
+                            label="Responsável"
+                            value={typedLead.assigned_to || ''}
+                            icon={<User className="h-4 w-4" />}
+                            placeholder="Sem responsável"
+                            options={(teamMembers || []).map((m: any) => ({
+                              value: m.user_id,
+                              label: m.profile?.full_name || m.profile?.email || 'Membro',
+                            }))}
+                            onSave={(v) => handleInlineSave('assigned_to', v)}
+                          />
+                          {typedLead.funnel && (
+                            <div className="flex items-center gap-3 py-0.5 text-sm">
+                              <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="w-28 shrink-0 text-xs font-medium text-muted-foreground">Funil</span>
+                              <span className="truncate">{typedLead.funnel.name}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-3 py-0.5 text-sm">
+                            <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="w-28 shrink-0 text-xs font-medium text-muted-foreground">Na etapa há</span>
+                            <span className={slaExceeded ? 'text-destructive font-medium' : ''}>
+                              {formatDistanceToNow(new Date(typedLead.stage_entered_at), { locale: ptBR })}
+                              {slaExceeded && ` (SLA: ${slaHours}h)`}
+                            </span>
                           </div>
-                        </div>
-                      )}
-                    </DetailSection>
-
-                    <DetailSection title="Notas" icon={<StickyNote className="h-3.5 w-3.5" />}>
-                      <InlineEditField
-                        type="textarea"
-                        value={typedLead.notes || ''}
-                        placeholder="Adicionar notas..."
-                        onSave={(v) => handleInlineSave('notes', v)}
-                      />
-                    </DetailSection>
+                          <InlineEditField
+                            type="text"
+                            label="Fonte"
+                            value={typedLead.source || ''}
+                            icon={<Tag className="h-4 w-4" />}
+                            placeholder="Adicionar fonte..."
+                            onSave={(v) => handleInlineSave('source', v)}
+                          />
+                          <InlineEditField
+                            type="select"
+                            label="Prioridade"
+                            value={typedLead.priority || 'medium'}
+                            icon={<AlertTriangle className="h-4 w-4" />}
+                            placeholder="Prioridade"
+                            options={[
+                              { value: 'low', label: 'Baixa' },
+                              { value: 'medium', label: 'Média' },
+                              { value: 'high', label: 'Alta' },
+                              { value: 'urgent', label: 'Urgente' },
+                            ]}
+                            onSave={(v) => handleInlineSave('priority', v)}
+                          />
+                          <InlineEditField
+                            type="select"
+                            label="Qualificação"
+                            value={String((typedLead as any).qualification || '')}
+                            icon={<Star className="h-4 w-4" />}
+                            placeholder="Qualificação"
+                            options={[
+                              { value: '1', label: '1 - Muito Baixa' },
+                              { value: '2', label: '2 - Baixa' },
+                              { value: '3', label: '3 - Média' },
+                              { value: '4', label: '4 - Alta' },
+                              { value: '5', label: '5 - Muito Alta' },
+                            ]}
+                            onSave={(v) => handleInlineSave('qualification', v)}
+                          />
+                          {typedLead.tags?.length > 0 && (
+                            <div className="flex items-start gap-3 pt-1 text-sm">
+                              <Tag className="mt-0.5 h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="w-28 shrink-0 text-xs font-medium text-muted-foreground">Tags</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {typedLead.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                              </div>
+                            </div>
+                          )}
+                        </DetailSection>
+                      }
+                      contactsColumn={
+                        <DetailSection title="Notas" icon={<StickyNote className="h-3.5 w-3.5" />}>
+                          <InlineEditField
+                            type="textarea"
+                            value={typedLead.notes || ''}
+                            placeholder="Adicionar notas..."
+                            onSave={(v) => handleInlineSave('notes', v)}
+                          />
+                        </DetailSection>
+                      }
+                    />
 
                     {activeCustomFields.length > 0 && (
-                      <DetailSection title="Campos personalizados" icon={<ListChecks className="h-3.5 w-3.5" />} className="xl:col-span-2">
+                      <DetailSection title="Campos personalizados" icon={<ListChecks className="h-3.5 w-3.5" />}>
                         <div className="grid gap-x-8 gap-y-1.5 xl:grid-cols-2">
                           {activeCustomFields.map((def) => {
                             const cfv = (typedLead.custom_field_values || []).find((v: any) => v.field_definition_id === def.id);
