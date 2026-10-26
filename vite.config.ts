@@ -5,7 +5,7 @@ import { componentTagger } from "lovable-tagger";
 
 // Em dev, /api/* roda as mesmas Functions da Vercel (pasta api/) dentro do
 // Vite: um processo só, sem a CLI da Vercel. Em produção, quem serve é a Vercel.
-const ROTAS: Array<[prefixo: string, arquivo: string]> = [["/api/auth/", "/api/auth/[...all].ts"]];
+const ROTAS: Array<[prefixo: string, arquivo: string]> = [["/api/auth/", "/api/auth.ts"]];
 
 function apiEmDev(): Plugin {
   return {
