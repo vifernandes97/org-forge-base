@@ -18,12 +18,16 @@ if [ "$(git rev-parse HEAD)" != "$(git rev-parse "origin/$BRANCH")" ]; then echo
 ALVO=$(git rev-parse HEAD)
 no_ar() { curl -s "$URL/health" | python3 -c "import json,sys; print(json.load(sys.stdin).get('commit') or '')" 2>/dev/null || true; }
 echo "deploy de ${ALVO:0:7} ($BRANCH); no ar agora: $(no_ar | cut -c1-7)"
-curl -fsS -X POST "$HOOK" -o /dev/null || curl -fsS "$HOOK" -o /dev/null
+disparar() { curl -fsS -X POST "$HOOK" -o /dev/null || curl -fsS "$HOOK" -o /dev/null; }
+disparar
 echo "webhook chamado; esperando a versão nova…"
 for i in $(seq 1 60); do
   sleep 10
   AGORA=$(no_ar)
   if [ "$AGORA" = "$ALVO" ]; then echo "no ar após ~$((i*10))s: ${ALVO:0:7}"; exit 0; fi
+  # Logo depois do push, o GitHub pode ainda informar o commit anterior ao
+  # Easypanel, que sobe a versão velha (2026-10-26). Uma segunda chamada resolve.
+  if [ "$i" = 18 ]; then echo "ainda ${AGORA:0:7} após 3 min; chamando o webhook de novo"; disparar; fi
 done
 echo "a versão nova não apareceu em 10 min (no ar: ${AGORA:-nada}). Logs: ssh vps 'docker service logs evolution_crm-app --tail 50'"
 exit 1
