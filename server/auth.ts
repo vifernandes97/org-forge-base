@@ -40,9 +40,9 @@ export const auth = betterAuth({
     },
   },
   session: {
-    // O portão /rest confere a sessão a cada consulta: o cookie assinado
-    // segura 1 min sem ir ao banco.
-    cookieCache: { enabled: true, maxAge: 60 },
+    // Sem cookieCache, de propósito: o portão /rest confere a sessão no banco
+    // a cada consulta, e sair (ou revogar) vale na hora — com o cache, um
+    // cookie antigo seguia lendo por até 1 min depois do logout.
     fields: {
       expiresAt: 'expires_at',
       createdAt: 'created_at',
