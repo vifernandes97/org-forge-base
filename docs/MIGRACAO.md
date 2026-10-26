@@ -37,6 +37,28 @@ Navegador ──► crm.neosoluti.com.br (Traefik/Easypanel) ──► app (Bun,
 - **Testado localmente (Postgres 18.6 + PostgREST 16.5 + container do app):**
   cadastro, onboarding, funil, negócio com empresa nova, arrastar card
   (gravado + `stage_change`), isolamento entre organizações, convite anônimo.
+- **No ar (2026-10-26):** serviços `crm-db` (postgres:18), `crm-rest`
+  (postgrest:v16.5) e `crm-app` (GitHub, branch `migracao-vps`, Dockerfile)
+  **dentro do projeto `evolution` do Easypanel** — o plano permite 3
+  projetos e os 3 estavam ocupados; dividem a rede interna com a Evolution
+  (banco sem porta exposta). Nomes internos: `crm-db`, `crm-rest`.
+  `PORT=80` é injetado pelo Easypanel; o app escuta em `CRM_PORT` (3000).
+
+### Operação
+
+- **Deploy:** `scripts/deploy.sh` (webhook do Easypanel em
+  `CRM_DEPLOY_WEBHOOK`, no `.env.local`). Só termina quando o `/health`
+  mostra o commit enviado (`GIT_SHA` do Easypanel). Exige o commit no GitHub.
+- **Banco de produção:** `scripts/tunel-db.sh abrir|fechar` — ponte socat na
+  rede interna, só em 127.0.0.1 da VPS, mais túnel SSH; a URL do dono vai
+  para um arquivo 600 fora do repo. Fechar sempre depois.
+- **Segredos:** app no File mount `/app/secrets.env` (crm-app); PostgREST na
+  aba Environment do crm-rest (imagem pronta, sem build, nada vaza em log).
+- **Logout vale na hora:** sem `cookieCache` no Better Auth; com ele, o
+  cookie de antes do logout seguia lendo por 60 s.
+- **Testado em produção:** cadastro, RPCs de organização e funil, embed,
+  contagem, isolamento entre organizações, convite anônimo, logout. Dados
+  de teste removidos; banco zerado à espera do export.
 - **Bug anterior à migração:** `get_team_ranking` falha com
   `column reference "user_id" is ambiguous` (RETURNS TABLE com `user_id` e
   `WHERE user_id = auth.uid()` sem qualificar). Conferir no export se a
