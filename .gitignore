@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# segredos locais (DATABASE_URL etc.) — o .env versionado só tem chaves públicas
+.env*.local
