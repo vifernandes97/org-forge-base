@@ -8,14 +8,29 @@ import { authPool } from './db.js';
 // papel app_auth_svc), fora do que a Data API expõe. O JWT que sai daqui é o que a
 // Data API valida pelo JWKS: sub = id do usuário = auth.uid() nas policies.
 
-const baseURL = process.env.BETTER_AUTH_URL;
+// Só a origem (esquema + host): barra final, espaço ou caminho no valor da
+// env viram "Invalid origin" no Better Auth.
+const origem = (valor?: string) => {
+  const v = valor?.trim();
+  if (!v) return undefined;
+  try {
+    return new URL(v.includes('://') ? v : `https://${v}`).origin;
+  } catch {
+    return undefined;
+  }
+};
+
+const baseURL = origem(process.env.BETTER_AUTH_URL);
 
 export const auth = betterAuth({
   baseURL,
   secret: process.env.BETTER_AUTH_SECRET,
   basePath: '/api/auth',
   database: authPool(),
-  trustedOrigins: [baseURL, process.env.APP_DEV_ORIGIN].filter(Boolean) as string[],
+  // O domínio de produção vem também da própria Vercel (variável de sistema).
+  trustedOrigins: [baseURL, origem(process.env.VERCEL_PROJECT_PRODUCTION_URL), origem(process.env.APP_DEV_ORIGIN)].filter(
+    Boolean,
+  ) as string[],
   advanced: {
     database: { generateId: 'uuid' },
   },
