@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 // entra pelo servidor (/api/ai), que testa, cifra e nunca a devolve; o resto
 // é PostgREST (ai_credentials sem a chave, org_ai_settings, usage_events).
 
-export type AiProvider = 'groq' | 'openai' | 'openai_compatible';
+export type AiProvider = 'groq' | 'openai' | 'openai_compatible' | 'anthropic' | 'google';
 
 export interface AiCredential {
   id: string;
@@ -27,7 +27,41 @@ export interface OrgAiSettings {
   transcription_fallback_credential_id: string | null;
   transcription_fallback_model: string | null;
   transcription_language: string;
+  analysis_enabled: boolean;
+  analysis_credential_id: string | null;
+  analysis_model: string | null;
+  analysis_fallback_credential_id: string | null;
+  analysis_fallback_model: string | null;
+  autonomy: 'auto' | 'suggest';
+  stage_min_confidence: number;
+  stage_back_min_confidence: number;
+  create_leads: boolean;
+  instructions: string | null;
 }
+
+export interface AiModel {
+  id: string;
+  nome: string;
+  visao: boolean | null;
+  estruturada: boolean | null;
+  contexto: number | null;
+}
+
+export interface AnalysisAction {
+  type: 'note' | 'stage_change' | 'task' | 'field_update' | 'create_lead' | 'classify';
+  payload: Record<string, any>;
+  confidence: number | null;
+  state: 'applied' | 'pending' | 'skipped';
+  reason: string | null;
+}
+
+export type TestAnalysisResult = {
+  chat: { id: string; push_name: string | null; phone_digits: string | null };
+  resultado:
+    | { status: 'skipped'; motivo: string }
+    | { status: 'error'; erro: string }
+    | { status: 'done'; decisao: { comercial: boolean; resumo: string }; acoes: AnalysisAction[]; modelo: string; provedor: string; tokensEntrada: number | null; tokensSaida: number | null; mensagens: number };
+};
 
 export async function getAiCredentials(orgId: string): Promise<AiCredential[]> {
   const { data, error } = await supabase
@@ -78,9 +112,12 @@ async function api<T>(method: string, path: string, body?: unknown): Promise<T> 
 }
 
 export const createAiCredential = (payload: { organization_id: string; provider: AiProvider; label: string; base_url?: string | null; api_key: string }) =>
-  api<{ id: string; models: string[] }>('POST', '/credentials', payload);
+  api<{ id: string; models: number }>('POST', '/credentials', payload);
 
-export const getCredentialModels = (id: string, task?: 'transcription') =>
-  api<{ models: string[] }>('GET', `/credentials/${id}/models${task ? `?task=${task}` : ''}`);
+export const getCredentialModels = (id: string, task: 'transcription' | 'analysis') =>
+  api<{ models: AiModel[] }>('GET', `/credentials/${id}/models?task=${task}`);
+
+export const testAnalysis = (organization_id: string) =>
+  api<TestAnalysisResult>('POST', '/test-analysis', { organization_id });
 
 export const deleteAiCredential = (id: string) => api<{ ok: true }>('DELETE', `/credentials/${id}`);

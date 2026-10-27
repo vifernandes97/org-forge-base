@@ -2,6 +2,7 @@ import { servicePool } from '../db.js';
 import { FILAS, fila } from './fila.js';
 import { armazenamento } from './midia/armazenamento.js';
 import { TIPOS_COM_MIDIA, type RefMensagem } from './midia/jobs.js';
+import { agendarAnalise } from '../ia/analise/agendar.js';
 import type { ConexaoAtualizada, MensagemNormalizada } from './nucleo/tipos.js';
 import { provedor, provedorExiste } from './provedores/index.js';
 
@@ -76,6 +77,7 @@ export async function receberWebhookCanal(providerName: string, token: string, r
 
   const eventos = provedor(providerName).parseWebhook(corpo);
   const vincular = new Set<string>();
+  const analisar = new Set<string>();
   const midias: { ref: RefMensagem; tipo: string }[] = [];
   let novas = 0;
   for (const e of eventos) {
@@ -90,6 +92,7 @@ export async function receberWebhookCanal(providerName: string, token: string, r
     // pode ter sido cadastrado no CRM depois). Vinculada: a Fase 3 analisa.
     if (r.status === 'pending' || r.status === 'unmatched') vincular.add(r.chatId);
     if (TIPOS_COM_MIDIA.includes(e.type)) midias.push({ ref: r.ref, tipo: e.type });
+    analisar.add(r.chatId);
   }
 
   if (novas) {
@@ -111,5 +114,7 @@ export async function receberWebhookCanal(providerName: string, token: string, r
         guardar ? b.send(FILAS.baixarMidia, ref) : tipo === 'audio' ? b.send(FILAS.transcreverAudio, ref) : null),
     ]);
   }
+  // Depois do vínculo e das mídias: a análise roda minutos depois (debounce).
+  for (const chatId of analisar) await agendarAnalise(chatId);
   return Response.json({ ok: true, events: eventos.length, stored: novas });
 }

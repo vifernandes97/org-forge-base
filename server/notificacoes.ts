@@ -47,8 +47,23 @@ export async function notificarNovoLead({ organizationId, leadId, companyId, con
   const userIds: string[] = (membros.data || []).map((m: { user_id: string }) => m.user_id);
   if (!userIds.length) return;
 
+  await notificar({ organizationId, userIds, type: 'new_lead', title, body, leadId });
+}
+
+interface Notificacao {
+  organizationId: string;
+  userIds: string[];
+  type: string;
+  title: string;
+  body: string | null;
+  leadId: string | null;
+}
+
+/** Grava na central de cada destinatário e manda push para os aparelhos inscritos. */
+export async function notificar({ organizationId, userIds, type, title, body, leadId }: Notificacao) {
+  if (!userIds.length) return;
   await servico.from('notifications').insert(
-    userIds.map(user_id => ({ organization_id: organizationId, user_id, type: 'new_lead', title, body, lead_id: leadId })),
+    userIds.map(user_id => ({ organization_id: organizationId, user_id, type, title, body, lead_id: leadId })),
   );
 
   if (!vapid()) return;
@@ -60,8 +75,8 @@ export async function notificarNovoLead({ organizationId, leadId, companyId, con
   const payload = JSON.stringify({
     title,
     body,
-    tag: `lead-${leadId}`,
-    url: `/leads?lead=${leadId}`,
+    tag: leadId ? `lead-${leadId}` : type,
+    url: leadId ? `/leads?lead=${leadId}` : '/',
   });
 
   await Promise.all((inscricoes || []).map(async (s: { id: string; endpoint: string; p256dh: string; auth: string }) => {

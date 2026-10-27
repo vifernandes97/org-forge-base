@@ -1,15 +1,19 @@
 import { servicePool } from '../db.js';
 import { decifrar } from '../canais/cifra.js';
+import { provedorLlm } from './llm/index.js';
+import type { ModeloInfo } from './llm/tipos.js';
 
 // Credenciais de IA da organização (db/61_ia.sql). Transcrição usa a API de
 // áudio no formato da OpenAI, que Groq, OpenAI e os "compatíveis" falam igual;
-// Anthropic e Google entram na Fase 3, para análise.
+// a análise das conversas usa qualquer provedor (server/ia/llm).
 
 export type ProvedorIa = 'groq' | 'openai' | 'openai_compatible' | 'anthropic' | 'google';
 
 export const URL_PADRAO: Partial<Record<ProvedorIa, string>> = {
   groq: 'https://api.groq.com/openai/v1',
   openai: 'https://api.openai.com/v1',
+  anthropic: 'https://api.anthropic.com',
+  google: 'https://generativelanguage.googleapis.com/v1beta',
 };
 
 /** Provedores com transcrição (endpoint /audio/transcriptions). */
@@ -46,12 +50,8 @@ export async function credencial(id: string): Promise<Credencial> {
 export const esquecerCredencial = (id: string) => cache.delete(id);
 
 /** Lista os modelos que a chave enxerga (testa a chave de quebra). */
-export async function listarModelos(provider: ProvedorIa, baseUrl: string, apiKey: string): Promise<string[]> {
-  if (!TRANSCREVEM.includes(provider)) throw new Error('Provedor ainda não suportado (chega na Fase 3)');
-  const res = await fetch(`${baseUrl}/models`, { headers: { authorization: `Bearer ${apiKey}` }, signal: AbortSignal.timeout(15_000) });
-  const corpo = await res.json().catch(() => null) as { data?: { id: string }[]; error?: { message?: string } } | null;
-  if (!res.ok) throw new Error(corpo?.error?.message || `O provedor recusou a chave (HTTP ${res.status})`);
-  return (corpo?.data ?? []).map((m) => m.id).sort();
+export async function listarModelos(provider: ProvedorIa, baseUrl: string, apiKey: string): Promise<ModeloInfo[]> {
+  return provedorLlm(provider).listarModelos({ id: `teste-${provider}`, organizationId: '', provider, baseUrl, apiKey });
 }
 
 /** Modelos de transcrição entre os que a chave lista (whisper, *transcribe*). */

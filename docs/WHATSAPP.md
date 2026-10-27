@@ -3,7 +3,8 @@
 > Proposta aberta em 2026-10-27, revista no mesmo dia para **escala**.
 > **Fase 1 (fundação) em produção desde 2026-10-27** (instância Oniplataforma,
 > organização Oniplataforma). **Fase 2 (mídia e transcrição) implementada em
-> 2026-10-27** — seção 12.
+> 2026-10-27** — seção 12. **Fase 3 (inteligência) implementada em
+> 2026-10-27** — seção 13.
 >
 > Decisões do dono (2026-10-27): **fase muda sozinha** quando a IA tiver
 > confiança alta; transcrição **no menor custo possível, fora da máquina
@@ -97,11 +98,12 @@ interface LlmProvider {                 // anthropic, openai, google, openai-com
 interface MediaStore  { put; getSignedUrl; delete }   // disco local → S3/R2/MinIO
 ```
 
-LLM: **Vercel AI SDK** (`ai` + `@ai-sdk/anthropic`, `@ai-sdk/openai`,
-`@ai-sdk/google`, `@ai-sdk/openai-compatible`). Uma chamada só
-(`generateObject` com o schema zod) funciona em todos, com imagem e saída
-estruturada. O `openai-compatible` cobre OpenRouter, Groq, DeepSeek e um
-Ollama na VPS só com URL base + chave.
+LLM (`server/ia/llm/`): um adaptador por API — Anthropic pelo SDK oficial
+(`@anthropic-ai/sdk`, saída estruturada + cache do prompt de sistema),
+OpenAI/Groq/compatíveis por `/chat/completions` com `json_schema` (cai para
+`json_object` quando o modelo não aceita), Google por `generateContent` com
+`responseJsonSchema`. Todos devolvem o mesmo objeto, validado pelo mesmo
+schema zod (`server/ia/analise/decisao.ts`).
 
 Transcrição em cadeia, por custo: **Groq `whisper-large-v3-turbo` grátis**
 (~8 h de áudio/dia, segundo fontes de terceiros — conferir no console) →
@@ -316,3 +318,54 @@ Produção:
   `MEDIA_DIR=/app/data/midia` no `secrets.env`.
 - Cadastrar a chave da Groq em Configurações → Inteligência Artificial e
   escolher `whisper-large-v3-turbo` como principal.
+
+## 13. Fase 3 — inteligência
+
+Feito:
+- `db/62_ia_analise.sql`: modelo de análise (principal + reserva) e política
+  em `org_ai_settings`; `ai_analyses` (cada chamada: entrada resumida,
+  decisão, modelo, tokens, erro) e `ai_actions` (o que foi proposto, o
+  estado — `applied`/`pending`/`skipped` com motivo — e antes/depois);
+  `channel_chats.pending_since`/`last_analysis_at`.
+- Debounce por conversa (`server/ia/analise/agendar.ts`): cada mensagem
+  reagenda a análise para 3 min depois; teto de 15 min; fila `stately`
+  (no máximo uma análise na fila e uma rodando por conversa). Espera os
+  áudios do lote virarem texto (até 10 min). Conversa marcada como não
+  comercial: reavaliada no máximo 1×/dia.
+- Análise (`server/ia/analise/`): contexto com o negócio vinculado (ou os
+  negócios abertos do contato), etapas do funil, últimas atividades,
+  tarefas abertas, 15 mensagens anteriores e até 80 novas; imagens do lote
+  (até 4) vão para a IA quando o modelo lê imagem. Saída validada pelo zod.
+  Principal falhou → reserva. Recusa ou erro de configuração não entram
+  em loop: ficam registrados e o lote é reavaliado na próxima mensagem.
+- Política (`aplicar.ts`): resumo na linha do tempo (atividade `whatsapp`);
+  mudança de etapa só no mesmo funil, com confiança mínima configurável
+  (80% para avançar, 90% para voltar), pelo mesmo caminho do Kanban
+  (`server/negocios/etapa.ts`: atividade, SLA, webhook da etapa; gatilhos
+  do banco fazem tarefas/automações da etapa); até 3 tarefas sem repetir as
+  abertas; valor quando cotado explicitamente; número desconhecido →
+  negócio novo por `resolve_company_contact` (regra do AGENTS.md) ou conversa
+  ignorada se não comercial. Notificação (central + push) quando a IA muda
+  a etapa ou cria negócio.
+- Configurações → Inteligência Artificial: Anthropic e Google entram como
+  provedores; card "Análise das conversas" com modelo principal/reserva
+  (lista da própria chave, indicando quais leem imagem), confiança mínima,
+  criar negócio de desconhecido, instruções da empresa para a IA, e
+  **Testar com a conversa mais recente** (roda a IA e mostra o que faria,
+  sem gravar).
+- Anthropic: `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`)
+  nos modelos que aceitam (Claude Fable 5.1, Opus 5.5, Opus 5, Sonnet 5.5):
+  numa recusa de segurança o próprio servidor tenta outro modelo. Chave e
+  host sempre os da credencial (o SDK leria `ANTHROPIC_BASE_URL` e
+  `ANTHROPIC_AUTH_TOKEN` do ambiente).
+
+Ficou para a Fase 4: autonomia "só sugerir" (a política já grava `pending`,
+falta a tela de aprovar e o desfazer), aba WhatsApp no negócio, catálogo de
+modelos com preço estimado (hoje a lista vem ao vivo da chave, sem preço).
+
+Testado no dev com provedor falso: teste a seco pela tela (com imagem),
+fechamento → resumo + etapa (93%) + valor + tarefa + automação da etapa +
+notificação; "talvez" → só resumo (55% < 80%); número desconhecido pedindo
+orçamento → negócio novo com empresa e contato; conversa pessoal →
+ignorada. Adaptadores Anthropic/Google/OpenAI com `fetch` interceptado
+(schema, cache, imagem, fallback, recusa, queda para `json_object`).

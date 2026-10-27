@@ -3,6 +3,8 @@ import { FILAS, fila } from './canais/fila.js';
 import { vincularConversa } from './canais/identificacao/vincular.js';
 import { baixarMidia, transcreverAudio, type RefMensagem } from './canais/midia/jobs.js';
 import { armazenamento } from './canais/midia/armazenamento.js';
+import { analisarConversa } from './ia/analise/analisar.js';
+import { agendarAnalise } from './ia/analise/agendar.js';
 import { provedor } from './canais/provedores/index.js';
 import { servidor, servidorDaPlataforma } from './canais/servidores.js';
 
@@ -61,6 +63,16 @@ export async function iniciarWorker() {
   // Um por vez por worker: o limite do provedor é da organização inteira.
   await b.work<RefMensagem>(FILAS.transcreverAudio, { batchSize: 1, localConcurrency: Number(process.env.TRANSCRIPTION_CONCURRENCY ?? 1) }, async ([job]) => {
     await transcreverAudio(job.data);
+  });
+
+  await b.work<{ chatId: string }>(FILAS.analisarConversa, { batchSize: 1, localConcurrency: Number(process.env.ANALYSIS_CONCURRENCY ?? 2) }, async ([job]) => {
+    const r = await analisarConversa(job.data.chatId);
+    if (r.status === 'skipped' && r.reagendarEm) await agendarAnalise(job.data.chatId, r.reagendarEm);
+    else if (r.status === 'done') {
+      // Chegou mensagem enquanto a IA pensava: o lote seguinte já entra no debounce.
+      const { rows } = await servicePool().query(`select 1 from channel_chats where id = $1 and pending_since is not null`, [job.data.chatId]);
+      if (rows.length) await agendarAnalise(job.data.chatId);
+    }
   });
 
   await b.work(FILAS.manutencao, manutencao);

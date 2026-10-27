@@ -11,6 +11,8 @@ export const FILAS = {
   baixarMidia: 'canais.midia.baixar',
   /** Transcreve um áudio. Limite de taxa do provedor → volta para a fila com espera. */
   transcreverAudio: 'canais.audio.transcrever',
+  /** Analisa o lote novo de uma conversa (debounce por conversa; um por vez por conversa). */
+  analisarConversa: 'canais.chat.analisar',
   /** Cron: partições de mensagens. */
   manutencao: 'canais.manutencao',
   /** Cron: status das conexões na Evolution. */
@@ -42,6 +44,8 @@ export function fila(): Promise<PgBoss> {
       b.createQueue(FILAS.baixarMidia, { retryLimit: 5, retryDelay: 10, retryBackoff: true, expireInSeconds: 120 }),
       // Groq grátis: 20 req/min. Backoff a partir de 30 s cobre a janela do limite.
       b.createQueue(FILAS.transcreverAudio, { retryLimit: 10, retryDelay: 30, retryBackoff: true, retryDelayMax: 1800, expireInSeconds: 300 }),
+      // stately: por conversa, no máximo um na fila e um rodando.
+      b.createQueue(FILAS.analisarConversa, { policy: 'stately', retryLimit: 6, retryDelay: 60, retryBackoff: true, retryDelayMax: 3600, expireInSeconds: 600 }),
       b.createQueue(FILAS.manutencao, { policy: 'singleton', retryLimit: 2, expireInSeconds: 300 }),
       b.createQueue(FILAS.saudeConexoes, { policy: 'singleton', retryLimit: 1, expireInSeconds: 120 }),
     ]);

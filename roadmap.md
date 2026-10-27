@@ -45,6 +45,7 @@
 - [x] Fase 1 em produção: aplicar db/60_canais.sql, segredos, deploy, ligar a instância do dono
 - [x] Fase 2 — mídia e transcrição (credenciais de IA no front, Groq/OpenAI/compatível, reserva, retenção)
 - [ ] Fase 2 em produção: chave da Groq na tela; Volume + MEDIA_DIR (opcional)
-- [ ] Fase 3 — inteligência (LLM/modelo escolhidos no front, ações, política)
+- [x] Fase 3 — inteligência: análise com debounce, LLM/modelo no front (Anthropic, OpenAI, Google, Groq, compatível), política, teste a seco
+- [ ] Fase 3 em produção: chave do provedor de análise, modelo, instruções da empresa
 - [ ] Fase 4 — telas (aba WhatsApp no negócio, painel de operação)
 - [ ] Fase 5 — escala (storage externo, segunda Evolution, cotas, teste de carga)
