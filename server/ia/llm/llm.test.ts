@@ -111,3 +111,28 @@ describe('openai e compatíveis', () => {
     await expect(openai.analisar(cred, 'llama', pedido)).rejects.toThrow();
   });
 });
+
+describe('comOuSemImagens', async () => {
+  const { comOuSemImagens } = await import('../analise/analisar');
+  const erro = (status: number) => Object.assign(new Error(`HTTP ${status}`), { status });
+
+  it('modelo sem visão (400 com imagem) → repete só com o texto', async () => {
+    const pedir = vi.fn(async (com: boolean) => { if (com) throw erro(400); return 'ok-texto'; });
+    expect(await comOuSemImagens(pedir, true, 't')).toBe('ok-texto');
+    expect(pedir.mock.calls).toEqual([[true], [false]]);
+  });
+
+  it('chave inválida, limite ou erro do servidor não repetem', async () => {
+    for (const status of [401, 403, 429, 500]) {
+      const pedir = vi.fn(async () => { throw erro(status); });
+      await expect(comOuSemImagens(pedir, true, 't')).rejects.toThrow(`HTTP ${status}`);
+      expect(pedir).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('sem imagem no lote, o 400 sobe direto', async () => {
+    const pedir = vi.fn(async () => { throw erro(400); });
+    await expect(comOuSemImagens(pedir, false, 't')).rejects.toThrow('HTTP 400');
+    expect(pedir).toHaveBeenCalledTimes(1);
+  });
+});

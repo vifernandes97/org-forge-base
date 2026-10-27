@@ -61,6 +61,22 @@ async function imagensDoLote(chat: ConversaCtx, novas: MensagemCtx[]): Promise<{
   return { imagens, numeros };
 }
 
+/**
+ * Pede com as imagens; se o provedor recusar com 4xx (fora chave, permissão e
+ * limite), quase sempre é modelo que não lê imagem (ex.: gpt-oss na Groq):
+ * tenta de novo só com o texto, onde a legenda da imagem continua.
+ */
+export async function comOuSemImagens<R>(pedir: (comImagens: boolean) => Promise<R>, temImagens: boolean, rotulo: string): Promise<R> {
+  try {
+    return await pedir(temImagens);
+  } catch (e) {
+    const status = (e as { status?: number }).status;
+    if (!temImagens || status === undefined || status < 400 || status >= 500 || [401, 403, 429].includes(status)) throw e;
+    console.warn('[ia] modelo recusou imagem; analisando só o texto', rotulo);
+    return pedir(false);
+  }
+}
+
 const erroTemporario = (e: unknown) => {
   const status = (e as { status?: number }).status;
   return status === undefined || status === 408 || status === 409 || status === 429 || status >= 500;
@@ -92,6 +108,8 @@ export async function analisarConversa(chatId: string, opts: { dryRun?: boolean 
   const { imagens, numeros } = await imagensDoLote(chat, novas);
   const sistema = promptDeSistema(chat.org_name, aj.instructions);
   const usuario = promptDoUsuario(chat, candidatos, anteriores, novas, numeros);
+  // Para modelo que não lê imagem (ex.: gpt-oss na Groq): só a legenda.
+  const usuarioSemImagem = imagens.length ? promptDoUsuario(chat, candidatos, anteriores, novas, new Map()) : usuario;
   const entrada = {
     mensagens: novas.length, de: novas[0].sent_at, ate: novas[novas.length - 1].sent_at,
     candidatos: candidatos.map((c) => c.id), imagens: imagens.length, prompt_chars: sistema.length + usuario.length,
@@ -109,7 +127,10 @@ export async function analisarConversa(chatId: string, opts: { dryRun?: boolean 
       continue;
     }
     try {
-      const r = await provedorLlm(cred.provider).analisar(cred, modelo, { sistema, usuario, imagens, schema: Decisao, nomeSchema: 'decisao_crm' });
+      const pedir = (comImagens: boolean) => provedorLlm(cred.provider).analisar(cred, modelo, {
+        sistema, usuario: comImagens ? usuario : usuarioSemImagem, imagens: comImagens ? imagens : [], schema: Decisao, nomeSchema: 'decisao_crm',
+      });
+      const r = await comOuSemImagens(pedir, imagens.length > 0, `${cred.provider} ${modelo}`);
       const { rows } = dryRun ? { rows: [] as { id: string }[] } : await pool.query<{ id: string }>(
         `insert into ai_analyses (organization_id, chat_id, lead_id, provider, model, status, input, output, input_tokens, output_tokens, duration_ms)
          values ($1, $2, $3, $4, $5, 'done', $6, $7, $8, $9, $10) returning id`,
