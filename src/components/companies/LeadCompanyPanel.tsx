@@ -118,7 +118,7 @@ export function LeadCompanyPanel({ lead, readOnly, onOpenLead, companyColumn, co
 
   return (
     <div className="space-y-4">
-      <div className="grid items-start gap-4 xl:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
         <div className="space-y-4">
           {/* Empresa */}
           <DetailSection
@@ -285,7 +285,7 @@ export function LeadCompanyPanel({ lead, readOnly, onOpenLead, companyColumn, co
 
       {otherLeads.length > 0 && (
         <DetailSection title="Outros negócios desta empresa" icon={<Briefcase className="h-3.5 w-3.5" />}>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {otherLeads.map((l: any) => (
               <button key={l.id} type="button" onClick={() => onOpenLead?.(l.id)}
                 className="w-full text-left rounded-md border p-2 hover:bg-accent/50 transition-colors">

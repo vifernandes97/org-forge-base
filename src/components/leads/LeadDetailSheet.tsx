@@ -540,7 +540,7 @@ export function LeadDetailSheet({ leadId: propLeadId, onClose }: LeadDetailSheet
 
                     {activeCustomFields.length > 0 && (
                       <DetailSection title="Campos personalizados" icon={<ListChecks className="h-3.5 w-3.5" />}>
-                        <div className="grid gap-x-8 gap-y-1.5 xl:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-x-8 gap-y-1.5 xl:grid-cols-2">
                           {activeCustomFields.map((def) => {
                             const cfv = (typedLead.custom_field_values || []).find((v: any) => v.field_definition_id === def.id);
                             const currentValue = cfv?.value || '';
