@@ -1,3 +1,13 @@
+# Org Connect (CRM)
+
+Documentação para manutenção e suporte:
+- `AGENTS.md` — regras do domínio que o código deve seguir.
+- `docs/MIGRACAO.md` — infraestrutura na VPS (Easypanel), deploy, túnel do banco, webhooks.
+- `docs/WHATSAPP.md` — orquestrador WhatsApp → CRM com IA: arquitetura, banco, filas, produção (§14), diagnóstico (§15) e dados alterados (§16).
+- `roadmap.md` — o que está feito e o que falta.
+
+---
+
 # Org Connect
 
 Você é um engenheiro de software sênior especializado em Supabase e arquitetura multi-tenant. Crie a fundação do projeto — um CRM multi-tenant.

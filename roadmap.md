@@ -44,8 +44,11 @@
 - [x] Fase 1 — fundação: tabelas de canais, fila pg-boss, ROLE api/worker, adapter Evolution, webhook, vínculo por telefone/nome, tela de conexão (testado no dev)
 - [x] Fase 1 em produção: aplicar db/60_canais.sql, segredos, deploy, ligar a instância do dono
 - [x] Fase 2 — mídia e transcrição (credenciais de IA no front, Groq/OpenAI/compatível, reserva, retenção)
-- [ ] Fase 2 em produção: chave da Groq na tela; Volume + MEDIA_DIR (opcional)
+- [x] Fase 2 em produção: chave da Groq na tela (whisper-large-v3-turbo), transcrição real conferida
+- [ ] Volume + MEDIA_DIR (opcional: guardar mídias)
 - [x] Fase 3 — inteligência: análise com debounce, LLM/modelo no front (Anthropic, OpenAI, Google, Groq, compatível), política, teste a seco
-- [ ] Fase 3 em produção: chave do provedor de análise, modelo, instruções da empresa
+- [x] Fase 3 no ar (deploy) + ajustes: modelo sem visão repete só com texto; cliente existente não vira negócio comercial; candidatos de vários funis
+- [ ] Fase 3 ligada na Oniplataforma: chave Anthropic, modelo (claude-haiku-5-5) + reserva Groq, limiares, instruções, teste com conversa real
+- [x] Sucesso do Cliente: funil Onboarding/Ativo e 41 clientes ativos importados com contatos (docs/WHATSAPP.md §16)
 - [ ] Fase 4 — telas (aba WhatsApp no negócio, painel de operação)
 - [ ] Fase 5 — escala (storage externo, segunda Evolution, cotas, teste de carga)
