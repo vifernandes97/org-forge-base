@@ -5,11 +5,13 @@ import { servico } from './servico.js';
 import { receberWebhook } from './webhook-entrada.js';
 import { enviarWebhook } from './webhook-saida.js';
 import { chavePublicaVapid, removerInscricao, salvarInscricao } from './notificacoes.js';
+import { canais } from './canais/api.js';
 
 // O app inteiro atrás de um domínio só (crm.neosoluti.com.br):
 //   /api/auth/*  Better Auth (login, sessão)
 //   /api/inbound-webhook, /api/fire-webhook  webhooks (server/webhook-*.ts)
 //   /api/push/*  Web Push: chave pública VAPID e inscrição do aparelho
+//   /api/channels/*  WhatsApp (Evolution): webhook e conexões (server/canais/api.ts)
 //   /rest/*      portão do PostgREST: confere a sessão e repassa com um JWT de
 //                60 s (HS256, segredo compartilhado só com o PostgREST, que não
 //                é exposto). Sem sessão, vai sem token e o PostgREST usa anon.
@@ -61,6 +63,8 @@ app.post('/api/fire-webhook', async (c) => {
 
   return c.json(await enviarWebhook({ webhook_url, payload, organization_id, stage_id, lead_id }));
 });
+
+app.route('/api/channels', canais);
 
 app.get('/api/push/vapid-public-key', (c) => c.json({ key: chavePublicaVapid() }));
 

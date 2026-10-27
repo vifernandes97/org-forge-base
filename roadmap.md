@@ -39,3 +39,11 @@
 - [x] Menu, rotas, visões e consultas no servidor, mesclar contatos
 - [x] Empresas (lista, filtros, massa, CSV), detalhe com abas, Contatos (lista, filtros, massa, painel ?contact=)
 - [x] Testes DDATA e limpeza
+
+# Orquestrador WhatsApp (docs/WHATSAPP.md)
+- [x] Fase 1 — fundação: tabelas de canais, fila pg-boss, ROLE api/worker, adapter Evolution, webhook, vínculo por telefone/nome, tela de conexão (testado no dev)
+- [ ] Fase 1 em produção: aplicar db/60_canais.sql, segredos, deploy, ligar a instância do dono
+- [ ] Fase 2 — mídia e transcrição
+- [ ] Fase 3 — inteligência (LLM/modelo escolhidos no front, ações, política)
+- [ ] Fase 4 — telas (aba WhatsApp no negócio, painel de operação)
+- [ ] Fase 5 — escala (storage externo, segunda Evolution, cotas, teste de carga)
