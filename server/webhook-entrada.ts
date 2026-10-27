@@ -469,9 +469,11 @@ export async function receberWebhook(req: Request, ipAddress: string | null): Pr
         }
       }
 
-      // Re-entry: move back to the first stage of the funnel and reactivate
+      // Re-entry: only a closed deal (won, inactive or archived) goes back to the first stage and
+      // reopens; an open one stays where the team is working it (e.g. moved by the WhatsApp AI).
       const previousStageId = existingLead.stage_id;
-      const movedStage = previousStageId !== firstStage.id;
+      const reentry = !!existingLead.archived_at || existingLead.status !== "open";
+      const movedStage = reentry && previousStageId !== firstStage.id;
       if (movedStage) {
         changes.push({ field: "stage_id", old_value: previousStageId, new_value: firstStage.id });
         updateData.funnel_id = funnelId;
@@ -551,6 +553,18 @@ export async function receberWebhook(req: Request, ipAddress: string | null): Pr
             from_stage_id: previousStageId,
             to_stage_id: firstStage.id,
           },
+        });
+      }
+      if (!reentry) {
+        const { data: curStage } = await supabase.from("stages").select("name").eq("id", previousStageId).maybeSingle();
+        await supabase.from("lead_activities").insert({
+          organization_id: webhook.organization_id,
+          lead_id: existingLead.id,
+          user_id: actorId,
+          activity_type: "note",
+          title: "Formulário preenchido de novo",
+          description: `Negócio aberto: continua em "${curStage?.name || "etapa atual"}"`,
+          metadata: { source: "inbound_webhook", webhook_name: webhook.name, reentry: false },
         });
       }
       if (changes.length > 0) {

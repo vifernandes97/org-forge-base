@@ -23,7 +23,7 @@ export const Decisao = z.strictObject({
     valor: z.number().describe('Valor do negócio em reais.'),
     confianca: z.number(),
     motivo: z.string(),
-  }).nullable().describe('Só quando um valor do negócio foi cotado ou combinado explicitamente.'),
+  }).nullable().describe('Valor em jogo: o mais recente cotado, proposto ou combinado para o negócio, mesmo sem aceite.'),
   novo_negocio: z.strictObject({
     empresa: z.string().nullable(),
     contato: z.string().nullable(),

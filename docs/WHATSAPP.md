@@ -414,6 +414,22 @@ Ajustes depois da primeira versão (em produção):
   negócios candidatos podem ser de funis diferentes (Comercial e Sucesso do
   Cliente); a IA escolhe pelo assunto e só usa etapas do funil do negócio
   escolhido.
+- **Valor em jogo** (2026-10-28): o valor do negócio é o último valor
+  cotado, proposto ou combinado na conversa, mesmo sem aceite, e é
+  sobrescrito quando muda. Não é valor fechado em contrato.
+- **Sem negócio duplicado quando o WhatsApp vem antes do formulário**
+  (`db/63_resolve_por_telefone.sql`, 2026-10-28): `resolve_company_contact`
+  procura a empresa pelo telefone de um contato existente (`phone_key`)
+  depois de CNPJ e e-mail e antes do nome — só se o telefone aponta para uma
+  única empresa — e reaproveita o contato com o mesmo telefone e sem outro
+  e-mail. O formulário cai na empresa criada pela IA, renomeia o nome
+  provisório e, pela deduplicação empresa + funil, atualiza o negócio em vez
+  de criar outro.
+- **Formulário não volta negócio aberto** (`server/webhook-entrada.ts`,
+  2026-10-28): a reentrada (voltar para a primeira etapa) só vale para
+  negócio ganho, inativo ou arquivado. Aberto fica na etapa em que está e
+  ganha a nota "Formulário preenchido de novo" — senão um lead que já fala
+  com o vendedor voltaria para Novo Lead e acionaria a Softeo.
 
 Ficou para a Fase 4: autonomia "só sugerir" (a política já grava `pending`,
 falta a tela de aprovar e o desfazer), aba WhatsApp no negócio, catálogo de
@@ -455,10 +471,10 @@ Configuração em uso:
   errada (ex.: depois de mudar `CHANNEL_WEBHOOK_BASE_URL`), Configurações →
   WhatsApp → **Atualizar** reaplica o webhook com a URL atual.
 - Organização **Oniplataforma**: transcrição ligada com Groq
-  `whisper-large-v3-turbo`. **Análise ainda não configurada** (falta: chave
-  Anthropic de workspace, modelo `claude-haiku-5-5`, reserva Groq
-  `openai/gpt-oss-120b`, confiança 85% para avançar / 100% para voltar,
-  instruções da empresa — ver abaixo). Sem `MEDIA_DIR`: mídias não ficam
+  `whisper-large-v3-turbo`; análise ligada com Anthropic `claude-haiku-5-5`
+  e reserva Groq `openai/gpt-oss-120b`, autonomia automática, cria negócio
+  de desconhecido, instruções abaixo. Testada ponta a ponta em 2026-10-27
+  (formulário → conversa → resumo, etapas, tarefa, valor). Sem `MEDIA_DIR`: mídias não ficam
   guardadas (a transcrição baixa o áudio da Evolution na hora).
 - Funis: **Comercial** (Novo Lead → Engajamento → Atendimento Humano →
   Demonstração → FWP → Fechamento; as etapas mandam webhook para a Softeo,
@@ -474,19 +490,56 @@ Quem faz o quê no fluxo:
 - **Política (`aplicar.ts`)**: decide o que aplicar (limiares, mesmo funil,
   sem tarefas repetidas) e grava pelo mesmo caminho do Kanban.
 
-Texto sugerido para "Instruções da empresa" (Configurações → Inteligência
-Artificial), ajustar o critério de Ativo:
+Instruções da empresa em uso (Configurações → Inteligência Artificial),
+versão de 2026-10-28:
 
 ```
-Somos a Oniplataforma, sistema de gestão para buffets infantis e casas de festa.
-Funil Comercial (quem ainda não é cliente): Novo Lead → Engajamento →
-Atendimento Humano → Demonstração → FWP → Fechamento.
+Este é o WhatsApp comercial da Oniplataforma, sistema de gestão para buffets
+infantis e casas de festa. "Equipe" é o nosso vendedor falando pessoalmente
+com o cliente. O robô de nutrição usa outro número: as mensagens da Equipe
+aqui são sempre de uma pessoa.
+
+Funil Comercial (quem ainda não é cliente):
+- Novo Lead: chegou e ainda não houve conversa.
+- Engajamento: o robô está nutrindo o lead. NUNCA mova um negócio para
+  Engajamento: entrar nessa etapa liga o robô no WhatsApp do cliente.
+- Atendimento Humano: o vendedor está conversando pessoalmente com o
+  cliente. Se a Equipe respondeu e o cliente engajou, o negócio é pelo
+  menos Atendimento Humano.
+- Demonstração: a data e o horário da demonstração foram combinados, ou a
+  demonstração já aconteceu.
+- FWP: a proposta foi enviada ao cliente, ou o cliente começou um teste
+  grátis (trial) do sistema.
+- Fechamento: o cliente aceitou a proposta e está assinando o contrato ou
+  fazendo o pagamento.
+
+Regras:
+- Nunca volte um negócio para uma etapa anterior.
+- Pode pular etapas quando a conversa mostrar: proposta já enviada vai
+  direto para FWP, mesmo sem demonstração.
+- Valor é o valor em jogo, não o fechado: o último valor do plano que a
+  Equipe passou ou que foi combinado, mesmo sem aceite (mensal; se a
+  negociação for de plano anual, o valor anual). Se mudar (desconto, outro
+  plano), use o novo. Ignore valores de exemplo ou de concorrentes.
+- Tarefas: só quando alguém prometeu algo com prazo (enviar proposta,
+  enviar link da demo, ligar, mandar contrato). Ex.: "Enviar proposta do
+  plano Pro", "Enviar link da demo de quinta 15h".
+- Conversa com fornecedor, parceiro ou cobrança nossa não é comercial.
+- Resumo: registre objeções (preço, concorrente, momento), o sistema ou
+  controle que o cliente usa hoje (planilha, caderno, outro sistema), a
+  cidade e o tamanho da operação (eventos por mês, unidades) quando
+  aparecerem.
+
 Funil Sucesso do Cliente (quem já é cliente):
-- Onboarding: cliente novo em implantação (configuração, treinamento, migração de dados).
+- Onboarding: cliente novo em implantação (configuração, treinamento,
+  migração de dados).
 - Ativo: implantação concluída e o cliente usando o sistema no dia a dia.
-Dúvidas de uso, suporte e financeiro de quem já é cliente vão para o negócio
-do funil Sucesso do Cliente, nunca para o Comercial.
+Dúvidas de uso, suporte e financeiro de quem já é cliente vão para o
+negócio do funil Sucesso do Cliente, nunca para o Comercial.
 ```
+
+Na mesma tela: confiança para avançar 80%, para **voltar 100%** (a IA
+nunca volta etapa; casa com a regra acima).
 
 ## 15. Suporte: como diagnosticar
 
