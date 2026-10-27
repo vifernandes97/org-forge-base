@@ -5,7 +5,7 @@ import { z } from 'zod/v4';
 // Limites (confiança 0–1, até 3 tarefas…) são conferidos depois, na política.
 
 export const Decisao = z.strictObject({
-  comercial: z.boolean().describe('A conversa é de venda/atendimento comercial (true) ou pessoal, fornecedor, spam (false).'),
+  comercial: z.boolean().describe('Potencial cliente interessado em comprar (true); já cliente, pessoal, fornecedor, spam (false).'),
   lead_id: z.string().nullable().describe('Id de um dos negócios candidatos a que a conversa se refere, ou null.'),
   resumo: z.string().describe('1 a 3 frases com os fatos novos deste lote, em português. Vazio se não há nada relevante.'),
   mudar_etapa: z.strictObject({

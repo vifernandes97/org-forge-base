@@ -13,7 +13,8 @@ Regras:
 - tarefas: só compromissos concretos que alguém assumiu ("te mando a proposta amanhã", "me liga segunda"). No máximo 3. Não repita tarefas já abertas. prazo_dias conta a partir de hoje.
 - valor: só quando um valor do negócio foi cotado ou combinado explicitamente na conversa.
 - lead_id: o id do negócio candidato a que a conversa se refere; null se não houver candidato ou se nenhum se encaixa.
-- comercial: true se a conversa é de venda ou atendimento a cliente/potencial cliente; false se é pessoal, fornecedor, cobrança da própria empresa, spam ou engano.
+- Os negócios candidatos podem ser de funis diferentes (ex.: vendas e pós-venda/sucesso do cliente). Escolha o que corresponde ao assunto da conversa e use só etapas do funil desse negócio.
+- comercial: só importa quando não há negócio candidato. true se é um potencial cliente (interesse em comprar, orçamento, demonstração); false se é alguém que já é cliente (suporte, dúvida de uso, financeiro), pessoal, fornecedor, parceiro, spam ou engano.
 - novo_negocio: só quando não há negócio candidato e a conversa é comercial: preencha com o que a conversa disser (empresa, nome do contato, e-mail); null para o que não foi dito. Caso contrário, null.
 - Escreva em português do Brasil.${instrucoes?.trim() ? `\n\nInstruções da empresa (valem junto com as regras acima):\n${instrucoes.trim()}` : ''}`;
 }
