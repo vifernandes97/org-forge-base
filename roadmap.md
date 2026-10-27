@@ -52,5 +52,6 @@
 - [x] Sem negócio duplicado (WhatsApp antes do formulário), formulário não volta negócio aberto, valor em jogo
 - [ ] Conversa marcada como não comercial não é religada quando o contato entra depois no CRM
 - [x] Sucesso do Cliente: funil Onboarding/Ativo e 41 clientes ativos importados com contatos (docs/WHATSAPP.md §16)
+- [ ] Boas-vindas por áudio (n8n): lead converte no formulário → abre o WhatsApp com "Oi, quero falar com um consultor!" → n8n envia o áudio gravado do segmento pela Evolution → a IA segue lendo e atualizando o CRM (sessão própria, 2026-10-27 22h30)
 - [ ] Fase 4 — telas (aba WhatsApp no negócio, painel de operação)
 - [ ] Fase 5 — escala (storage externo, segunda Evolution, cotas, teste de carga)

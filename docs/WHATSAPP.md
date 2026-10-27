@@ -414,11 +414,11 @@ Ajustes depois da primeira versão (em produção):
   negócios candidatos podem ser de funis diferentes (Comercial e Sucesso do
   Cliente); a IA escolhe pelo assunto e só usa etapas do funil do negócio
   escolhido.
-- **Valor em jogo** (2026-10-28): o valor do negócio é o último valor
+- **Valor em jogo** (2026-10-27): o valor do negócio é o último valor
   cotado, proposto ou combinado na conversa, mesmo sem aceite, e é
   sobrescrito quando muda. Não é valor fechado em contrato.
 - **Sem negócio duplicado quando o WhatsApp vem antes do formulário**
-  (`db/63_resolve_por_telefone.sql`, 2026-10-28): `resolve_company_contact`
+  (`db/63_resolve_por_telefone.sql`, 2026-10-27): `resolve_company_contact`
   procura a empresa pelo telefone de um contato existente (`phone_key`)
   depois de CNPJ e e-mail e antes do nome — só se o telefone aponta para uma
   única empresa — e reaproveita o contato com o mesmo telefone e sem outro
@@ -426,7 +426,7 @@ Ajustes depois da primeira versão (em produção):
   provisório e, pela deduplicação empresa + funil, atualiza o negócio em vez
   de criar outro.
 - **Formulário não volta negócio aberto** (`server/webhook-entrada.ts`,
-  2026-10-28): a reentrada (voltar para a primeira etapa) só vale para
+  2026-10-27): a reentrada (voltar para a primeira etapa) só vale para
   negócio ganho, inativo ou arquivado. Aberto fica na etapa em que está e
   ganha a nota "Formulário preenchido de novo" — senão um lead que já fala
   com o vendedor voltaria para Novo Lead e acionaria a Softeo.
@@ -491,7 +491,7 @@ Quem faz o quê no fluxo:
   sem tarefas repetidas) e grava pelo mesmo caminho do Kanban.
 
 Instruções da empresa em uso (Configurações → Inteligência Artificial),
-versão de 2026-10-28:
+versão de 2026-10-27:
 
 ```
 Este é o WhatsApp comercial da Oniplataforma, sistema de gestão para buffets
