@@ -2,7 +2,7 @@
 // Evolution fica aqui; o resto do orquestrador vê só os tipos de nucleo/tipos.ts.
 /* eslint-disable @typescript-eslint/no-explicit-any -- payload externo, validado campo a campo */
 import { jidToPhone, tipoJid } from '../identificacao/telefone.js';
-import type { ChannelProvider, EstadoConexao, EventoNormalizado, MensagemNormalizada, MidiaInfo, ServidorCanal, TipoMensagem } from '../nucleo/tipos.js';
+import type { ChannelProvider, EstadoConexao, MidiaBaixada, EventoNormalizado, MensagemNormalizada, MidiaInfo, ServidorCanal, TipoMensagem } from '../nucleo/tipos.js';
 
 // Só o que o orquestrador usa. MESSAGES_SET (histórico) fica para o backfill.
 const EVENTOS = ['MESSAGES_UPSERT', 'CONNECTION_UPDATE', 'QRCODE_UPDATED'];
@@ -184,6 +184,18 @@ export const evolution: ChannelProvider = {
     ]);
     const owner = info?.ownerJid ?? info?.instance?.owner ?? null;
     return { status: ESTADOS[estado?.instance?.state] ?? 'pending', phoneNumber: jidToPhone(owner) };
+  },
+
+  async fetchMedia(server, instance, raw): Promise<MidiaBaixada> {
+    const r = raw as any;
+    // A Evolution busca pela chave; mandar a mensagem inteira evita depender
+    // de ela ter guardado a mensagem no banco dela.
+    const out = await chamar(server, 'POST', `/chat/getBase64FromMediaMessage/${enc(instance)}`, {
+      message: { key: r?.key, message: r?.message },
+      convertToMp4: false,
+    });
+    if (!out?.base64) throw new Error('Evolution não devolveu a mídia');
+    return { data: Buffer.from(String(out.base64).replace(/^data:[^,]*,/, ''), 'base64'), mimetype: out.mimetype || 'application/octet-stream' };
   },
 
   async removeInstance(server, instance) {

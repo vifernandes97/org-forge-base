@@ -7,6 +7,10 @@ import { PgBoss } from 'pg-boss';
 export const FILAS = {
   /** Procura contato/negócio de uma conversa. Um por conversa por vez. */
   vincularConversa: 'canais.chat.vincular',
+  /** Baixa e guarda áudio/imagem (só com MEDIA_DIR). */
+  baixarMidia: 'canais.midia.baixar',
+  /** Transcreve um áudio. Limite de taxa do provedor → volta para a fila com espera. */
+  transcreverAudio: 'canais.audio.transcrever',
   /** Cron: partições de mensagens. */
   manutencao: 'canais.manutencao',
   /** Cron: status das conexões na Evolution. */
@@ -35,6 +39,9 @@ export function fila(): Promise<PgBoss> {
     await b.start();
     await Promise.all([
       b.createQueue(FILAS.vincularConversa, { policy: 'singleton', retryLimit: 5, retryDelay: 5, retryBackoff: true, expireInSeconds: 120 }),
+      b.createQueue(FILAS.baixarMidia, { retryLimit: 5, retryDelay: 10, retryBackoff: true, expireInSeconds: 120 }),
+      // Groq grátis: 20 req/min. Backoff a partir de 30 s cobre a janela do limite.
+      b.createQueue(FILAS.transcreverAudio, { retryLimit: 10, retryDelay: 30, retryBackoff: true, retryDelayMax: 1800, expireInSeconds: 300 }),
       b.createQueue(FILAS.manutencao, { policy: 'singleton', retryLimit: 2, expireInSeconds: 300 }),
       b.createQueue(FILAS.saudeConexoes, { policy: 'singleton', retryLimit: 1, expireInSeconds: 120 }),
     ]);

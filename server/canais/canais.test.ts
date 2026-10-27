@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+// @vitest-environment node
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { jidToPhone, phoneMatchKey } from './identificacao/telefone';
 import { parseEvolutionWebhook } from './provedores/evolution';
 
@@ -69,5 +70,45 @@ describe('parseEvolutionWebhook', () => {
       .toEqual([{ kind: 'connection', status: 'connected', detail: null, phoneNumber: '5511999990000' }]);
     expect(parseEvolutionWebhook({ event: 'qrcode.updated', data: { qrcode: { base64: 'x' } } })).toMatchObject([{ status: 'qr' }]);
     expect(parseEvolutionWebhook({ event: 'presence.update', data: {} })).toEqual([]);
+  });
+});
+
+describe('transcrever (API de áudio formato OpenAI)', async () => {
+  const { transcrever, LimiteDeTaxa, ErroPermanente, TAMANHO_MAXIMO } = await import('./transcricao/whisper');
+  const cred = { id: 'c', organizationId: 'o', provider: 'groq' as const, baseUrl: 'https://x/v1', apiKey: 'k' };
+  const responder = (status: number, body: object, headers: Record<string, string> = {}) =>
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(JSON.stringify(body), { status, headers }));
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('devolve o texto e manda modelo, idioma e extensão certa', async () => {
+    const f = responder(200, { text: ' oi tudo bem ' });
+    expect(await transcrever(cred, 'whisper-large-v3-turbo', Buffer.from('x'), 'audio/ogg; codecs=opus', 'pt')).toBe('oi tudo bem');
+    const form = f.mock.calls[0][1]!.body as FormData;
+    expect(form.get('model')).toBe('whisper-large-v3-turbo');
+    expect(form.get('language')).toBe('pt');
+    expect((form.get('file') as File).name).toBe('audio.ogg');
+  });
+
+  it('429 vira LimiteDeTaxa com o retry-after', async () => {
+    responder(429, { error: { message: 'Rate limit' } }, { 'retry-after': '12' });
+    const e = await transcrever(cred, 'm', Buffer.from('x'), 'audio/ogg', 'pt').catch((x) => x);
+    expect(e).toBeInstanceOf(LimiteDeTaxa);
+    expect(e.esperarSegundos).toBe(12);
+  });
+
+  it('4xx é permanente; 5xx tenta de novo', async () => {
+    responder(400, { error: { message: 'formato' } });
+    await expect(transcrever(cred, 'm', Buffer.from('x'), 'audio/ogg', 'pt')).rejects.toBeInstanceOf(ErroPermanente);
+    responder(503, {});
+    const e = await transcrever(cred, 'm', Buffer.from('x'), 'audio/ogg', 'pt').catch((x) => x);
+    expect(e).not.toBeInstanceOf(ErroPermanente);
+    expect(e).not.toBeInstanceOf(LimiteDeTaxa);
+  });
+
+  it('áudio acima de 25 MB nem é enviado', async () => {
+    const f = vi.spyOn(globalThis, 'fetch');
+    await expect(transcrever(cred, 'm', Buffer.alloc(TAMANHO_MAXIMO + 1), 'audio/ogg', 'pt')).rejects.toBeInstanceOf(ErroPermanente);
+    expect(f).not.toHaveBeenCalled();
   });
 });

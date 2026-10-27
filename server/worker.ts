@@ -1,6 +1,8 @@
 import { servicePool } from './db.js';
 import { FILAS, fila } from './canais/fila.js';
 import { vincularConversa } from './canais/identificacao/vincular.js';
+import { baixarMidia, transcreverAudio, type RefMensagem } from './canais/midia/jobs.js';
+import { armazenamento } from './canais/midia/armazenamento.js';
 import { provedor } from './canais/provedores/index.js';
 import { servidor, servidorDaPlataforma } from './canais/servidores.js';
 
@@ -26,6 +28,24 @@ async function saudeDasConexoes() {
   }
 }
 
+// Retenção (docs/WHATSAPP.md §4): mídia 90 dias, payload bruto 30 dias.
+// Texto e transcrição ficam enquanto a conversa existir.
+const RETER_MIDIA_MESES = Number(process.env.MEDIA_RETENTION_MONTHS ?? 3);
+const RETER_RAW_DIAS = Number(process.env.RAW_RETENTION_DAYS ?? 30);
+
+async function manutencao() {
+  await servicePool().query(`select public.ensure_channel_message_partitions(2)`);
+  await servicePool().query(
+    `update channel_messages set raw = null where raw is not null and sent_at < now() - make_interval(days => $1)`, [RETER_RAW_DIAS]);
+  const store = armazenamento();
+  if (store) {
+    const limite = new Date();
+    limite.setUTCMonth(limite.getUTCMonth() - RETER_MIDIA_MESES);
+    const n = await store.purgeBefore(limite.toISOString().slice(0, 7));
+    if (n) console.log(`[worker] retenção: ${n} meses de mídia apagados`);
+  }
+}
+
 export async function iniciarWorker() {
   // Sobe o servidor da plataforma antes do primeiro job que precisar dele.
   await servidorDaPlataforma().catch((e) => console.error('[worker] servidor da Evolution', e));
@@ -35,9 +55,15 @@ export async function iniciarWorker() {
     for (const job of jobs) await vincularConversa(job.data.chatId);
   });
 
-  await b.work(FILAS.manutencao, async () => {
-    await servicePool().query(`select public.ensure_channel_message_partitions(2)`);
+  await b.work<RefMensagem>(FILAS.baixarMidia, { batchSize: 5, localConcurrency: Number(process.env.WORKER_CONCURRENCY ?? 2) }, async (jobs) => {
+    for (const job of jobs) await baixarMidia(job.data);
   });
+  // Um por vez por worker: o limite do provedor é da organização inteira.
+  await b.work<RefMensagem>(FILAS.transcreverAudio, { batchSize: 1, localConcurrency: Number(process.env.TRANSCRIPTION_CONCURRENCY ?? 1) }, async ([job]) => {
+    await transcreverAudio(job.data);
+  });
+
+  await b.work(FILAS.manutencao, manutencao);
   await b.work(FILAS.saudeConexoes, saudeDasConexoes);
 
   await b.schedule(FILAS.manutencao, '15 3 * * *', null, { tz: 'America/Sao_Paulo' });
@@ -46,4 +72,4 @@ export async function iniciarWorker() {
 }
 
 // Dev: `bun run dev:worker` (no container, o index.ts chama iniciarWorker).
-if (import.meta.main) iniciarWorker();
+if ((import.meta as { main?: boolean }).main) iniciarWorker();

@@ -1,8 +1,9 @@
 # Orquestrador WhatsApp → CRM
 
 > Proposta aberta em 2026-10-27, revista no mesmo dia para **escala**.
-> **Fase 1 (fundação) implementada em 2026-10-27** e testada no dev local com
-> uma Evolution simulada; ainda não aplicada em produção (seção 11).
+> **Fase 1 (fundação) em produção desde 2026-10-27** (instância Oniplataforma,
+> organização Oniplataforma). **Fase 2 (mídia e transcrição) implementada em
+> 2026-10-27** — seção 12.
 >
 > Decisões do dono (2026-10-27): **fase muda sozinha** quando a IA tiver
 > confiança alta; transcrição **no menor custo possível, fora da máquina
@@ -279,3 +280,39 @@ Para ir à produção (nesta ordem):
    `crm-app` com `ROLE=api`.
 4. Configurações → WhatsApp → "Usar instância que já existe" com o nome da
    instância do seu número.
+
+## 12. Fase 2 — mídia e transcrição
+
+Feito:
+- `db/61_ia.sql`: `ai_credentials` (chave cifrada; o navegador vê apelido e
+  4 últimos dígitos; só owner/admin), `org_ai_settings` (transcrição:
+  ligada, credencial + modelo principal, reserva, idioma) e `usage_events`.
+- Configurações → Inteligência Artificial: conectar Groq, OpenAI ou
+  compatível com OpenAI (a chave é testada listando os modelos antes de
+  salvar), escolher modelo principal e reserva da transcrição (a lista vem da
+  própria chave, filtrada para modelos de áudio), consumo do mês.
+  Anthropic/Google e os modelos de análise entram na Fase 3, na mesma tela.
+- Jobs `canais.midia.baixar` (áudio/imagem → `MEDIA_DIR`) e
+  `canais.audio.transcrever` (`/audio/transcriptions`, formato OpenAI).
+  429 na principal → tenta a reserva; sem reserva, volta para a fila com
+  backoff (30 s → 30 min, 10 tentativas). Erro 4xx, arquivo > 25 MB: marca
+  `failed` e não insiste. Sem credencial: `no_credential`.
+- Estado em `channel_messages.media.transcript_status`
+  (`done`/`failed`/`no_credential`/`disabled`), texto em `transcript`;
+  segundos de áudio em `usage_events`.
+- Retenção no job diário: mídia por 3 meses, `raw` por 30 dias.
+- "Último evento" da conexão passa a contar mensagens (1 escrita/min).
+
+Testado no dev com Evolution e provedor falsos: chave errada recusada,
+modelos filtrados, áudio recebido e enviado transcritos, 429 → reserva,
+429 sem reserva → fila com espera, sem credencial, áudio repetido baixado
+uma vez só, retenção do disco, RLS (outra organização não vê; a chave não
+é legível nem pelo owner).
+
+Produção:
+- `MEDIA_DIR` é opcional. Sem ele, funciona (a transcrição baixa o áudio
+  da Evolution), mas imagens e áudios não ficam guardados para a Fase 3/4.
+  Para guardar: Volume no `crm-app` montado em `/app/data` e
+  `MEDIA_DIR=/app/data/midia` no `secrets.env`.
+- Cadastrar a chave da Groq em Configurações → Inteligência Artificial e
+  escolher `whisper-large-v3-turbo` como principal.

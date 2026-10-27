@@ -57,4 +57,11 @@ export interface ChannelProvider {
   connect(server: ServidorCanal, instance: string): Promise<{ status: EstadoConexao; qrCode: string | null; pairingCode: string | null }>;
   status(server: ServidorCanal, instance: string): Promise<{ status: EstadoConexao; phoneNumber: string | null }>;
   removeInstance(server: ServidorCanal, instance: string): Promise<void>;
+  /** Baixa a mídia de uma mensagem (o `raw` que o parser guardou). */
+  fetchMedia(server: ServidorCanal, instance: string, raw: unknown): Promise<MidiaBaixada>;
+}
+
+export interface MidiaBaixada {
+  data: Buffer;
+  mimetype: string;
 }

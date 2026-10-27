@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { Hono } from 'hono';
-import { auth } from '../auth.js';
+import { exigirAdmin } from '../acesso.js';
 import { servicePool } from '../db.js';
 import { esquecerConexao, receberWebhookCanal } from './ingestao.js';
 import { provedor } from './provedores/index.js';
@@ -24,16 +24,6 @@ interface LinhaConexao {
   instance_name: string;
   webhook_token: string;
   managed: boolean;
-}
-
-async function exigirAdmin(req: Request, organizationId: string | undefined): Promise<{ userId: string } | Response> {
-  const sessao = await auth.api.getSession({ headers: req.headers });
-  if (!sessao?.user) return Response.json({ error: 'Não autenticado' }, { status: 401 });
-  if (!organizationId) return Response.json({ error: 'organization_id obrigatório' }, { status: 400 });
-  const { rows } = await servicePool().query<{ role: string }>(
-    `select role from organization_members where organization_id = $1 and user_id = $2`, [organizationId, sessao.user.id]);
-  if (!['owner', 'admin'].includes(rows[0]?.role ?? '')) return Response.json({ error: 'Só owner ou admin' }, { status: 403 });
-  return { userId: sessao.user.id };
 }
 
 async function conexaoDoAdmin(req: Request, id: string): Promise<{ con: LinhaConexao } | Response> {
