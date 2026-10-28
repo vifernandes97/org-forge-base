@@ -15,6 +15,8 @@ export interface MensagemCtx {
   transcript: string | null;
   media: Record<string, unknown> | null;
   raw: unknown;
+  /** Enviada por automação (ex.: áudio de boas-vindas), não por uma pessoa. */
+  automatica: boolean;
 }
 
 export interface NegocioCtx {
@@ -66,20 +68,21 @@ export async function conversa(chatId: string): Promise<ConversaCtx | null> {
   return rows[0] ?? null;
 }
 
-const COLUNAS_MSG = `id, sent_at, created_at, from_me, message_type, body, transcript, media, raw`;
+const COLUNAS_MSG = `m.id, m.sent_at, m.created_at, m.from_me, m.message_type, m.body, m.transcript, m.media, m.raw,
+  exists (select 1 from channel_welcomes w where w.connection_id = m.connection_id and w.provider_message_id = m.provider_message_id) as automatica`;
 
 /** Lote novo (depois de analyzed_until) e o contexto anterior. */
 export async function mensagens(chat: ConversaCtx, opts: { maxNovas: number; maxAnteriores: number; tudo?: boolean }) {
   const pool = servicePool();
   const corte = opts.tudo ? null : chat.analyzed_until;
   const novas = await pool.query<MensagemCtx>(
-    `select ${COLUNAS_MSG} from channel_messages
-     where chat_id = $1 and ($2::timestamptz is null or sent_at > $2) order by sent_at desc limit $3`,
+    `select ${COLUNAS_MSG} from channel_messages m
+     where m.chat_id = $1 and ($2::timestamptz is null or m.sent_at > $2) order by m.sent_at desc limit $3`,
     [chat.id, corte, opts.maxNovas]);
   const lote = novas.rows.reverse();
   const primeira = lote[0]?.sent_at ?? new Date();
   const anteriores = await pool.query<MensagemCtx>(
-    `select ${COLUNAS_MSG} from channel_messages where chat_id = $1 and sent_at < $2 order by sent_at desc limit $3`,
+    `select ${COLUNAS_MSG} from channel_messages m where m.chat_id = $1 and m.sent_at < $2 order by m.sent_at desc limit $3`,
     [chat.id, primeira, opts.maxAnteriores]);
   return { novas: lote, anteriores: anteriores.rows.reverse() };
 }

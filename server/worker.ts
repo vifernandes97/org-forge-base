@@ -3,6 +3,7 @@ import { FILAS, fila } from './canais/fila.js';
 import { vincularConversa } from './canais/identificacao/vincular.js';
 import { baixarMidia, transcreverAudio, type RefMensagem } from './canais/midia/jobs.js';
 import { armazenamento } from './canais/midia/armazenamento.js';
+import { boasVindas } from './canais/boas-vindas.js';
 import { analisarConversa } from './ia/analise/analisar.js';
 import { agendarAnalise } from './ia/analise/agendar.js';
 import { provedor } from './canais/provedores/index.js';
@@ -72,6 +73,15 @@ export async function iniciarWorker() {
       // Chegou mensagem enquanto a IA pensava: o lote seguinte já entra no debounce.
       const { rows } = await servicePool().query(`select 1 from channel_chats where id = $1 and pending_since is not null`, [job.data.chatId]);
       if (rows.length) await agendarAnalise(job.data.chatId);
+    }
+  });
+
+  await b.work<{ chatId: string }>(FILAS.boasVindas, { batchSize: 1 }, async ([job]) => {
+    const r = await boasVindas(job.data.chatId);
+    if (r.reagendarEm) {
+      await b.send(FILAS.boasVindas, job.data, { singletonKey: job.data.chatId, startAfter: r.reagendarEm });
+    } else if (r.status !== 'ignored') {
+      console.log(`[canais] boas-vindas ${job.data.chatId}: ${r.status}${r.reason ? ` (${r.reason})` : ''}`);
     }
   });
 

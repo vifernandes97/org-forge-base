@@ -13,6 +13,8 @@ export const FILAS = {
   transcreverAudio: 'canais.audio.transcrever',
   /** Analisa o lote novo de uma conversa (debounce por conversa; um por vez por conversa). */
   analisarConversa: 'canais.chat.analisar',
+  /** Boas-vindas por áudio: espera o negócio do formulário e chama o n8n (um por conversa). */
+  boasVindas: 'canais.chat.boasvindas',
   /** Cron: partições de mensagens. */
   manutencao: 'canais.manutencao',
   /** Cron: status das conexões na Evolution. */
@@ -46,6 +48,8 @@ export function fila(): Promise<PgBoss> {
       b.createQueue(FILAS.transcreverAudio, { retryLimit: 10, retryDelay: 30, retryBackoff: true, retryDelayMax: 1800, expireInSeconds: 300 }),
       // stately: por conversa, no máximo um na fila e um rodando.
       b.createQueue(FILAS.analisarConversa, { policy: 'stately', retryLimit: 6, retryDelay: 60, retryBackoff: true, retryDelayMax: 3600, expireInSeconds: 600 }),
+      // Sem retry: o envio pode ter saído mesmo com erro na resposta (boas-vindas.ts).
+      b.createQueue(FILAS.boasVindas, { policy: 'stately', retryLimit: 0, expireInSeconds: 120 }),
       b.createQueue(FILAS.manutencao, { policy: 'singleton', retryLimit: 2, expireInSeconds: 300 }),
       b.createQueue(FILAS.saudeConexoes, { policy: 'singleton', retryLimit: 1, expireInSeconds: 120 }),
     ]);

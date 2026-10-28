@@ -5,7 +5,9 @@ import { jidToPhone, tipoJid } from '../identificacao/telefone.js';
 import type { ChannelProvider, EstadoConexao, MidiaBaixada, EventoNormalizado, MensagemNormalizada, MidiaInfo, ServidorCanal, TipoMensagem } from '../nucleo/tipos.js';
 
 // Só o que o orquestrador usa. MESSAGES_SET (histórico) fica para o backfill.
-const EVENTOS = ['MESSAGES_UPSERT', 'CONNECTION_UPDATE', 'QRCODE_UPDATED'];
+// SEND_MESSAGE: o que sai pela API (ex.: o áudio de boas-vindas do n8n) não
+// vem em MESSAGES_UPSERT; o payload é o mesmo.
+const EVENTOS = ['MESSAGES_UPSERT', 'SEND_MESSAGE', 'CONNECTION_UPDATE', 'QRCODE_UPDATED'];
 
 /** "MESSAGES_UPSERT" e "messages.upsert" aparecem conforme a versão/config. */
 const nomeEvento = (e: unknown) => String(e ?? '').toLowerCase().replace(/_/g, '.');
@@ -92,7 +94,7 @@ const ESTADOS: Record<string, EstadoConexao> = { open: 'connected', connecting: 
 
 export function parseEvolutionWebhook(body: any): EventoNormalizado[] {
   const evento = nomeEvento(body?.event);
-  if (evento === 'messages.upsert') {
+  if (evento === 'messages.upsert' || evento === 'send.message') {
     const itens = Array.isArray(body.data) ? body.data : Array.isArray(body.data?.messages) ? body.data.messages : [body.data];
     return itens.map(mensagem).filter((m: MensagemNormalizada | null): m is MensagemNormalizada => !!m);
   }

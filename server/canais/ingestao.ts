@@ -3,6 +3,7 @@ import { FILAS, fila } from './fila.js';
 import { armazenamento } from './midia/armazenamento.js';
 import { TIPOS_COM_MIDIA, type RefMensagem } from './midia/jobs.js';
 import { agendarAnalise } from '../ia/analise/agendar.js';
+import { ehFraseDeBoasVindas } from './boas-vindas.js';
 import type { ConexaoAtualizada, MensagemNormalizada } from './nucleo/tipos.js';
 import { provedor, provedorExiste } from './provedores/index.js';
 
@@ -15,6 +16,7 @@ interface Conexao {
   organization_id: string;
   provider: string;
   is_active: boolean;
+  welcome_trigger: string | null;
 }
 
 const conexoes = new Map<string, { valor: Conexao | null; ate: number }>();
@@ -23,7 +25,8 @@ async function conexaoPorToken(token: string): Promise<Conexao | null> {
   const c = conexoes.get(token);
   if (c && c.ate > Date.now()) return c.valor;
   const { rows } = await servicePool().query<Conexao>(
-    `select id, organization_id, provider, is_active from channel_connections where webhook_token = $1`, [token]);
+    `select id, organization_id, provider, is_active, case when welcome_webhook_url is not null then welcome_trigger end as welcome_trigger
+     from channel_connections where webhook_token = $1`, [token]);
   const valor = rows[0] ?? null;
   conexoes.set(token, { valor, ate: Date.now() + 30_000 });
   return valor;
@@ -78,6 +81,7 @@ export async function receberWebhookCanal(providerName: string, token: string, r
   const eventos = provedor(providerName).parseWebhook(corpo);
   const vincular = new Set<string>();
   const analisar = new Set<string>();
+  const boasVindas = new Set<string>();
   const midias: { ref: RefMensagem; tipo: string }[] = [];
   let novas = 0;
   for (const e of eventos) {
@@ -93,6 +97,7 @@ export async function receberWebhookCanal(providerName: string, token: string, r
     if (r.status === 'pending' || r.status === 'unmatched') vincular.add(r.chatId);
     if (TIPOS_COM_MIDIA.includes(e.type)) midias.push({ ref: r.ref, tipo: e.type });
     analisar.add(r.chatId);
+    if (!e.fromMe && e.type === 'text' && ehFraseDeBoasVindas(e.body, con.welcome_trigger)) boasVindas.add(r.chatId);
   }
 
   if (novas) {
@@ -102,7 +107,7 @@ export async function receberWebhookCanal(providerName: string, token: string, r
        where id = $1 and (last_event_at is null or last_event_at < now() - interval '1 minute')`, [con.id]);
   }
 
-  if (vincular.size || midias.length) {
+  if (vincular.size || midias.length || boasVindas.size) {
     const b = await fila();
     // Com onde guardar, baixa primeiro (e o download enfileira a transcrição);
     // sem, a transcrição baixa o áudio ela mesma. Imagem sem armazenamento:
@@ -112,6 +117,7 @@ export async function receberWebhookCanal(providerName: string, token: string, r
       ...[...vincular].map((chatId) => b.send(FILAS.vincularConversa, { chatId }, { singletonKey: chatId })),
       ...midias.map(({ ref, tipo }) =>
         guardar ? b.send(FILAS.baixarMidia, ref) : tipo === 'audio' ? b.send(FILAS.transcreverAudio, ref) : null),
+      ...[...boasVindas].map((chatId) => b.send(FILAS.boasVindas, { chatId }, { singletonKey: chatId })),
     ]);
   }
   // Depois do vínculo e das mídias: a análise roda minutos depois (debounce).

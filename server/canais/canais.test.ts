@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { jidToPhone, phoneMatchKey } from './identificacao/telefone';
 import { parseEvolutionWebhook } from './provedores/evolution';
+import { ehFraseDeBoasVindas } from './boas-vindas';
 
 describe('phoneMatchKey', () => {
   it.each([
@@ -110,5 +111,22 @@ describe('transcrever (API de áudio formato OpenAI)', async () => {
     const f = vi.spyOn(globalThis, 'fetch');
     await expect(transcrever(cred, 'm', Buffer.alloc(TAMANHO_MAXIMO + 1), 'audio/ogg', 'pt')).rejects.toBeInstanceOf(ErroPermanente);
     expect(f).not.toHaveBeenCalled();
+  });
+});
+
+describe('boas-vindas', () => {
+  it('reconhece a frase do formulário com variações', () => {
+    const g = 'Oi, quero falar com um consultor!';
+    expect(ehFraseDeBoasVindas('Oi, quero falar com um consultor!', g)).toBe(true);
+    expect(ehFraseDeBoasVindas('oi quero falar com um CONSULTOR 🙂', g)).toBe(true);
+    expect(ehFraseDeBoasVindas('Olá! Oi, quero falar com um consultor', g)).toBe(true);
+    expect(ehFraseDeBoasVindas('Quero falar com um consultor', g)).toBe(false);
+    expect(ehFraseDeBoasVindas('Oi, quero falar com um consultor!', null)).toBe(false);
+    expect(ehFraseDeBoasVindas(null, g)).toBe(false);
+  });
+
+  it('mensagem enviada pela API (send.message) é lida como a do celular', () => {
+    const [m] = parseEvolutionWebhook({ event: 'send.message', data: { key: key({ fromMe: true, id: 'AUD1' }), message: { audioMessage: { seconds: 20, mimetype: 'audio/ogg; codecs=opus', ptt: true } } } });
+    expect(m).toMatchObject({ providerMessageId: 'AUD1', fromMe: true, type: 'audio' });
   });
 });
