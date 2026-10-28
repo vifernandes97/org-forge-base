@@ -4,15 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { useTaskTypeMap } from '@/hooks/useTaskTypes';
 import type { StageTaskTemplate, Stage, Funnel } from '@/types';
-
-const taskTypeLabels: Record<string, string> = {
-  follow_up: 'Follow-up',
-  call: 'Ligação',
-  email: 'E-mail',
-  meeting: 'Reunião',
-  other: 'Outro',
-};
 
 const priorityLabels: Record<string, string> = {
   low: 'Baixa',
@@ -59,6 +52,7 @@ interface AutomationsTableProps {
 }
 
 export function AutomationsTable({ templates, stageMap, funnelMap, onEdit, onDelete, onToggle }: AutomationsTableProps) {
+  const taskTypes = useTaskTypeMap();
   return (
     <div className="rounded-lg border bg-card">
       <Table className="table-stack">
@@ -139,7 +133,7 @@ export function AutomationsTable({ templates, stageMap, funnelMap, onEdit, onDel
                     />
                   ) : (
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <Badge variant="secondary" className="text-[10px]">{taskTypeLabels[t.task_type] || t.task_type}</Badge>
+                      <Badge variant="secondary" className="text-[10px]">{taskTypes[t.task_type]?.label || t.task_type}</Badge>
                       <Badge variant="secondary" className="text-[10px]">{priorityLabels[t.priority] || t.priority}</Badge>
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <CircleDot className="h-3 w-3" />{t.due_hours}h de prazo

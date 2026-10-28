@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, Zap, CheckSquare, Globe, ArrowRightLeft, GitBranch } from 'lucide-react';
 import { useFunnels } from '@/hooks/useFunnels';
 import { useStages } from '@/hooks/useStages';
+import { useTaskTypes } from '@/hooks/useTaskTypes';
 import type { StageTaskTemplate } from '@/types';
 
 const schema = z.object({
@@ -66,6 +67,7 @@ const statusLabels: Record<string, string> = {
 
 export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template, loading, defaultFunnelId }: Props) {
   const { data: funnels } = useFunnels();
+  const { data: taskTypes } = useTaskTypes();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -346,11 +348,9 @@ export function StageTaskTemplateDialog({ open, onOpenChange, onSubmit, template
                         <Select value={field.value} onValueChange={field.onChange}>
                           <FormControl><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger></FormControl>
                           <SelectContent>
-                            <SelectItem value="follow_up">Follow-up</SelectItem>
-                            <SelectItem value="call">Ligação</SelectItem>
-                            <SelectItem value="email">E-mail</SelectItem>
-                            <SelectItem value="meeting">Reunião</SelectItem>
-                            <SelectItem value="other">Outro</SelectItem>
+                            {taskTypes?.filter(t => t.is_active || t.code === field.value).map(t => (
+                              <SelectItem key={t.id} value={t.code}>{t.label}</SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </FormItem>

@@ -144,7 +144,31 @@ export interface LeadActivityWithUser extends LeadActivity {
   user?: Profile;
 }
 
-export type TaskType = 'follow_up' | 'call' | 'email' | 'meeting' | 'other';
+// code de um tipo cadastrado em task_types ('meeting', 'ticket', 'follow_up'...)
+export type TaskType = string;
+
+export type TaskTypeAction = 'none' | 'orbi_meeting' | 'orbi_ticket';
+
+export interface TaskTypeDef {
+  id: string;
+  organization_id: string;
+  code: string;
+  label: string;
+  icon: string;
+  action: TaskTypeAction;
+  position: number;
+  is_active: boolean;
+  is_system: boolean;
+}
+
+export interface TaskSubtype {
+  id: string;
+  organization_id: string;
+  task_type_id: string;
+  label: string;
+  position: number;
+  is_active: boolean;
+}
 
 export interface Task {
   id: string;
@@ -154,6 +178,8 @@ export interface Task {
   title: string;
   description: string | null;
   task_type: TaskType;
+  task_type_id: string | null;
+  task_subtype_id: string | null;
   due_date: string;
   completed_at: string | null;
   priority: LeadPriority;
@@ -162,6 +188,7 @@ export interface Task {
 }
 
 export interface TaskWithRelations extends Task {
+  subtype?: Pick<TaskSubtype, 'id' | 'label'> | null;
   lead?: Lead;
   assigned_profile?: Profile;
 }

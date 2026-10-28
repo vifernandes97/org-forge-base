@@ -4,7 +4,7 @@ import type { Task, TaskWithRelations } from '@/types';
 export async function getLeadTasks(leadId: string, orgId?: string) {
   let query = supabase
     .from('tasks')
-    .select('*, assigned_profile:profiles!tasks_assigned_to_fkey(*)')
+    .select('*, assigned_profile:profiles!tasks_assigned_to_fkey(*), subtype:task_subtypes(id, label)')
     .eq('lead_id', leadId);
   if (orgId) query = query.eq('organization_id', orgId);
   const { data, error } = await query
@@ -17,7 +17,7 @@ export async function getLeadTasks(leadId: string, orgId?: string) {
 export async function getMyTasks(userId: string, orgId?: string) {
   let query = supabase
     .from('tasks')
-    .select('*, lead:leads!tasks_lead_id_fkey(id, priority, stage_id, company:companies(trade_name, segment_ref:company_segments(id, label, is_active)), lead_contacts(is_primary, contact:contacts(name))), assigned_profile:profiles!tasks_assigned_to_fkey(*)')
+    .select('*, lead:leads!tasks_lead_id_fkey(id, priority, stage_id, company:companies(trade_name, segment_ref:company_segments(id, label, is_active)), lead_contacts(is_primary, contact:contacts(name))), assigned_profile:profiles!tasks_assigned_to_fkey(*), subtype:task_subtypes(id, label)')
     .eq('assigned_to', userId);
   if (orgId) query = query.eq('organization_id', orgId);
   const { data, error } = await query
@@ -63,6 +63,7 @@ export async function createTask(data: {
   title: string;
   description?: string | null;
   task_type: string;
+  task_subtype_id?: string | null;
   due_date: string;
   priority: string;
 }) {

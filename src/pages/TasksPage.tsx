@@ -5,12 +5,16 @@ import { useCompleteTask, useUncompleteTask } from '@/hooks/useTasks';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { TaskItem } from '@/components/tasks/TaskItem';
 import { LeadDetailSheet } from '@/components/leads/LeadDetailSheet';
+import { useTaskTypes } from '@/hooks/useTaskTypes';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown } from 'lucide-react';
 import { isToday, isTomorrow, isThisWeek, isAfter, isBefore, startOfDay, endOfDay, addWeeks, startOfWeek, endOfWeek } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { TaskWithRelations } from '@/types';
+
+type GroupBy = 'due' | 'type';
 
 type TaskGroup = { label: string; tasks: TaskWithRelations[]; color?: string };
 
@@ -46,6 +50,13 @@ function groupTasks(tasks: TaskWithRelations[]): TaskGroup[] {
   return groups.filter(g => g.tasks.length > 0);
 }
 
+function groupTasksByType(tasks: TaskWithRelations[], types: { code: string; label: string }[]): TaskGroup[] {
+  const groups = types.map(t => ({ label: t.label, code: t.code, tasks: [] as TaskWithRelations[] }));
+  const rest: TaskGroup = { label: 'Outros tipos', tasks: [] };
+  for (const task of tasks) (groups.find(g => g.code === task.task_type) || rest).tasks.push(task);
+  return [...groups, rest].filter(g => g.tasks.length > 0);
+}
+
 export default function TasksPage() {
   const { data: tasks, isLoading } = useMyTasks();
   const complete = useCompleteTask();
@@ -53,11 +64,23 @@ export default function TasksPage() {
   const { organization } = useOrganization();
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
 
-  const groups = useMemo(() => groupTasks(tasks || []), [tasks]);
+  const { data: types } = useTaskTypes();
+  const [groupBy, setGroupBy] = useState<GroupBy>('due');
+
+  const groups = useMemo(
+    () => groupBy === 'type' ? groupTasksByType(tasks || [], types || []) : groupTasks(tasks || []),
+    [tasks, types, groupBy],
+  );
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Tarefas</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold">Tarefas</h1>
+        <ToggleGroup type="single" variant="outline" size="sm" value={groupBy} onValueChange={v => v && setGroupBy(v as GroupBy)}>
+          <ToggleGroupItem value="due">Por prazo</ToggleGroupItem>
+          <ToggleGroupItem value="type">Por tipo</ToggleGroupItem>
+        </ToggleGroup>
+      </div>
 
       {isLoading ? (
         <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-20" />)}</div>

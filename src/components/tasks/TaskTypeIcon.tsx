@@ -1,11 +1,13 @@
-import { RefreshCw, Phone, Mail, Calendar, Circle } from 'lucide-react';
+import { RefreshCw, Phone, Mail, Calendar, Circle, Ticket, MessageSquare, type LucideIcon } from 'lucide-react';
 import type { TaskType } from '@/types';
 
-const config: Record<TaskType, { icon: typeof RefreshCw; color: string }> = {
+const config: Record<string, { icon: LucideIcon; color: string }> = {
   follow_up: { icon: RefreshCw, color: 'text-blue-500' },
   call: { icon: Phone, color: 'text-green-500' },
   email: { icon: Mail, color: 'text-blue-400' },
   meeting: { icon: Calendar, color: 'text-purple-500' },
+  ticket: { icon: Ticket, color: 'text-amber-500' },
+  message: { icon: MessageSquare, color: 'text-emerald-500' },
   other: { icon: Circle, color: 'text-muted-foreground' },
 };
 

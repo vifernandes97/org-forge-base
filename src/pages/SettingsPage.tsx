@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Building2, Users, ListChecks, ArrowUpFromLine, ArrowDownToLine, Archive, Settings, Tag, GitBranch, MessageCircle, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Building2, Users, ListChecks, ArrowUpFromLine, ArrowDownToLine, Archive, Settings, Tag, ListTodo, GitBranch, MessageCircle, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import OrganizationPage from '@/pages/OrganizationPage';
 import FunnelsPage from '@/pages/FunnelsPage';
 import TeamPage from '@/pages/TeamPage';
@@ -10,6 +10,7 @@ import WebhooksPage from '@/pages/WebhooksPage';
 import InboundWebhooksPage from '@/pages/InboundWebhooksPage';
 import ArchiveReasonsPage from '@/pages/ArchiveReasonsPage';
 import SegmentsPage from '@/pages/SegmentsPage';
+import TaskTypesPage from '@/pages/TaskTypesPage';
 import WhatsAppPage from '@/pages/WhatsAppPage';
 import AiSettingsPage from '@/pages/AiSettingsPage';
 
@@ -22,6 +23,7 @@ const tabs = [
   { value: 'inbound-webhooks', label: 'Webhooks de Entrada', hint: 'Leads recebidos de outros sistemas', icon: ArrowDownToLine },
   { value: 'archive-reasons', label: 'Motivos de Arquivamento', hint: 'Opções ao arquivar um negócio', icon: Archive },
   { value: 'segments', label: 'Segmentos', hint: 'Lista de segmentos das empresas', icon: Tag },
+  { value: 'task-types', label: 'Tipos de Tarefa', hint: 'Tipos e subtipos das tarefas', icon: ListTodo },
   { value: 'whatsapp', label: 'WhatsApp', hint: 'Números conectados e conversas', icon: MessageCircle },
   { value: 'ai', label: 'Inteligência Artificial', hint: 'Provedores, modelos e transcrição', icon: Sparkles },
 ];
@@ -107,6 +109,7 @@ export default function SettingsPage() {
         <TabsContent value="inbound-webhooks"><InboundWebhooksPage /></TabsContent>
         <TabsContent value="archive-reasons"><ArchiveReasonsPage /></TabsContent>
         <TabsContent value="segments"><SegmentsPage /></TabsContent>
+        <TabsContent value="task-types"><TaskTypesPage /></TabsContent>
         <TabsContent value="whatsapp"><WhatsAppPage /></TabsContent>
         <TabsContent value="ai"><AiSettingsPage /></TabsContent>
       </Tabs>

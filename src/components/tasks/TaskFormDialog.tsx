@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCreateTask } from '@/hooks/useTasks';
+import { useTaskTypes, useTaskSubtypes } from '@/hooks/useTaskTypes';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,13 +23,24 @@ export function TaskFormDialog({ open, onOpenChange, leadId }: TaskFormDialogPro
   const { user } = useAuth();
   const { data: members } = useOrgMembers();
   const createTask = useCreateTask();
+  const { data: types } = useTaskTypes();
+  const { data: subtypes } = useTaskSubtypes();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [taskType, setTaskType] = useState('follow_up');
+  const [subtypeId, setSubtypeId] = useState('');
   const [assignedTo, setAssignedTo] = useState(user?.id || '');
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState('medium');
+
+  const activeTypes = (types || []).filter(t => t.is_active);
+  const typeSubtypes = (subtypes || []).filter(s => s.is_active && s.task_type_id === types?.find(t => t.code === taskType)?.id);
+
+  const handleTypeChange = (code: string) => {
+    setTaskType(code);
+    setSubtypeId('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +54,7 @@ export function TaskFormDialog({ open, onOpenChange, leadId }: TaskFormDialogPro
         title: title.trim(),
         description: description.trim() || null,
         task_type: taskType,
+        task_subtype_id: subtypeId || null,
         due_date: new Date(dueDate).toISOString(),
         priority,
       });
@@ -50,6 +63,7 @@ export function TaskFormDialog({ open, onOpenChange, leadId }: TaskFormDialogPro
       setTitle('');
       setDescription('');
       setTaskType('follow_up');
+      setSubtypeId('');
       setDueDate('');
       setPriority('medium');
     } catch (err: any) {
@@ -75,14 +89,10 @@ export function TaskFormDialog({ open, onOpenChange, leadId }: TaskFormDialogPro
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Tipo</Label>
-              <Select value={taskType} onValueChange={setTaskType}>
+              <Select value={taskType} onValueChange={handleTypeChange}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="follow_up">Follow-up</SelectItem>
-                  <SelectItem value="call">Ligação</SelectItem>
-                  <SelectItem value="email">E-mail</SelectItem>
-                  <SelectItem value="meeting">Reunião</SelectItem>
-                  <SelectItem value="other">Outro</SelectItem>
+                  {activeTypes.map(t => <SelectItem key={t.id} value={t.code}>{t.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -99,6 +109,18 @@ export function TaskFormDialog({ open, onOpenChange, leadId }: TaskFormDialogPro
               </Select>
             </div>
           </div>
+          {typeSubtypes.length > 0 && (
+            <div className="space-y-2">
+              <Label>Subtipo</Label>
+              <Select value={subtypeId || 'none'} onValueChange={v => setSubtypeId(v === 'none' ? '' : v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem subtipo</SelectItem>
+                  {typeSubtypes.map(s => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Prazo *</Label>
