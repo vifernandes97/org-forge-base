@@ -527,7 +527,9 @@ Regras:
   plano), use o novo. Ignore valores de exemplo ou de concorrentes.
 - Tarefas: só quando alguém prometeu algo com prazo (enviar proposta,
   enviar link da demo, ligar, mandar contrato). Ex.: "Enviar proposta do
-  plano Pro", "Enviar link da demo de quinta 15h".
+  plano Pro", "Enviar link da demo de quinta 15h". Lead que promete
+  retornar ("amanhã te chamo") vira follow-up da equipe: "Retomar contato
+  se o lead não chamar", no dia combinado.
 - Conversa com fornecedor, parceiro ou cobrança nossa não é comercial.
 - Resumo: registre objeções (preço, concorrente, momento), o sistema ou
   controle que o cliente usa hoje (planilha, caderno, outro sistema), a
