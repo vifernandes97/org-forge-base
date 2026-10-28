@@ -7,6 +7,7 @@ import { enviarWebhook } from './webhook-saida.js';
 import { chavePublicaVapid, removerInscricao, salvarInscricao } from './notificacoes.js';
 import { canais } from './canais/api.js';
 import { ia } from './ia/api.js';
+import { orbi } from './orbi.js';
 
 // O app inteiro atrás de um domínio só (crm.neosoluti.com.br):
 //   /api/auth/*  Better Auth (login, sessão)
@@ -14,6 +15,7 @@ import { ia } from './ia/api.js';
 //   /api/push/*  Web Push: chave pública VAPID e inscrição do aparelho
 //   /api/channels/*  WhatsApp (Evolution): webhook e conexões (server/canais/api.ts)
 //   /api/ai/*    credenciais de IA da organização (server/ia/api.ts)
+//   /api/orbi/*  integração com o Orbi: credencial e retorno assinado (server/orbi.ts)
 //   /rest/*      portão do PostgREST: confere a sessão e repassa com um JWT de
 //                60 s (HS256, segredo compartilhado só com o PostgREST, que não
 //                é exposto). Sem sessão, vai sem token e o PostgREST usa anon.
@@ -68,6 +70,7 @@ app.post('/api/fire-webhook', async (c) => {
 
 app.route('/api/channels', canais);
 app.route('/api/ai', ia);
+app.route('/api/orbi', orbi);
 
 app.get('/api/push/vapid-public-key', (c) => c.json({ key: chavePublicaVapid() }));
 

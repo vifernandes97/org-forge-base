@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { PriorityBadge } from '@/components/leads/PriorityBadge';
 import { TaskTypeIcon } from './TaskTypeIcon';
+import { OrbiStatusBadge } from './OrbiStatusBadge';
 import { formatDistanceToNow, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { TaskWithRelations } from '@/types';
@@ -57,6 +58,7 @@ export function TaskItem({ task, onComplete, onUncomplete, showLead, onLeadClick
           </span>
           {task.subtype && <Badge variant="secondary" className="text-[10px]">{task.subtype.label}</Badge>}
           <PriorityBadge priority={task.priority} />
+          <OrbiStatusBadge task={task} />
           {task.assigned_profile && (
             <Avatar className="h-5 w-5">
               <AvatarFallback className="text-[10px]">

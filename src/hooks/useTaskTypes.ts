@@ -34,7 +34,7 @@ export function useTaskTypeMap() {
   }, [data]);
 }
 
-function useConfigMutation<T>(fn: (v: T, orgId: string) => Promise<any>) {
+function useConfigMutation<T>(fn: (v: T, orgId: string) => Promise<unknown>) {
   const qc = useQueryClient();
   const { organization } = useOrganization();
   return useMutation({

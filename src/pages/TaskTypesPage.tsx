@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- tabelas novas ainda fora de integrations/supabase/types.ts */
 import { useState } from 'react';
 import { ListTodo, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';

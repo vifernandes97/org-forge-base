@@ -180,6 +180,9 @@ export interface Task {
   task_type: TaskType;
   task_type_id: string | null;
   task_subtype_id: string | null;
+  external_status: 'queued' | 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'failed' | null;
+  external_url: string | null;
+  external_error: string | null;
   due_date: string;
   completed_at: string | null;
   priority: LeadPriority;

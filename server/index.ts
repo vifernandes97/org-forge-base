@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { serveStatic } from 'hono/bun';
 import { app } from './app.js';
 import { iniciarFilaDeWebhooks } from './webhook-saida.js';
+import { iniciarFilaDoOrbi } from './orbi.js';
 import { papelAtual, pararFila } from './canais/fila.js';
 import { iniciarWorker } from './worker.js';
 
@@ -27,6 +28,7 @@ if (papel === 'worker') {
   // Só aqui (produção, processo único): no dev o Vite recarrega o módulo e
   // duplicaria o intervalo. A fila de saída fica com a API (ainda é um intervalo simples).
   iniciarFilaDeWebhooks();
+  iniciarFilaDoOrbi();
 }
 
 if (papel !== 'api') {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- tabelas novas ainda fora de integrations/supabase/types.ts */
 import { supabase } from '@/integrations/supabase/client';
 import type { TaskTypeDef, TaskSubtype } from '@/types';
 
