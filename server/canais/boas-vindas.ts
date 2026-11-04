@@ -124,8 +124,10 @@ export async function boasVindas(chatId: string): Promise<ResultadoBoasVindas> {
         welcome_id: bv.id,
         organization_id: ctx.organization_id,
         instance: ctx.instance_name,
-        number: ctx.phone_digits ?? ctx.remote_jid,
-        remote_jid: ctx.remote_jid,
+        // O JID da própria conversa, não o telefone: quem escreve por @lid e
+        // recebe no número vira uma segunda conversa no CRM.
+        number: ctx.remote_jid,
+        phone: ctx.phone_digits,
         chat_id: ctx.chat_id,
         lead_id: neg.lead_id,
         segment: neg.segment,
