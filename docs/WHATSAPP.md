@@ -665,7 +665,7 @@ Decisões do dono nessa importação:
 - Ficaram no funil, como estavam: Fabrika dos Sonhos e Labibi (`won` em
   Onboarding, fora da lista de ativas).
 
-## 17. Boas-vindas por áudio (n8n) — montada em 2026-10-27, desligada
+## 17. Boas-vindas por áudio (n8n) — no ar desde 2026-11-04
 
 Fluxo: o lead converte no formulário do site → o WhatsApp dele abre com
 "Oi, quero falar com um consultor!" para o número da Oniplataforma → ele manda
@@ -680,8 +680,9 @@ Decisões do dono (2026-10-27):
   do número). A Evolution só manda webhook para o CRM, então é o CRM que
   avisa o n8n.
 - **Áudios numa Data Table do n8n** (`oni_boas_vindas_audios`: `segment`,
-  `audio_url`, `active`), com link público. Trocar um áudio = trocar o link;
-  sem deploy.
+  `audio_url`, `active`), com link público. Os arquivos estão em
+  `public/audios/boas-vindas-<segmento>.m4a` (servidos pelo CRM): trocar um
+  áudio = commit e deploy, ou apontar o link para outro lugar na tabela.
 - **Sem negócio, sem segmento ou sem áudio ativo do segmento → não envia**
   (fica para o vendedor). Não há áudio padrão.
 - **Uma vez por contato (telefone), para sempre.**
@@ -702,8 +703,11 @@ CRM (`db/64_boas_vindas.sql`, `server/canais/boas-vindas.ts`):
   chegam quase juntos, em qualquer ordem); depois, `skipped`. Negócio fora da
   primeira etapa (Novo Lead) → `skipped` (`negocio_em_andamento`): quem já
   está sendo atendido não recebe boas-vindas.
-- Chama o webhook com `{ welcome_id, instance, number, remote_jid, chat_id,
+- Chama o webhook com `{ welcome_id, instance, number, phone, chat_id,
   lead_id, segment, segment_id, company, contact_name, contact_email }`.
+  `number` é o **JID da própria conversa**, não o telefone: 44 das 45 conversas
+  são `@lid`, e enviar para o número abre uma segunda conversa no CRM (a IA lê
+  o áudio separado do lead; visto no teste, corrigido em `ba476d4`).
   Resposta `{ sent: true, message_id }` → `sent` e guarda o id;
   `{ sent: false, reason }` → `skipped`; erro → `failed`. **Sem nova
   tentativa automática**: se o n8n mandou e a resposta se perdeu, repetir
@@ -731,30 +735,45 @@ Endereços internos (rede `easypanel`, comum aos dois projetos): o CRM chama
 `http://n8n-n8n:5678/webhook/oni-boas-vindas`; o n8n chama
 `http://evolution-evolution-api:8080`.
 
-### Estado em 2026-10-27 e como ligar
+### Estado em 2026-11-04
 
-Pronto e conferido: migração aplicada, código no ar, webhook da Evolution
-reaplicado com `SEND_MESSAGE`, token gerado (só no `welcome_secret` e na
-credencial do n8n), workflow publicado, teste seco do n8n (token errado →
-403; segmento sem áudio ativo → `sem_audio`), consulta do negócio e prompt
-com a marca rodados em produção. As 6 linhas da Data Table estão com o
-áudio provisório `https://crm.neosoluti.com.br/audios/boas-vindas-teste.m4a`
-(voz sintética) e `active = false`. **O CRM está desligado**
-(`welcome_webhook_url` vazio): nada sai para lead nenhum.
+Ligada para todos os leads da Oniplataforma. Áudios gravados pelo dono em 5
+segmentos; **Produtora de Eventos não tem áudio** (decisão do dono: ligar sem
+ele). Esses leads ficam `skipped` / `sem_audio` e, pela trava de uma vez por
+contato, **não recebem depois**, mesmo quando o áudio entrar.
 
-Falta (dono): gravar os 6 áudios (mp3/ogg/m4a, link público) e o teste com um
-número próprio pelo formulário. Para ligar:
-1. Data Table `oni_boas_vindas_audios`: `audio_url` de cada segmento e
-   `active = true`.
-2. No container do `crm-app`:
-   ```sh
-   sh -c 'set -a; . /app/secrets.env; set +a; bun server/canais/boas-vindas-config.ts Oniplataforma http://n8n-n8n:5678/webhook/oni-boas-vindas "Oi, quero falar com um consultor!"'
-   ```
-   (`... Oniplataforma off` desliga; `... Oniplataforma token` gera token
-   novo — aí atualizar a credencial **CRM boas-vindas** no n8n.)
-3. Teste: formulário com um número que ainda não seja contato (ou só com
-   negócio em Novo Lead) → mandar a frase → áudio em segundos → 3 min
-   depois, `ai_analyses` do lote sem mudar a etapa só por causa do áudio.
+Para incluir o áudio de Produtora: adicionar o arquivo em `public/audios/`,
+deploy, e nova linha na Data Table com `active = true`. As 6 primeiras linhas
+da tabela (áudio provisório, `active = false`) não valem mais e podem ser
+apagadas pela tela do n8n; o conector não apaga nem edita linhas.
+
+Testado ponta a ponta em 2026-11-04 com o número do dono: formulário → negócio
+em Novo Lead com segmento → frase → áudio de Buffet Infantil em 6 s, na mesma
+conversa e marcado como automático → respostas pelo celular e pelo Desktop
+chegaram → a IA registrou o resumo na linha do tempo e **não mudou a etapa**;
+nenhum webhook para a Softeo.
+
+Ligar ou desligar, no container do `crm-app`:
+```sh
+sh -c 'set -a; . /app/secrets.env; set +a; bun server/canais/boas-vindas-config.ts Oniplataforma off'
+```
+Para religar, troque `off` por `http://n8n-n8n:5678/webhook/oni-boas-vindas "Oi, quero falar com um consultor!"`.
+`... Oniplataforma token` gera token novo (aí atualizar a credencial **CRM
+boas-vindas** no n8n).
+
+Ponto em aberto: no primeiro teste, uma resposta enviada pelo WhatsApp Desktop
+se perdeu na Evolution (`No matching sessions found`, `Bad MAC`, aparelho
+vinculado `:44`) e não chegou ao CRM. Foi a única nas 72 h anteriores e veio
+logo depois do envio para o número; depois de enviar pelo JID da conversa, a
+resposta pelo Desktop chegou. A causa não foi provada. Se um lead disser que
+respondeu e nada aparecer em `channel_messages`, procurar `Bad MAC` no log do
+`evolution_evolution-api`.
+
+Dados alterados para o teste: o telefone 5519993686065 foi retirado de 5
+contatos antigos de teste do dono, sem negócio (com 5 contatos no mesmo número,
+a conversa não liga ao negócio: limite `MAX_CONTATOS_MESMO_TELEFONE`). Ficaram
+o negócio de teste Buffet Vini e a conversa `5519993686065@s.whatsapp.net`, com
+o áudio do primeiro teste.
 
 ### Diagnóstico
 
@@ -770,6 +789,6 @@ order by w.created_at desc limit 20;
   ou a empresa não tem segmento; `sem_audio` → linha do segmento inativa ou
   sem link no n8n; `negocio_em_andamento` → negócio já depois de Novo Lead.
 - `failed` → ver `reason` e as execuções do workflow no n8n.
-- Reenviar para um contato (ex.: depois de um teste): apagar a linha dele em
-  `channel_welcomes`.
+- Reenviar para um contato (ex.: depois de um teste): voltar a linha dele para
+  `status = 'waiting'` em `channel_welcomes` e mandar a frase de novo.
 - Log: `[canais] boas-vindas <chat>: <status> (<motivo>)`.
