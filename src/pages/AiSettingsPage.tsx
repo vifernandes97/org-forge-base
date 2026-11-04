@@ -242,7 +242,7 @@ function descreverAcao(a: AnalysisAction): string {
   switch (a.type) {
     case 'note': return `Registrar resumo: "${p.resumo}"`;
     case 'stage_change': return `Mudar etapa para ${p.para}${a.confidence != null ? ` (confiança ${Math.round(a.confidence * 100)}%)` : ''}: ${p.motivo}`;
-    case 'task': return `Criar tarefa "${p.titulo}" para daqui a ${p.prazo_dias} dia(s)`;
+    case 'task': return `Criar tarefa "${p.titulo}" para daqui a ${p.prazo_dias} dia(s), às ${p.horario}`;
     case 'field_update': return `Atualizar valor para R$ ${Number(p.valor).toLocaleString('pt-BR')}: ${p.motivo}`;
     case 'create_lead': return `Criar negócio${p.empresa ? ` para ${p.empresa}` : ''}${p.contato ? ` (contato ${p.contato})` : ''}`;
     case 'classify': return 'Marcar conversa como não comercial';

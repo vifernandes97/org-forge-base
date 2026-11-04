@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { jidToPhone, phoneMatchKey } from './identificacao/telefone';
 import { parseEvolutionWebhook } from './provedores/evolution';
 import { ehFraseDeBoasVindas } from './boas-vindas';
+import { horaDaTarefa } from '../ia/analise/decisao';
 
 describe('phoneMatchKey', () => {
   it.each([
@@ -128,5 +129,15 @@ describe('boas-vindas', () => {
   it('mensagem enviada pela API (send.message) é lida como a do celular', () => {
     const [m] = parseEvolutionWebhook({ event: 'send.message', data: { key: key({ fromMe: true, id: 'AUD1' }), message: { audioMessage: { seconds: 20, mimetype: 'audio/ogg; codecs=opus', ptt: true } } } });
     expect(m).toMatchObject({ providerMessageId: 'AUD1', fromMe: true, type: 'audio' });
+  });
+});
+
+describe('horaDaTarefa', () => {
+  it('usa a hora combinada; sem ela, ou inválida, o fim do dia', () => {
+    expect(horaDaTarefa('14:00')).toBe('14:00');
+    expect(horaDaTarefa(' 9:30 ')).toBe('09:30');
+    expect(horaDaTarefa(null)).toBe('23:59');
+    expect(horaDaTarefa('14h')).toBe('23:59');
+    expect(horaDaTarefa('25:00')).toBe('23:59');
   });
 });

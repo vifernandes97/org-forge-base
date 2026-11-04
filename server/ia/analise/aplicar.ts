@@ -4,7 +4,7 @@ import { notificar, notificarNovoLead } from '../../notificacoes.js';
 import { servico } from '../../servico.js';
 import { enviarWebhook } from '../../webhook-saida.js';
 import { etapaDeEntrada, negociosCandidatos, type ConversaCtx, type NegocioCtx } from './contexto.js';
-import type { Decisao } from './decisao.js';
+import { horaDaTarefa, type Decisao } from './decisao.js';
 
 // A IA propõe, a política decide (docs/WHATSAPP.md §6). Cada proposta vira uma
 // linha em ai_actions com o estado: applied, pending (autonomia "suggest"),
@@ -196,15 +196,16 @@ export async function aplicarDecisao(opts: {
   for (const t of d.tarefas.slice(0, TAREFAS_MAX)) {
     const titulo = t.titulo.trim().slice(0, 200);
     const prazo = Math.max(0, Math.min(90, Math.round(t.prazo_dias)));
-    const base = { type: 'task' as const, lead_id: negocio.id, confidence: null, payload: { titulo, descricao: t.descricao, prazo_dias: prazo, tipo: t.tipo } };
+    const hora = horaDaTarefa(t.horario);
+    const base = { type: 'task' as const, lead_id: negocio.id, confidence: null, payload: { titulo, descricao: t.descricao, prazo_dias: prazo, horario: hora, tipo: t.tipo } };
     if (!titulo || abertas.has(normalizar(titulo))) { acoes.push({ ...base, state: 'skipped', reason: 'Tarefa igual já aberta' }); continue; }
     abertas.add(normalizar(titulo));
     acoes.push({ ...base, state: 'applied', reason: null });
     if (!dryRun) {
       await pool.query(
         `insert into tasks (organization_id, lead_id, assigned_to, title, description, task_type, due_date, priority)
-         values ($1, $2, $3, $4, $5, $6, (current_date + $7::int) + time '18:00', 'medium')`,
-        [chat.organization_id, negocio.id, negocio.assigned_to || autor, titulo, t.descricao, t.tipo, prazo]);
+         values ($1, $2, $3, $4, $5, $6, (((now() at time zone 'America/Sao_Paulo')::date + $7::int) + $8::time) at time zone 'America/Sao_Paulo', 'medium')`,
+        [chat.organization_id, negocio.id, negocio.assigned_to || autor, titulo, t.descricao, t.tipo, prazo, hora]);
     }
   }
 

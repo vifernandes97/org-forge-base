@@ -430,6 +430,15 @@ Ajustes depois da primeira versão (em produção):
   negócio ganho, inativo ou arquivado. Aberto fica na etapa em que está e
   ganha a nota "Formulário preenchido de novo" — senão um lead que já fala
   com o vendedor voltaria para Novo Lead e acionaria a Softeo.
+- **Valor único vs. tabela** (2026-11-04, pedido do dono): preço, promoção ou
+  desconto oferecido pela Equipe entra como valor em jogo, com confiança 0.9,
+  mesmo sem plano definido; tabela ou faixa com vários preços não preenche.
+- **Horário das tarefas** (2026-11-04): a IA devolve `horario` ("HH:MM", Brasília)
+  quando a hora foi combinada. Sem hora, a tarefa fica para as 23:59 do dia.
+  Antes, toda tarefa caía às 15h de Brasília (18:00 UTC) e a de hoje podia nascer
+  atrasada. O dia também passou a ser o de Brasília: depois das 21h, `current_date`
+  em UTC já era amanhã. Reunião sem hora combinada vai ao Orbi às 23:59; o
+  responsável ajusta ao confirmar.
 
 Ficou para a Fase 4: autonomia "só sugerir" (a política já grava `pending`,
 falta a tela de aprovar e o desfazer), aba WhatsApp no negócio, catálogo de
@@ -521,10 +530,13 @@ Regras:
 - Nunca volte um negócio para uma etapa anterior.
 - Pode pular etapas quando a conversa mostrar: proposta já enviada vai
   direto para FWP, mesmo sem demonstração.
-- Valor é o valor em jogo, não o fechado: o último valor do plano que a
-  Equipe passou ou que foi combinado, mesmo sem aceite (mensal; se a
-  negociação for de plano anual, o valor anual). Se mudar (desconto, outro
-  plano), use o novo. Ignore valores de exemplo ou de concorrentes.
+- Valor é o valor em jogo, não o fechado: todo valor único que a Equipe
+  oferecer (um preço, uma promoção, um desconto) ou que for combinado, mesmo
+  sem aceite e mesmo sem plano definido (mensal; se a negociação for de plano
+  anual, o valor anual). Se mudar (desconto, outro plano), use o novo.
+  Tabela ou faixa com vários preços ("de R$199 a R$549", imagem com 3 planos)
+  não é valor em jogo: não preencha. Ignore valores de exemplo ou de
+  concorrentes.
 - Tarefas: só quando alguém prometeu algo com prazo (enviar proposta,
   enviar link da demo, ligar, mandar contrato). Ex.: "Enviar proposta do
   plano Pro", "Enviar link da demo de quinta 15h". Lead que promete
