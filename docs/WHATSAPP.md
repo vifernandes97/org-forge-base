@@ -715,6 +715,19 @@ CRM (`db/64_boas_vindas.sql`, `server/canais/boas-vindas.ts`):
   chegam quase juntos, em qualquer ordem); depois, `skipped`. Negócio fora da
   primeira etapa (Novo Lead) → `skipped` (`negocio_em_andamento`): quem já
   está sendo atendido não recebe boas-vindas.
+- **Número diferente do formulário** (desde 2026-11-06): se nenhum contato tem o
+  telefone da conversa, o job procura o negócio que o formulário criou ou
+  atualizou a até 10 min da frase (`inbound_webhook_logs.lead_id`), aberto, no
+  funil da conexão, sem conversa ligada e sem boas-vindas. **Só com exatamente
+  um** candidato: liga a conversa direto (`channel_chats.lead_id`,
+  `matched_by = 'form_recent'`), registra a nota "WhatsApp ligado pelo
+  formulário" com o número do WhatsApp e segue (áudio do segmento). Com dois
+  formulários no mesmo intervalo, não arrisca (`sem_negocio`, como antes; 2 de
+  75 formulários em 30 dias). O telefone do contato continua o do formulário.
+  Motivo: os 2 primeiros leads reais (04 e 05/11) digitaram no formulário um
+  número e chamaram de outro; o CRM não achou o negócio, não mandou o áudio, e
+  a IA criou um negócio duplicado sem segmento. Como a conversa fica `linked`,
+  a ligação por telefone (`vincular.ts`) não a volta para `unmatched`.
 - Chama o webhook com `{ welcome_id, instance, number, phone, chat_id,
   lead_id, segment, segment_id, company, contact_name, contact_email }`.
   `number` é o **JID da própria conversa**, não o telefone: 44 das 45 conversas
@@ -787,6 +800,15 @@ a conversa não liga ao negócio: limite `MAX_CONTATOS_MESMO_TELEFONE`). Ficaram
 o negócio de teste Buffet Vini e a conversa `5519993686065@s.whatsapp.net`, com
 o áudio do primeiro teste.
 
+Dados corrigidos em 2026-11-06 (os 2 leads acima): os negócios criados pela IA
+(Burger summer, Lbbassessoria) foram mesclados nos do formulário (Samir rocha,
+LBB eventos) com `merge_leads`, as empresas com `merge_companies`; o contato do
+WhatsApp entrou no negócio do formulário e a conversa aponta para ele. LBB
+eventos assumiu a etapa Atendimento Humano do duplicado (sem novo webhook).
+Para isso, `db/67_atividade_mescla.sql`: a validação de `lead_activities` não
+aceitava `company_merge` / `contact_merge`, então mesclar empresa ou contato
+com negócio falhava também pela tela.
+
 ### Diagnóstico
 
 ```sql
@@ -797,8 +819,9 @@ order by w.created_at desc limit 20;
 - Nenhuma linha → a frase não bateu (`welcome_trigger`) ou o envio está
   desligado (`welcome_webhook_url` vazio), ou a conversa não tem telefone.
 - `waiting` parado → o job sumiu; a próxima mensagem com a frase retoma.
-- `skipped` `sem_negocio` / `sem_segmento` → o formulário não chegou em 5 min
-  ou a empresa não tem segmento; `sem_audio` → linha do segmento inativa ou
+- `skipped` `sem_negocio` / `sem_segmento` → o formulário não chegou em 5 min,
+  o lead usou outro número e havia mais de um formulário recente, ou a empresa
+  não tem segmento; `sem_audio` → linha do segmento inativa ou
   sem link no n8n; `negocio_em_andamento` → negócio já depois de Novo Lead.
 - `failed` → ver `reason` e as execuções do workflow no n8n.
 - Reenviar para um contato (ex.: depois de um teste): voltar a linha dele para

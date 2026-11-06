@@ -71,7 +71,7 @@ export async function vincularConversa(chatId: string): Promise<{ status: string
   }
 
   if (!escolhido) {
-    await pool.query(`update channel_chats set status = 'unmatched', updated_at = now() where id = $1`, [chat.id]);
+    await pool.query(`update channel_chats set status = 'unmatched', updated_at = now() where id = $1 and status <> 'linked'`, [chat.id]);
     return { status: 'unmatched', matchedBy: null };
   }
 

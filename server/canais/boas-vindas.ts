@@ -58,6 +58,59 @@ async function fechar(id: string, status: 'sent' | 'skipped' | 'failed', extra: 
     [id, status, extra.reason ?? null, extra.lead_id ?? null, extra.segment ?? null, extra.provider_message_id ?? null]);
 }
 
+/** Distância máxima entre o formulário e a frase no WhatsApp. */
+const JANELA_FORMULARIO_MIN = 10;
+
+const NEGOCIO_COLS = `l.id as lead_id, l.name as lead_name,
+  l.stage_id = (select s.id from stages s where s.funnel_id = l.funnel_id order by s.position limit 1) as em_entrada,
+  sg.label as segment, sg.id as segment_id, co.trade_name, c.name as contact_name, c.email as contact_email`;
+
+/**
+ * A frase chegou de um número que não está em nenhum contato. Procura o
+ * negócio que o formulário criou ou atualizou perto da frase (±10 min), no
+ * funil da conexão e sem conversa de WhatsApp ligada. Só liga se houver
+ * exatamente um — com dois leads no mesmo intervalo não dá para saber qual é.
+ * A ligação é direta na conversa (channel_chats.lead_id); o telefone do
+ * contato fica o do formulário, e uma nota no negócio registra o número do WhatsApp.
+ */
+async function negocioDoFormularioRecente(ctx: Contexto, fraseEm: Date): Promise<Negocio | undefined> {
+  const pool = servicePool();
+  const { rows } = await pool.query<Negocio & { contact_id: string | null }>(
+    `select ${NEGOCIO_COLS}, c.id as contact_id
+     from leads l
+     left join companies co on co.id = l.company_id
+     left join company_segments sg on sg.id = co.segment_id
+     left join lateral (
+       select c.* from lead_contacts lc join contacts c on c.id = lc.contact_id
+       where lc.lead_id = l.id order by lc.is_primary desc, lc.created_at limit 1
+     ) c on true
+     where l.organization_id = $1
+       and ($2::uuid is null or l.funnel_id = $2)
+       and l.status = 'open' and l.archived_at is null and l.merged_into_lead_id is null
+       and exists (select 1 from inbound_webhook_logs w where w.lead_id = l.id
+                   and w.created_at between $3::timestamptz - make_interval(mins => $4) and $3::timestamptz + make_interval(mins => $4))
+       and not exists (select 1 from channel_chats ch where ch.lead_id = l.id)
+       and not exists (select 1 from channel_welcomes w where w.lead_id = l.id)
+     limit 2`,
+    [ctx.organization_id, ctx.funnel_id, fraseEm, JANELA_FORMULARIO_MIN]);
+  if (rows.length !== 1) return undefined;
+  const { contact_id, ...neg } = rows[0];
+
+  const { rowCount } = await pool.query(
+    `update channel_chats set status = 'linked', lead_id = $2, contact_id = coalesce($3, contact_id), matched_by = 'form_recent', updated_at = now()
+     where id = $1 and lead_id is null`,
+    [ctx.chat_id, neg.lead_id, contact_id]);
+  if (!rowCount) return undefined;
+  await pool.query(
+    `insert into lead_activities (organization_id, lead_id, user_id, activity_type, title, description, metadata)
+     values ($1, $2, (select coalesce(l.assigned_to, (select m.user_id from organization_members m where m.organization_id = $1 order by (m.role = 'owner') desc, m.created_at limit 1)) from leads l where l.id = $2),
+             'note', 'WhatsApp ligado pelo formulário', $3, $4)`,
+    [ctx.organization_id, neg.lead_id,
+      `O lead chamou no WhatsApp por outro número${ctx.phone_digits ? ` (+${ctx.phone_digits})` : ''}, diferente do telefone do formulário. A conversa foi ligada a este negócio porque foi o único formulário recebido perto da mensagem.`,
+      { source: 'whatsapp_welcome', chat_id: ctx.chat_id, matched_by: 'form_recent' }]);
+  return neg;
+}
+
 export async function boasVindas(chatId: string): Promise<ResultadoBoasVindas> {
   const pool = servicePool();
   const { rows } = await pool.query<Contexto>(
@@ -84,10 +137,8 @@ export async function boasVindas(chatId: string): Promise<ResultadoBoasVindas> {
   // O negócio aberto mais novo do contato no funil da conexão, com o segmento
   // da empresa. em_entrada: ainda na primeira etapa (negócio que já anda não
   // recebe boas-vindas).
-  const { rows: [neg] } = await pool.query<Negocio>(
-    `select l.id as lead_id, l.name as lead_name,
-            l.stage_id = (select s.id from stages s where s.funnel_id = l.funnel_id order by s.position limit 1) as em_entrada,
-            sg.label as segment, sg.id as segment_id, co.trade_name, c.name as contact_name, c.email as contact_email
+  let { rows: [neg] }: { rows: (Negocio | undefined)[] } = await pool.query<Negocio>(
+    `select ${NEGOCIO_COLS}
      from contacts c
      join lead_contacts lc on lc.contact_id = c.id
      join leads l on l.id = lc.lead_id
@@ -100,6 +151,9 @@ export async function boasVindas(chatId: string): Promise<ResultadoBoasVindas> {
     [ctx.organization_id, ctx.phone_key, ctx.funnel_id]);
 
   const esperou = (Date.now() - new Date(bv.created_at).getTime()) / 1000;
+  // Ninguém com esse telefone: o lead pode ter digitado outro número no
+  // formulário. Liga a conversa ao negócio do formulário recente, se for o único.
+  if (!neg) neg = await negocioDoFormularioRecente(ctx, bv.created_at);
   if (!neg?.segment) {
     if (esperou < ESPERA_NEGOCIO_S) return { status: 'skipped', reason: 'esperando', reagendarEm: INTERVALO_S };
     const reason = neg ? 'sem_segmento' : 'sem_negocio';
