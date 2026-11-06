@@ -9,15 +9,17 @@ import { servidor, urlDoWebhook } from './servidores.js';
 //   sh -c 'set -a; . /app/secrets.env; set +a; bun server/canais/boas-vindas-config.ts <instância> token'
 //   ... boas-vindas-config.ts <instância> <url-do-n8n> "<frase>"
 //   ... boas-vindas-config.ts <instância> off
+//   ... boas-vindas-config.ts <instância> formulario "<texto com {nome}>"   |   <instância> formulario off
 // token: gera um token novo (sem ligar o envio) e imprime uma vez — é o valor
 // do cabeçalho X-CRM-Token na credencial Header Auth do webhook no n8n.
 // <url>: liga o envio (gera o token só se ainda não há um). off: desliga e
 // mantém o token. Todos reaplicam o webhook da instância na Evolution
-// (eventos atuais, com SEND_MESSAGE).
+// (eventos atuais, com SEND_MESSAGE). formulario: liga/desliga o envio sem a
+// frase (10 min depois do formulário, texto + áudio); precisa da URL ligada.
 
 const [instancia, url, frase] = process.argv.slice(2);
 if (!instancia || !url || (!['off', 'token'].includes(url) && !frase)) {
-  console.error('uso: boas-vindas-config.ts <instância> token  |  <instância> <url-do-n8n> "<frase>"  |  <instância> off');
+  console.error('uso: boas-vindas-config.ts <instância> token  |  <instância> <url-do-n8n> "<frase>"  |  <instância> off  |  <instância> formulario "<texto>"|off');
   process.exit(1);
 }
 
@@ -40,6 +42,10 @@ if (url === 'off') {
   console.log('boas-vindas desligada');
 } else if (url === 'token') {
   await novoToken();
+} else if (url === 'formulario') {
+  const texto = frase === 'off' ? null : frase;
+  await pool.query(`update channel_connections set welcome_form_text = $2, updated_at = now() where id = $1`, [con.id, texto]);
+  console.log(texto ? `boas-vindas sem a frase ligada\ntexto: ${texto}` : 'boas-vindas sem a frase desligada');
 } else {
   if (!con.welcome_secret) await novoToken();
   await pool.query(`update channel_connections set welcome_webhook_url = $2, welcome_trigger = $3, updated_at = now() where id = $1`, [con.id, url, frase]);

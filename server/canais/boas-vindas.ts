@@ -8,7 +8,8 @@ import { decifrar } from './cifra.js';
 // conexão (n8n), que manda o áudio do segmento pela Evolution e devolve o id
 // da mensagem. Esse id marca o áudio como automático para a IA.
 // Decisões do dono: uma vez por contato (telefone), para sempre; sem negócio,
-// sem segmento ou sem áudio do segmento → não envia.
+// sem segmento ou sem áudio do segmento → não envia. Quem não manda a frase
+// recebe 10 min depois do formulário, com um texto antes (boasVindasFormulario).
 
 /** Quanto esperar o negócio/segmento aparecer depois da frase. */
 const ESPERA_NEGOCIO_S = Number(process.env.WELCOME_WAIT_SECONDS ?? 300);
@@ -51,11 +52,49 @@ interface Negocio {
 
 export type ResultadoBoasVindas = { status: 'sent' | 'skipped' | 'failed' | 'ignored'; reason?: string; reagendarEm?: number };
 
-async function fechar(id: string, status: 'sent' | 'skipped' | 'failed', extra: { reason?: string | null; lead_id?: string | null; segment?: string | null; provider_message_id?: string | null }) {
+type Fechamento = { reason?: string | null; lead_id?: string | null; segment?: string | null; provider_message_id?: string | null; intro_message_id?: string | null };
+
+async function fechar(id: string, status: 'sent' | 'skipped' | 'failed', extra: Fechamento) {
   await servicePool().query(
     `update channel_welcomes set status = $2, reason = $3, lead_id = coalesce($4, lead_id), segment = coalesce($5, segment),
-       provider_message_id = $6, updated_at = now() where id = $1`,
-    [id, status, extra.reason ?? null, extra.lead_id ?? null, extra.segment ?? null, extra.provider_message_id ?? null]);
+       provider_message_id = $6, intro_message_id = $7, updated_at = now() where id = $1`,
+    [id, status, extra.reason ?? null, extra.lead_id ?? null, extra.segment ?? null, extra.provider_message_id ?? null, extra.intro_message_id ?? null]);
+}
+
+/**
+ * Chama o webhook (n8n) e fecha a linha de channel_welcomes com o resultado.
+ * Sem nova tentativa automática: se o n8n mandou e a resposta se perdeu,
+ * repetir mandaria o áudio duas vezes. Falha fica registrada para olhar.
+ */
+async function chamarWebhook(url: string, segredo: string | null, welcomeId: string, neg: { lead_id: string; segment: string | null },
+  corpoEnvio: Record<string, unknown>): Promise<ResultadoBoasVindas> {
+  const base = { lead_id: neg.lead_id, segment: neg.segment };
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...(segredo ? { 'X-CRM-Token': decifrar(segredo) } : {}) },
+      body: JSON.stringify({ welcome_id: welcomeId, ...corpoEnvio }),
+      signal: AbortSignal.timeout(60_000),
+    });
+    const texto = await res.text();
+    let corpo: { sent?: boolean; message_id?: string; text_message_id?: string; reason?: string } = {};
+    try { corpo = JSON.parse(texto); } catch { /* resposta sem JSON */ }
+    if (!res.ok) {
+      await fechar(welcomeId, 'failed', { ...base, reason: `HTTP ${res.status} ${texto.slice(0, 300)}` });
+      return { status: 'failed', reason: `HTTP ${res.status}` };
+    }
+    if (corpo.sent && corpo.message_id) {
+      await fechar(welcomeId, 'sent', { ...base, provider_message_id: String(corpo.message_id),
+        intro_message_id: corpo.text_message_id ? String(corpo.text_message_id) : null });
+      return { status: 'sent' };
+    }
+    const reason = corpo.reason || 'n8n_nao_enviou';
+    await fechar(welcomeId, 'skipped', { ...base, reason, intro_message_id: corpo.text_message_id ? String(corpo.text_message_id) : null });
+    return { status: 'skipped', reason };
+  } catch (e) {
+    await fechar(welcomeId, 'failed', { ...base, reason: (e as Error).message.slice(0, 300) });
+    return { status: 'failed', reason: (e as Error).message };
+  }
 }
 
 /** Distância máxima entre o formulário e a frase no WhatsApp. */
@@ -65,13 +104,17 @@ const NEGOCIO_COLS = `l.id as lead_id, l.name as lead_name,
   l.stage_id = (select s.id from stages s where s.funnel_id = l.funnel_id order by s.position limit 1) as em_entrada,
   sg.label as segment, sg.id as segment_id, co.trade_name, c.name as contact_name, c.email as contact_email`;
 
+/** O lead já escreveu (mensagem recebida) numa conversa ligada a este negócio? */
+const LEAD_CONVERSOU = (lead: string) => `exists (select 1 from channel_chats ch where ch.lead_id = ${lead}
+  and exists (select 1 from channel_messages m where m.chat_id = ch.id and not m.from_me))`;
+
 /**
  * A frase chegou de um número que não está em nenhum contato. Procura o
  * negócio que o formulário criou ou atualizou perto da frase (±10 min), no
- * funil da conexão e sem conversa de WhatsApp ligada. Só liga se houver
- * exatamente um — com dois leads no mesmo intervalo não dá para saber qual é.
- * A ligação é direta na conversa (channel_chats.lead_id); o telefone do
- * contato fica o do formulário, e uma nota no negócio registra o número do WhatsApp.
+ * funil da conexão e sem conversa em que o lead já tenha escrito. Só liga se
+ * houver exatamente um — com dois leads no mesmo intervalo não dá para saber
+ * qual é. A ligação é direta na conversa (channel_chats.lead_id); o telefone
+ * do contato fica o do formulário, e uma nota no negócio registra o número do WhatsApp.
  */
 async function negocioDoFormularioRecente(ctx: Contexto, fraseEm: Date): Promise<Negocio | undefined> {
   const pool = servicePool();
@@ -89,8 +132,7 @@ async function negocioDoFormularioRecente(ctx: Contexto, fraseEm: Date): Promise
        and l.status = 'open' and l.archived_at is null and l.merged_into_lead_id is null
        and exists (select 1 from inbound_webhook_logs w where w.lead_id = l.id
                    and w.created_at between $3::timestamptz - make_interval(mins => $4) and $3::timestamptz + make_interval(mins => $4))
-       and not exists (select 1 from channel_chats ch where ch.lead_id = l.id)
-       and not exists (select 1 from channel_welcomes w where w.lead_id = l.id)
+       and not ${LEAD_CONVERSOU('l.id')}
      limit 2`,
     [ctx.organization_id, ctx.funnel_id, fraseEm, JANELA_FORMULARIO_MIN]);
   if (rows.length !== 1) return undefined;
@@ -124,12 +166,12 @@ export async function boasVindas(chatId: string): Promise<ResultadoBoasVindas> {
   if (!ctx.phone_key) return { status: 'ignored', reason: 'sem_telefone' };
 
   // A trava: uma linha por telefone na organização. Já existe de outra
-  // conversa ou já terminou → não manda de novo.
+  // conversa (ou do envio depois do formulário) ou já terminou → não manda de novo.
   await pool.query(
     `insert into channel_welcomes (organization_id, connection_id, chat_id, phone_key) values ($1, $2, $3, $4)
      on conflict (organization_id, phone_key) do nothing`,
     [ctx.organization_id, ctx.connection_id, ctx.chat_id, ctx.phone_key]);
-  const { rows: [bv] } = await pool.query<{ id: string; chat_id: string; status: string; created_at: Date }>(
+  const { rows: [bv] } = await pool.query<{ id: string; chat_id: string | null; status: string; created_at: Date }>(
     `select id, chat_id, status, created_at from channel_welcomes where organization_id = $1 and phone_key = $2`,
     [ctx.organization_id, ctx.phone_key]);
   if (bv.status !== 'waiting' || bv.chat_id !== ctx.chat_id) return { status: 'ignored', reason: 'ja_enviado' };
@@ -164,50 +206,131 @@ export async function boasVindas(chatId: string): Promise<ResultadoBoasVindas> {
     await fechar(bv.id, 'skipped', { reason: 'negocio_em_andamento', lead_id: neg.lead_id, segment: neg.segment });
     return { status: 'skipped', reason: 'negocio_em_andamento' };
   }
-
-  // Sem nova tentativa automática: se o n8n mandou e a resposta se perdeu,
-  // repetir mandaria o áudio duas vezes. Falha fica registrada para olhar.
-  try {
-    const res = await fetch(ctx.welcome_webhook_url, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        ...(ctx.welcome_secret ? { 'X-CRM-Token': decifrar(ctx.welcome_secret) } : {}),
-      },
-      body: JSON.stringify({
-        welcome_id: bv.id,
-        organization_id: ctx.organization_id,
-        instance: ctx.instance_name,
-        // O JID da própria conversa, não o telefone: quem escreve por @lid e
-        // recebe no número vira uma segunda conversa no CRM.
-        number: ctx.remote_jid,
-        phone: ctx.phone_digits,
-        chat_id: ctx.chat_id,
-        lead_id: neg.lead_id,
-        segment: neg.segment,
-        segment_id: neg.segment_id,
-        company: neg.trade_name,
-        contact_name: neg.contact_name,
-        contact_email: neg.contact_email,
-      }),
-      signal: AbortSignal.timeout(60_000),
-    });
-    const texto = await res.text();
-    let corpo: { sent?: boolean; message_id?: string; reason?: string } = {};
-    try { corpo = JSON.parse(texto); } catch { /* resposta sem JSON */ }
-    if (!res.ok) {
-      await fechar(bv.id, 'failed', { reason: `HTTP ${res.status} ${texto.slice(0, 300)}`, lead_id: neg.lead_id, segment: neg.segment });
-      return { status: 'failed', reason: `HTTP ${res.status}` };
-    }
-    if (corpo.sent && corpo.message_id) {
-      await fechar(bv.id, 'sent', { lead_id: neg.lead_id, segment: neg.segment, provider_message_id: String(corpo.message_id) });
-      return { status: 'sent' };
-    }
-    const reason = corpo.reason || 'n8n_nao_enviou';
-    await fechar(bv.id, 'skipped', { reason, lead_id: neg.lead_id, segment: neg.segment });
-    return { status: 'skipped', reason };
-  } catch (e) {
-    await fechar(bv.id, 'failed', { reason: (e as Error).message.slice(0, 300), lead_id: neg.lead_id, segment: neg.segment });
-    return { status: 'failed', reason: (e as Error).message };
+  // O negócio já recebeu a boas-vindas por outro número (ex.: envio depois do
+  // formulário para o telefone digitado, e o lead chamou de outro).
+  const { rows: [jaRecebeu] } = await pool.query(
+    `select 1 from channel_welcomes where lead_id = $1 and id <> $2 and status in ('waiting','sent')`, [neg.lead_id, bv.id]);
+  if (jaRecebeu) {
+    await fechar(bv.id, 'skipped', { reason: 'negocio_ja_recebeu', lead_id: neg.lead_id, segment: neg.segment });
+    return { status: 'skipped', reason: 'negocio_ja_recebeu' };
   }
+
+  return chamarWebhook(ctx.welcome_webhook_url, ctx.welcome_secret, bv.id, neg, {
+    origin: 'phrase',
+    organization_id: ctx.organization_id,
+    instance: ctx.instance_name,
+    // O JID da própria conversa, não o telefone: quem escreve por @lid e
+    // recebe no número vira uma segunda conversa no CRM.
+    number: ctx.remote_jid,
+    phone: ctx.phone_digits,
+    chat_id: ctx.chat_id,
+    text: null,
+    lead_id: neg.lead_id,
+    segment: neg.segment,
+    segment_id: neg.segment_id,
+    company: neg.trade_name,
+    contact_name: neg.contact_name,
+    contact_email: neg.contact_email,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Envio depois do formulário (sem a frase). O webhook do formulário agenda
+// este job para FORMULARIO_ESPERA_MIN depois; se até lá o lead não escreveu,
+// o CRM manda o texto da conexão (welcome_form_text) e o áudio do segmento
+// para o telefone do formulário. Mesma trava por telefone da frase.
+
+/** Quanto esperar a frase antes de mandar sozinho. */
+export const FORMULARIO_ESPERA_MIN = Number(process.env.WELCOME_FORM_DELAY_MINUTES ?? 10);
+
+/** Telefone do formulário em dígitos com DDI ("(11) 98765-4321" → "5511987654321"). Nulo se não parece telefone. */
+export function telefoneParaEnvio(phone: string | null | undefined): string | null {
+  const v = (phone ?? '').replace(/\D/g, '');
+  if (v.length < 10) return null;
+  if ((phone ?? '').trim().startsWith('+')) return v;
+  if (v.length === 10 || v.length === 11) return `55${v}`;
+  return (v.length === 12 || v.length === 13) && v.startsWith('55') ? v : null;
+}
+
+/** Primeiro nome do contato para o texto; nulo se o nome não parece nome de gente. */
+export function primeiroNome(nome: string | null | undefined): string | null {
+  const p = (nome ?? '').trim().split(/\s+/)[0] ?? '';
+  if (p.length < 2 || /[@\d_]/.test(p) || !/^\p{L}/u.test(p)) return null;
+  return p[0].toLocaleUpperCase('pt-BR') + p.slice(1).toLocaleLowerCase('pt-BR');
+}
+
+/** "Oi, {nome}! …" → com o nome, ou "Oi! …" sem ele. */
+export function textoDeBoasVindas(modelo: string, nome: string | null): string {
+  return (nome ? modelo.replace(/\{nome\}/g, nome) : modelo.replace(/,?\s*\{nome\}/g, '')).trim();
+}
+
+interface LeadFormulario extends Negocio {
+  organization_id: string;
+  connection_id: string;
+  instance_name: string;
+  welcome_webhook_url: string;
+  welcome_secret: string | null;
+  welcome_form_text: string;
+  contact_phone: string | null;
+  phone_key: string | null;
+}
+
+export async function boasVindasFormulario(leadId: string): Promise<ResultadoBoasVindas> {
+  const pool = servicePool();
+  const { rows: [lf] } = await pool.query<LeadFormulario>(
+    `select ${NEGOCIO_COLS}, l.organization_id, cn.id as connection_id, cn.instance_name, cn.welcome_webhook_url, cn.welcome_secret,
+            cn.welcome_form_text, c.phone as contact_phone, c.phone_key
+     from leads l
+     join lateral (
+       select * from channel_connections cn
+       where cn.organization_id = l.organization_id and cn.is_active
+         and cn.welcome_webhook_url is not null and cn.welcome_form_text is not null
+         and (cn.funnel_id is null or cn.funnel_id = l.funnel_id)
+       order by (cn.funnel_id = l.funnel_id) desc nulls last limit 1
+     ) cn on true
+     left join companies co on co.id = l.company_id
+     left join company_segments sg on sg.id = co.segment_id
+     left join lateral (
+       select c.* from lead_contacts lc join contacts c on c.id = lc.contact_id
+       where lc.lead_id = l.id and c.phone_key is not null order by lc.is_primary desc, lc.created_at limit 1
+     ) c on true
+     where l.id = $1 and l.status = 'open' and l.archived_at is null and l.merged_into_lead_id is null`, [leadId]);
+  // Sem lock nestes casos: nada foi enviado e o telefone continua livre para a frase.
+  if (!lf) return { status: 'ignored', reason: 'sem_configuracao' };
+  if (!lf.em_entrada) return { status: 'ignored', reason: 'negocio_em_andamento' };
+  if (!lf.segment) return { status: 'ignored', reason: 'sem_segmento' };
+  const numero = telefoneParaEnvio(lf.contact_phone);
+  if (!numero || !lf.phone_key) return { status: 'ignored', reason: 'sem_telefone' };
+
+  // Já recebeu (pela frase, de qualquer número) ou já está conversando → nada.
+  const { rows: [ja] } = await pool.query<{ motivo: string }>(
+    `select case when exists (select 1 from channel_welcomes w where w.lead_id = $1) then 'ja_enviado'
+                 when ${LEAD_CONVERSOU('$1::uuid')} then 'ja_conversou'
+                 when exists (select 1 from channel_chats ch where ch.organization_id = $2 and ch.phone_key = $3
+                              and exists (select 1 from channel_messages m where m.chat_id = ch.id and not m.from_me)) then 'ja_conversou'
+            end as motivo`, [leadId, lf.organization_id, lf.phone_key]);
+  if (ja?.motivo) return { status: 'ignored', reason: ja.motivo };
+
+  const { rows: [bv] } = await pool.query<{ id: string }>(
+    `insert into channel_welcomes (organization_id, connection_id, chat_id, phone_key, lead_id, segment, origin)
+     values ($1, $2, null, $3, $4, $5, 'form')
+     on conflict (organization_id, phone_key) do nothing returning id`,
+    [lf.organization_id, lf.connection_id, lf.phone_key, leadId, lf.segment]);
+  if (!bv) return { status: 'ignored', reason: 'ja_enviado' };
+
+  return chamarWebhook(lf.welcome_webhook_url, lf.welcome_secret, bv.id, lf, {
+    origin: 'form',
+    organization_id: lf.organization_id,
+    instance: lf.instance_name,
+    number: numero,
+    phone: numero,
+    chat_id: null,
+    text: textoDeBoasVindas(lf.welcome_form_text, primeiroNome(lf.contact_name)),
+    lead_id: leadId,
+    segment: lf.segment,
+    segment_id: lf.segment_id,
+    company: lf.trade_name,
+    contact_name: lf.contact_name,
+    contact_email: lf.contact_email,
+  });
 }

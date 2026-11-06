@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { jidToPhone, phoneMatchKey } from './identificacao/telefone';
 import { parseEvolutionWebhook } from './provedores/evolution';
-import { ehFraseDeBoasVindas } from './boas-vindas';
+import { ehFraseDeBoasVindas, primeiroNome, telefoneParaEnvio, textoDeBoasVindas } from './boas-vindas';
 import { horaDaTarefa } from '../ia/analise/decisao';
 
 describe('phoneMatchKey', () => {
@@ -139,5 +139,27 @@ describe('horaDaTarefa', () => {
     expect(horaDaTarefa(null)).toBe('23:59');
     expect(horaDaTarefa('14h')).toBe('23:59');
     expect(horaDaTarefa('25:00')).toBe('23:59');
+  });
+});
+
+describe('boas-vindas sem a frase', () => {
+  it('telefone do formulário vira dígitos com DDI', () => {
+    expect(telefoneParaEnvio('(82) 98236-7268')).toBe('5582982367268');
+    expect(telefoneParaEnvio('5511979642155')).toBe('5511979642155');
+    expect(telefoneParaEnvio('+55 11 8765-4321')).toBe('551187654321');
+    expect(telefoneParaEnvio('+1 415 555 0100')).toBe('14155550100');
+    expect(telefoneParaEnvio('98236-7268')).toBeNull();
+    expect(telefoneParaEnvio(null)).toBeNull();
+  });
+  it('primeiro nome só quando parece nome', () => {
+    expect(primeiroNome('LETÍCIA souza')).toBe('Letícia');
+    expect(primeiroNome('Buffetsamirrocha@gmail.com')).toBeNull();
+    expect(primeiroNome('5511999')).toBeNull();
+    expect(primeiroNome('')).toBeNull();
+  });
+  it('texto com e sem nome', () => {
+    const m = 'Oi, {nome}! Aqui é da Oniplataforma, recebemos seu cadastro 🙂';
+    expect(textoDeBoasVindas(m, 'Ana')).toBe('Oi, Ana! Aqui é da Oniplataforma, recebemos seu cadastro 🙂');
+    expect(textoDeBoasVindas(m, null)).toBe('Oi! Aqui é da Oniplataforma, recebemos seu cadastro 🙂');
   });
 });

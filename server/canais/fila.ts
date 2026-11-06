@@ -15,6 +15,8 @@ export const FILAS = {
   analisarConversa: 'canais.chat.analisar',
   /** Boas-vindas por áudio: espera o negócio do formulário e chama o n8n (um por conversa). */
   boasVindas: 'canais.chat.boasvindas',
+  /** Boas-vindas sem a frase: 10 min depois do formulário, se o lead não escreveu (um por negócio). */
+  boasVindasFormulario: 'canais.lead.boasvindas',
   /** Cron: partições de mensagens. */
   manutencao: 'canais.manutencao',
   /** Cron: status das conexões na Evolution. */
@@ -50,6 +52,7 @@ export function fila(): Promise<PgBoss> {
       b.createQueue(FILAS.analisarConversa, { policy: 'stately', retryLimit: 6, retryDelay: 60, retryBackoff: true, retryDelayMax: 3600, expireInSeconds: 600 }),
       // Sem retry: o envio pode ter saído mesmo com erro na resposta (boas-vindas.ts).
       b.createQueue(FILAS.boasVindas, { policy: 'stately', retryLimit: 0, expireInSeconds: 120 }),
+      b.createQueue(FILAS.boasVindasFormulario, { policy: 'stately', retryLimit: 0, expireInSeconds: 120 }),
       b.createQueue(FILAS.manutencao, { policy: 'singleton', retryLimit: 2, expireInSeconds: 300 }),
       b.createQueue(FILAS.saudeConexoes, { policy: 'singleton', retryLimit: 1, expireInSeconds: 120 }),
     ]);

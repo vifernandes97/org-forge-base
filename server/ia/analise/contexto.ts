@@ -69,7 +69,8 @@ export async function conversa(chatId: string): Promise<ConversaCtx | null> {
 }
 
 const COLUNAS_MSG = `m.id, m.sent_at, m.created_at, m.from_me, m.message_type, m.body, m.transcript, m.media, m.raw,
-  exists (select 1 from channel_welcomes w where w.connection_id = m.connection_id and w.provider_message_id = m.provider_message_id) as automatica`;
+  exists (select 1 from channel_welcomes w where w.connection_id = m.connection_id
+    and m.provider_message_id in (w.provider_message_id, w.intro_message_id)) as automatica`;
 
 /** Lote novo (depois de analyzed_until) e o contexto anterior. */
 export async function mensagens(chat: ConversaCtx, opts: { maxNovas: number; maxAnteriores: number; tudo?: boolean }) {

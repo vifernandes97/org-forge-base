@@ -3,7 +3,7 @@ import { FILAS, fila } from './canais/fila.js';
 import { vincularConversa } from './canais/identificacao/vincular.js';
 import { baixarMidia, transcreverAudio, type RefMensagem } from './canais/midia/jobs.js';
 import { armazenamento } from './canais/midia/armazenamento.js';
-import { boasVindas } from './canais/boas-vindas.js';
+import { boasVindas, boasVindasFormulario } from './canais/boas-vindas.js';
 import { analisarConversa } from './ia/analise/analisar.js';
 import { agendarAnalise } from './ia/analise/agendar.js';
 import { provedor } from './canais/provedores/index.js';
@@ -83,6 +83,11 @@ export async function iniciarWorker() {
     } else if (r.status !== 'ignored') {
       console.log(`[canais] boas-vindas ${job.data.chatId}: ${r.status}${r.reason ? ` (${r.reason})` : ''}`);
     }
+  });
+
+  await b.work<{ leadId: string }>(FILAS.boasVindasFormulario, { batchSize: 1 }, async ([job]) => {
+    const r = await boasVindasFormulario(job.data.leadId);
+    console.log(`[canais] boas-vindas do formulário ${job.data.leadId}: ${r.status}${r.reason ? ` (${r.reason})` : ''}`);
   });
 
   await b.work(FILAS.manutencao, manutencao);

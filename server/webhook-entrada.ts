@@ -8,6 +8,7 @@
 import { servico as supabase } from "./servico.js";
 import { enviarWebhook } from "./webhook-saida.js";
 import { notificarNovoLead } from "./notificacoes.js";
+import { agendarBoasVindasFormulario } from "./canais/agendar-boas-vindas.js";
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -582,6 +583,7 @@ export async function receberWebhook(req: Request, ipAddress: string | null): Pr
 
 
       await logInbound(supabase, webhook, existingLead.id, "updated", rawPayload, mappedData, changes.length > 0 ? changes : null, null, ipAddress, resolutionLog);
+      if (reentry) agendarBoasVindasFormulario(existingLead.id);
 
       return new Response(
         JSON.stringify({ success: true, action: "updated", lead_id: existingLead.id, changes }),
@@ -699,6 +701,7 @@ export async function receberWebhook(req: Request, ipAddress: string | null): Pr
     }
 
     await logInbound(supabase, webhook, newLead.id, "created", rawPayload, mappedData, null, null, ipAddress, resolutionLog);
+    agendarBoasVindasFormulario(newLead.id);
 
     // Central de notificações + push: não segura a resposta ao formulário.
     notificarNovoLead({

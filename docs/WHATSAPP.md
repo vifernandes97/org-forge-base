@@ -698,6 +698,12 @@ Decisões do dono (2026-10-27):
 - **Sem negócio, sem segmento ou sem áudio ativo do segmento → não envia**
   (fica para o vendedor). Não há áudio padrão.
 - **Uma vez por contato (telefone), para sempre.**
+- **Sem a frase também** (2026-11-06): metade dos leads do formulário não chama
+  no WhatsApp (22 desde 28/10, 11 com conversa). 10 min depois do formulário,
+  se o lead não escreveu, o CRM manda um **texto curto e depois o áudio** para o
+  telefone do formulário (o texto dá contexto a um áudio de número que o lead
+  nunca viu e reduz denúncia). Aceito o risco de envio frio e de telefone
+  digitado errado (o áudio vai para quem tiver aquele número).
 
 ### Peças
 
@@ -737,6 +743,22 @@ CRM (`db/64_boas_vindas.sql`, `server/canais/boas-vindas.ts`):
   `{ sent: false, reason }` → `skipped`; erro → `failed`. **Sem nova
   tentativa automática**: se o n8n mandou e a resposta se perdeu, repetir
   mandaria o áudio duas vezes.
+- **Envio depois do formulário** (`db/68`, `boasVindasFormulario`): o webhook de
+  entrada agenda `canais.lead.boasvindas` para 10 min depois
+  (`WELCOME_FORM_DELAY_MINUTES`) quando cria o negócio ou o reabre. O job
+  procura a conexão do funil com `welcome_form_text` (nulo = desligado) e
+  **não manda** se: negócio fechado, fora de Novo Lead ou sem segmento; contato
+  sem telefone que pareça telefone; o negócio já tem linha em
+  `channel_welcomes`; o lead já escreveu (mensagem recebida numa conversa do
+  negócio ou de mesmo `phone_key`). Senão grava a trava (mesma, por telefone;
+  `origin = 'form'`, `chat_id` nulo) e chama o n8n com `number` = telefone com
+  DDI e `text` = `welcome_form_text` com `{nome}` = primeiro nome do contato
+  (sem nome que pareça nome: "Oi! …"). A resposta traz `text_message_id`,
+  guardado em `intro_message_id`: a IA lê o texto também como "mensagem
+  automática". Número sem WhatsApp → `skipped` `sem_whatsapp`.
+  Depois disso, se o lead mandar a frase do mesmo número, a trava segura; de
+  outro número, a conversa liga ao negócio (formulário recente) mas não
+  recebe de novo (`negocio_ja_recebeu`).
 - A Evolution passou a mandar `SEND_MESSAGE` (o que sai pela API não vem em
   `MESSAGES_UPSERT`): o áudio é gravado na conversa e transcrito como os
   outros.
@@ -754,7 +776,11 @@ CRM e `active` verdadeiro) → tem `audio_url`? → `POST
 http://evolution-evolution-api:8080/message/sendWhatsAppAudio/<instance>`
 (credencial **Evolution API (Oniplataforma)**, cabeçalho `apikey`) → responde
 `{ sent: true, message_id: key.id }`; sem linha ativa → `{ sent: false,
-reason: "sem_audio" }`. Nenhum segredo fica no workflow em texto aberto.
+reason: "sem_audio" }`. Com `text` no corpo (envio sem a frase), antes do
+áudio vai `POST …/message/sendText/<instance>` e a resposta inclui
+`text_message_id`. Erro da Evolution em qualquer dos dois → `{ sent: false,
+reason: "sem_whatsapp" | "envio_falhou: …" }`, sem erro HTTP. Nenhum segredo
+fica no workflow em texto aberto.
 
 Endereços internos (rede `easypanel`, comum aos dois projetos): o CRM chama
 `http://n8n-n8n:5678/webhook/oni-boas-vindas`; o n8n chama
@@ -783,6 +809,8 @@ Ligar ou desligar, no container do `crm-app`:
 sh -c 'set -a; . /app/secrets.env; set +a; bun server/canais/boas-vindas-config.ts Oniplataforma off'
 ```
 Para religar, troque `off` por `http://n8n-n8n:5678/webhook/oni-boas-vindas "Oi, quero falar com um consultor!"`.
+Envio sem a frase: `... Oniplataforma formulario "Oi, {nome}! Aqui é da Oniplataforma, recebemos seu cadastro 🙂"`
+(liga, com o texto) ou `... Oniplataforma formulario off`.
 `... Oniplataforma token` gera token novo (aí atualizar a credencial **CRM
 boas-vindas** no n8n).
 
@@ -826,4 +854,7 @@ order by w.created_at desc limit 20;
 - `failed` → ver `reason` e as execuções do workflow no n8n.
 - Reenviar para um contato (ex.: depois de um teste): voltar a linha dele para
   `status = 'waiting'` em `channel_welcomes` e mandar a frase de novo.
+- Envio sem a frase: `origin = 'form'` em `channel_welcomes`; quando o job não
+  manda nada (já conversou, sem segmento…) não grava linha — só o log
+  `[canais] boas-vindas do formulário <lead>: ignored (<motivo>)`.
 - Log: `[canais] boas-vindas <chat>: <status> (<motivo>)`.
