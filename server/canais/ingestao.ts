@@ -6,6 +6,7 @@ import { agendarAnalise } from '../ia/analise/agendar.js';
 import { ehFraseDeBoasVindas } from './boas-vindas.js';
 import type { ConexaoAtualizada, MensagemNormalizada } from './nucleo/tipos.js';
 import { provedor, provedorExiste } from './provedores/index.js';
+import { phoneMatchKey } from './identificacao/telefone.js';
 
 // Webhook dos provedores de canal: valida o token da conexão, normaliza,
 // grava (idempotente) e enfileira. Nada de IA nem de chamada externa aqui —
@@ -29,6 +30,20 @@ async function conexaoPorToken(token: string): Promise<Conexao | null> {
      from channel_connections where webhook_token = $1`, [token]);
   const valor = rows[0] ?? null;
   conexoes.set(token, { valor, ate: Date.now() + 30_000 });
+  return valor;
+}
+
+// Números ignorados da organização (channel_ignored_numbers, por phone_key).
+// Cache curto: a lista muda pela tela (PostgREST), então vale em até 30 s.
+const ignorados = new Map<string, { valor: Set<string>; ate: number }>();
+
+async function numerosIgnorados(orgId: string): Promise<Set<string>> {
+  const c = ignorados.get(orgId);
+  if (c && c.ate > Date.now()) return c.valor;
+  const { rows } = await servicePool().query<{ phone_key: string }>(
+    `select phone_key from channel_ignored_numbers where organization_id = $1`, [orgId]);
+  const valor = new Set(rows.map((r) => r.phone_key));
+  ignorados.set(orgId, { valor, ate: Date.now() + 30_000 });
   return valor;
 }
 
@@ -84,11 +99,15 @@ export async function receberWebhookCanal(providerName: string, token: string, r
   const boasVindas = new Set<string>();
   const midias: { ref: RefMensagem; tipo: string }[] = [];
   let novas = 0;
+  const ignorar = eventos.some((e) => e.kind !== 'connection') ? await numerosIgnorados(con.organization_id) : null;
   for (const e of eventos) {
     if (e.kind === 'connection') {
       await gravarConexao(con, e);
       continue;
     }
+    // Número na lista de ignorados: nada é gravado (nem conversa, nem IA).
+    const chave = phoneMatchKey(e.phoneDigits);
+    if (chave && ignorar?.has(chave)) continue;
     const r = await gravarMensagem(con, e);
     if (!r) continue;
     novas++;

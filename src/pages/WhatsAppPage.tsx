@@ -19,7 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useFunnels } from '@/hooks/useFunnels';
 import {
-  connectChannel, useChannelChats, useChannelConnections, useCreateChannelConnection, useDeleteChannelConnection,
+  connectChannel, useAddIgnoredNumber, useIgnoredNumbers, useRemoveIgnoredNumber, useChannelChats, useChannelConnections, useCreateChannelConnection, useDeleteChannelConnection,
   useRefreshChannel, useUpdateChannelConnection,
 } from '@/hooks/useChannels';
 import type { ChannelConnection, ChannelStatus, ChatStatus } from '@/services/channels';
@@ -258,6 +258,63 @@ function ConexaoCard({ con, canManage, onQr }: { con: ChannelConnection; canMana
   );
 }
 
+function NumerosIgnorados({ canManage }: { canManage: boolean }) {
+  const { data: numeros, isLoading } = useIgnoredNumbers();
+  const adicionar = useAddIgnoredNumber();
+  const remover = useRemoveIgnoredNumber();
+  const [phone, setPhone] = useState('');
+  const [note, setNote] = useState('');
+
+  const salvar = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phone.trim()) return;
+    adicionar.mutate({ phone: phone.trim(), note: note.trim() || null }, {
+      onSuccess: () => { setPhone(''); setNote(''); toast.success('Número ignorado'); },
+      onError: (err) => toast.error((err as Error).message),
+    });
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Números ignorados</CardTitle>
+        <p className="text-sm text-muted-foreground">Mensagens desses números não são lidas: não entram nas conversas nem passam pela IA.</p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {canManage && (
+          <form onSubmit={salvar} className="flex flex-col gap-2 sm:flex-row">
+            <Input placeholder="Telefone com DDD" value={phone} onChange={e => setPhone(e.target.value)} className="sm:w-48" />
+            <Input placeholder="Motivo (opcional)" value={note} onChange={e => setNote(e.target.value)} />
+            <Button type="submit" disabled={adicionar.isPending || !phone.trim()}>
+              {adicionar.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}Ignorar
+            </Button>
+          </form>
+        )}
+        {isLoading ? <Skeleton className="h-12" /> : !numeros?.length ? (
+          <p className="text-sm text-muted-foreground">Nenhum número ignorado.</p>
+        ) : (
+          <ul className="divide-y rounded-md border">
+            {numeros.map(n => (
+              <li key={n.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                <div className="min-w-0">
+                  <div className="font-medium">{n.phone}</div>
+                  {n.note && <div className="truncate text-xs text-muted-foreground">{n.note}</div>}
+                </div>
+                {canManage && (
+                  <Button variant="ghost" size="icon" aria-label="Voltar a ler" disabled={remover.isPending}
+                    onClick={() => remover.mutate(n.id, { onError: (err) => toast.error((err as Error).message) })}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function Conversas() {
   const [filtro, setFiltro] = useState<ChatStatus | 'all'>('all');
   const { data: chats, isLoading } = useChannelChats(filtro === 'all' ? null : filtro);
@@ -362,6 +419,7 @@ export default function WhatsAppPage() {
         </div>
       )}
 
+      {!!conexoes?.length && <NumerosIgnorados canManage={canManage} />}
       {!!conexoes?.length && <Conversas />}
 
       <NovaConexaoDialog open={nova} onOpenChange={setNova} onCreated={criada} />

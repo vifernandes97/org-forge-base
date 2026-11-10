@@ -97,3 +97,26 @@ export const refreshChannel = (id: string) =>
   api<{ status: ChannelStatus; phoneNumber: string | null }>('POST', `/connections/${id}/refresh`);
 
 export const deleteChannelConnection = (id: string) => api<{ ok: true }>('DELETE', `/connections/${id}`);
+
+// Números ignorados: o webhook não grava mensagens deles (db/69).
+export interface IgnoredNumber { id: string; phone: string; note: string | null; created_at: string }
+
+export async function getIgnoredNumbers(orgId: string): Promise<IgnoredNumber[]> {
+  const { data, error } = await supabase
+    .from('channel_ignored_numbers' as any)
+    .select('id, phone, note, created_at')
+    .eq('organization_id', orgId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []) as unknown as IgnoredNumber[];
+}
+
+export async function addIgnoredNumber(orgId: string, phone: string, note: string | null) {
+  const { error } = await supabase.from('channel_ignored_numbers' as any).insert({ organization_id: orgId, phone, note });
+  if (error) throw new Error(error.code === '23505' ? 'Esse número já está na lista' : error.code === '23514' ? 'Telefone inválido (DDD + número)' : error.message);
+}
+
+export async function removeIgnoredNumber(id: string) {
+  const { error } = await supabase.from('channel_ignored_numbers' as any).delete().eq('id', id);
+  if (error) throw error;
+}

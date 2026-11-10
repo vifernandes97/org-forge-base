@@ -858,3 +858,13 @@ order by w.created_at desc limit 20;
   manda nada (já conversou, sem segmento…) não grava linha — só o log
   `[canais] boas-vindas do formulário <lead>: ignored (<motivo>)`.
 - Log: `[canais] boas-vindas <chat>: <status> (<motivo>)`.
+
+## 18. Números ignorados — 2026-11-10
+
+Tela WhatsApp → "Números ignorados": owner/admin informam um telefone (e um
+motivo opcional). Tabela `public.channel_ignored_numbers` (db/69), única por
+`(organization_id, phone_key)`. O webhook (`server/canais/ingestao.ts`) descarta
+toda mensagem — recebida ou enviada — cujo `phone_match_key` esteja na lista:
+não cria conversa, não baixa mídia, não agenda análise da IA. A lista fica em
+cache 30 s por processo, então incluir/remover vale em até 30 s. Mensagens já
+gravadas antes de ignorar continuam lá; conversas `@lid` sem telefone não casam.

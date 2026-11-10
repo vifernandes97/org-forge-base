@@ -9,6 +9,9 @@ import {
   refreshChannel,
   updateChannelConnection,
   type ChatStatus,
+  addIgnoredNumber,
+  getIgnoredNumbers,
+  removeIgnoredNumber,
 } from '@/services/channels';
 
 export function useChannelConnections() {
@@ -66,3 +69,30 @@ export function useDeleteChannelConnection() {
 }
 
 export { connectChannel };
+
+export function useIgnoredNumbers() {
+  const { organization } = useOrganization();
+  const orgId = organization?.id;
+  return useQuery({
+    queryKey: ['channel-ignored', orgId],
+    queryFn: () => getIgnoredNumbers(orgId!),
+    enabled: !!orgId,
+  });
+}
+
+export function useAddIgnoredNumber() {
+  const { organization } = useOrganization();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ phone, note }: { phone: string; note: string | null }) => addIgnoredNumber(organization!.id, phone, note),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['channel-ignored'] }),
+  });
+}
+
+export function useRemoveIgnoredNumber() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: removeIgnoredNumber,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['channel-ignored'] }),
+  });
+}
