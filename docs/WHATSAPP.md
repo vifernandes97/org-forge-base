@@ -868,3 +868,28 @@ toda mensagem — recebida ou enviada — cujo `phone_match_key` esteja na lista
 não cria conversa, não baixa mídia, não agenda análise da IA. A lista fica em
 cache 30 s por processo, então incluir/remover vale em até 30 s. Mensagens já
 gravadas antes de ignorar continuam lá; conversas `@lid` sem telefone não casam.
+
+## 19. Lara (Chatvolt, número 0573): ferramentas HTTP — 2026-11-12
+
+Piloto do comercial da Oniplataforma num agente do Chatvolt (plano e desenho no
+repo `vifernandes97/comercial`, `chatvolt/`). O 0573 é da API oficial da Meta e
+**não** passa pela Evolution: as conversas ficam no Chatvolt. Para o funil não
+ficar cego, a Lara chama o CRM durante a conversa (`server/agente/chatvolt.ts`):
+
+| Rota | Quando a Lara chama | Efeito no CRM |
+| --- | --- | --- |
+| `POST /api/agente/chatvolt/qualificacao` | ao juntar dados do negócio | nota "Qualificação pela Lara (IA)"; move para **Atendimento IA** se estiver antes dela |
+| `POST /api/agente/chatvolt/humano` | ao passar para humano | nota; move para **Atendimento Humano** (menos `motivo=cliente`); tarefa de hoje (`Confirmar horário da demo: dia, período` ou `Assumir conversa no Chatvolt: …`); aviso ao responsável |
+
+- **Credencial:** `Authorization: Bearer <CHATVOLT_AGENTE_TOKEN>`. Org em
+  `CHATVOLT_AGENTE_ORG`. Os dois no `secrets.env`; sem eles, 503.
+- **Lead:** pelo `telefone` (o Chatvolt passa `{user-phone-number}`), com
+  `phone_key` → contato → negócio aberto, a mesma regra do §5. Sem negócio:
+  200 com `ok:false`, e a Lara segue a conversa.
+- **Etapa:** só pelo `moverEtapa`, só para a frente, **nunca Engajamento**. A
+  etapa **Atendimento IA** precisa existir no funil (depois de Novo Lead, sem
+  webhook); se não existir, só grava a nota.
+- **Corpo:** `qualificacao` aceita `telefone, resumo, tipo_negocio, eventos_mes,
+  cidade, controle_atual, maior_dor`; `humano` aceita `telefone, motivo
+  (demo|preco|pessoa|cliente|reclamacao|duvida|outro), detalhe, demo_dia,
+  demo_periodo, resumo`.

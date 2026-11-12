@@ -8,6 +8,7 @@ import { chavePublicaVapid, removerInscricao, salvarInscricao } from './notifica
 import { canais } from './canais/api.js';
 import { ia } from './ia/api.js';
 import { orbi } from './orbi.js';
+import { agenteChatvolt } from './agente/chatvolt.js';
 
 // O app inteiro atrás de um domínio só (crm.neosoluti.com.br):
 //   /api/auth/*  Better Auth (login, sessão)
@@ -16,6 +17,7 @@ import { orbi } from './orbi.js';
 //   /api/channels/*  WhatsApp (Evolution): webhook e conexões (server/canais/api.ts)
 //   /api/ai/*    credenciais de IA da organização (server/ia/api.ts)
 //   /api/orbi/*  integração com o Orbi: credencial e retorno assinado (server/orbi.ts)
+//   /api/agente/chatvolt/*  ferramentas HTTP da Lara (Chatvolt): Bearer do .env (server/agente/chatvolt.ts)
 //   /rest/*      portão do PostgREST: confere a sessão e repassa com um JWT de
 //                60 s (HS256, segredo compartilhado só com o PostgREST, que não
 //                é exposto). Sem sessão, vai sem token e o PostgREST usa anon.
@@ -71,6 +73,7 @@ app.post('/api/fire-webhook', async (c) => {
 app.route('/api/channels', canais);
 app.route('/api/ai', ia);
 app.route('/api/orbi', orbi);
+app.route('/api/agente/chatvolt', agenteChatvolt);
 
 app.get('/api/push/vapid-public-key', (c) => c.json({ key: chavePublicaVapid() }));
 
