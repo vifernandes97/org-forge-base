@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { Hono } from 'hono';
 import { servicePool } from '../db.js';
-import { notificar } from '../notificacoes.js';
+import { notificar, notificarNovoLead } from '../notificacoes.js';
 import { moverEtapa, type Etapa } from '../negocios/etapa.js';
 import { phoneMatchKey } from '../canais/identificacao/telefone.js';
 
@@ -16,6 +16,15 @@ import { phoneMatchKey } from '../canais/identificacao/telefone.js';
 // Configuração (secrets.env): CHATVOLT_AGENTE_TOKEN (≥ 32 caracteres) e
 // CHATVOLT_AGENTE_ORG (id da organização). Sem as duas, as rotas respondem 503.
 // Lead não achado responde 200 com ok:false: a Lara segue a conversa.
+//
+// Lead que não veio do formulário: as duas rotas criam o negócio (Novo Lead do
+// funil que tem a etapa Atendimento IA, origem whatsapp_0573) quando o telefone
+// não tem negócio aberto. Telefone usado por mais de 3 negócios é placeholder:
+// nada é criado.
+//
+// /qualificacao também grava a nota 1 a 5 (leads.qualification), os campos
+// personalizados (tipo de negócio, média de festas, cidade, dor principal) e,
+// só com plano_escolhido, o valor do negócio (mensalidade do plano).
 //
 // Handoff: com CHATVOLT_API_KEY e o campo conversa_id ({conversation-id} do
 // Chatvolt), /humano põe a conversa em "Humano Solicitado" pela API do Chatvolt
@@ -46,12 +55,45 @@ const QUALIFICACAO: [string, string][] = [
   ['cidade', 'Cidade'],
   ['controle_atual', 'Como controla hoje'],
   ['maior_dor', 'Maior dor'],
+  ['pessoas', 'Pessoas que usariam'],
+  ['planos_informados', 'Planos e preços informados'],
+  ['plano_escolhido', 'Plano escolhido pelo lead'],
 ];
+
+/** Campo da Bia → campo personalizado do CRM (field_name). */
+export const CAMPOS_CRM: [string, string][] = [
+  ['tipo_negocio', 'tipo_de_negocio'],
+  ['eventos_mes', 'media_de_festas'],
+  ['cidade', 'cidade'],
+  ['maior_dor', 'dor_principal'],
+];
+
+export function camposPersonalizados(c: Record<string, unknown>): Record<string, string> {
+  return Object.fromEntries(CAMPOS_CRM.map(([k, f]) => [f, texto(c[k], 200)] as const).filter(([, v]) => v));
+}
+
+/** Nota de 1 a 5 da Bia; fora disso, nada. */
+export function notaValida(v: unknown): number | null {
+  const n = Math.round(Number(typeof v === 'string' ? v.replace(',', '.') : v));
+  return Number.isFinite(n) && n >= 1 && n <= 5 ? n : null;
+}
+
+export const PRECOS: Record<string, number> = { starter: 199, pro: 399, enterprise: 549 };
+
+/** Plano que o lead escolheu e a mensalidade; valor informado (ex.: Black Friday) vale se for plausível. */
+export function valorDoPlano(plano: unknown, valor: unknown): { plano: string; valor: number } | null {
+  const chave = normalizar(texto(plano, 40)).split(/\s+/).find((p) => p in PRECOS);
+  if (!chave) return null;
+  const n = Number(typeof valor === 'string' ? valor.replace(/[^\d,.]/g, '').replace(/\.(?=\d{3}\b)/g, '').replace(',', '.') : valor);
+  const nome = chave[0].toUpperCase() + chave.slice(1);
+  return { plano: nome, valor: Number.isFinite(n) && n >= 50 && n <= 20000 ? n : PRECOS[chave] };
+}
 
 export function textoQualificacao(c: Record<string, unknown>): string {
   const linhas = QUALIFICACAO.map(([k, rotulo]) => [rotulo, texto(c[k])] as const).filter(([, v]) => v).map(([r, v]) => `${r}: ${v}`);
   const resumo = texto(c.resumo, 1500);
-  return [resumo, ...linhas].filter(Boolean).join('\n');
+  const nota = notaValida(c.nota);
+  return [resumo, ...linhas, nota ? `Nota da Bia: ${nota} de 5` : ''].filter(Boolean).join('\n');
 }
 
 export function motivoValido(v: unknown): Motivo {
@@ -107,9 +149,9 @@ interface Negocio {
 }
 
 /** Negócio aberto mais recente do contato com esse telefone (mesma regra de vincular.ts). */
-async function negocioPorTelefone(orgId: string, telefone: string): Promise<Negocio | null> {
+async function negocioPorTelefone(orgId: string, telefone: string): Promise<{ negocio: Negocio | null; ambiguo: boolean }> {
   const chave = phoneMatchKey(telefone);
-  if (!chave) return null;
+  if (!chave) return { negocio: null, ambiguo: true };
   const { rows } = await servicePool().query<Negocio>(
     `select l.id, l.organization_id, l.name, l.stage_id, l.funnel_id, l.assigned_to
      from contacts c
@@ -120,7 +162,82 @@ async function negocioPorTelefone(orgId: string, telefone: string): Promise<Nego
      order by l.last_activity_at desc nulls last
      limit 4`, [orgId, chave]);
   // Mais de 3 contatos/negócios com o mesmo telefone é placeholder, não pessoa.
-  return rows.length && rows.length <= 3 ? rows[0] : null;
+  return { negocio: rows.length && rows.length <= 3 ? rows[0] : null, ambiguo: rows.length > 3 };
+}
+
+/** Negócio do telefone; se não houver, cria em Novo Lead (lead que chegou direto no 0573). */
+async function garantirNegocio(orgId: string, telefone: string, nome: string, segmento: string): Promise<{ negocio: Negocio | null; novo: boolean }> {
+  const achado = await negocioPorTelefone(orgId, telefone);
+  if (achado.negocio || achado.ambiguo) return { negocio: achado.negocio, novo: false };
+  const chave = phoneMatchKey(telefone)!;
+  const digitos = telefone.replace(/\D/g, '');
+  const client = await servicePool().connect();
+  let criado: { negocio: Negocio; companyId: string } | null = null;
+  try {
+    await client.query('begin');
+    // Duas chamadas da Bia ao mesmo tempo não criam dois negócios.
+    await client.query(`select pg_advisory_xact_lock(hashtext($1))`, [`chatvolt:${orgId}:${chave}`]);
+    const outra = await negocioPorTelefone(orgId, telefone);
+    if (outra.negocio || outra.ambiguo) {
+      await client.query('rollback');
+      return { negocio: outra.negocio, novo: false };
+    }
+    const { rows: [etapa] } = await client.query<Etapa>(
+      `select s.id, s.name, s.position, s.funnel_id, s.sla_hours, s.webhook_url from stages s
+       where s.funnel_id = (select funnel_id from stages x join funnels f on f.id = x.funnel_id
+                            where f.organization_id = $1 and x.name = $2 limit 1)
+       order by s.position limit 1`, [orgId, ETAPA_IA]);
+    if (!etapa) throw new Error(`funil com a etapa ${ETAPA_IA} não encontrado`);
+    const { rows: [res] } = await client.query<{ r: { company_id: string; contact_id: string | null } }>(
+      `select resolve_company_contact(p_org => $1, p_contact_name => $2, p_phone => $3, p_segment_hint => $4) as r`,
+      [orgId, nome || null, `+${digitos}`, segmento || null]);
+    if (!res?.r?.company_id) throw new Error('resolve_company_contact sem empresa');
+    const { rows: [m] } = await client.query<{ user_id: string }>(
+      `select user_id from organization_members where organization_id = $1 order by (role = 'owner') desc, created_at limit 1`, [orgId]);
+    const { rows: [lead] } = await client.query<Negocio>(
+      `insert into leads (organization_id, funnel_id, stage_id, company_id, value, source, tags, priority, stage_entered_at)
+       values ($1, $2, $3, $4, 0, 'whatsapp_0573', '{}', 'medium', now())
+       returning id, organization_id, name, stage_id, funnel_id, assigned_to`,
+      [orgId, etapa.funnel_id, etapa.id, res.r.company_id]);
+    if (res.r.contact_id) {
+      await client.query(`insert into lead_contacts (organization_id, lead_id, contact_id, is_primary) values ($1, $2, $3, true)`,
+        [orgId, lead.id, res.r.contact_id]);
+    }
+    await client.query(
+      `insert into lead_activities (organization_id, lead_id, user_id, activity_type, title, description, metadata)
+       values ($1, $2, $3, 'note', 'Lead criado pela Bia (IA)', $4, $5)`,
+      [orgId, lead.id, m?.user_id, `Chegou direto no WhatsApp 0573, sem formulário. Telefone +${digitos}.`, { origem: 'chatvolt_lara' }]);
+    await client.query('commit');
+    criado = { negocio: lead, companyId: res.r.company_id };
+  } catch (e) {
+    await client.query('rollback').catch(() => undefined);
+    console.error('[agente] criar negócio', e);
+    return { negocio: null, novo: false };
+  } finally {
+    client.release();
+  }
+  notificarNovoLead({ organizationId: orgId, leadId: criado.negocio.id, companyId: criado.companyId, contactName: nome || null })
+    .catch((e) => console.error('[agente] notificarNovoLead', e));
+  return { negocio: criado.negocio, novo: true };
+}
+
+/** Grava os campos personalizados que a Bia descobriu (sobrescreve o valor anterior). */
+async function gravarCampos(n: Negocio, campos: Record<string, string>): Promise<string[]> {
+  const nomes = Object.keys(campos);
+  if (!nomes.length) return [];
+  const pool = servicePool();
+  const { rows: defs } = await pool.query<{ id: string; field_name: string }>(
+    `select id, field_name from custom_field_definitions where organization_id = $1 and is_active and field_name = any($2)`,
+    [n.organization_id, nomes]);
+  for (const d of defs) {
+    const { rowCount } = await pool.query(
+      `update custom_field_values set value = $3 where lead_id = $1 and field_definition_id = $2`, [n.id, d.id, campos[d.field_name]]);
+    if (!rowCount) {
+      await pool.query(`insert into custom_field_values (lead_id, field_definition_id, value) values ($1, $2, $3)`,
+        [n.id, d.id, campos[d.field_name]]);
+    }
+  }
+  return defs.map((d) => d.field_name);
 }
 
 async function autor(n: Negocio): Promise<string> {
@@ -167,20 +284,32 @@ async function preparar(req: Request): Promise<{ orgId: string; corpo: Record<st
   return { orgId, corpo: corpo && typeof corpo === 'object' ? corpo : {} };
 }
 
-const naoAchado: Resposta = { ok: false, mensagem: 'Lead não encontrado no CRM. Continue a conversa normalmente.' };
+const naoAchado: Resposta = { ok: false, mensagem: 'Não foi possível registrar no CRM. Continue a conversa normalmente.' };
 
 export const agenteChatvolt = new Hono();
 
 agenteChatvolt.post('/qualificacao', async (c) => {
   const p = await preparar(c.req.raw);
   if (p instanceof Response) return p;
-  const n = await negocioPorTelefone(p.orgId, texto(p.corpo.telefone, 40));
+  const { negocio: n, novo } = await garantirNegocio(p.orgId, texto(p.corpo.telefone, 40), texto(p.corpo.nome, 120), texto(p.corpo.tipo_negocio, 120));
   if (!n) return c.json(naoAchado);
   const userId = await autor(n);
-  const descricao = textoQualificacao(p.corpo);
-  await nota(n, userId, 'Qualificação pela Bia (IA)', descricao, { campos: p.corpo });
+  const pool = servicePool();
+  const linhas = [textoQualificacao(p.corpo)];
+
+  const nota5 = notaValida(p.corpo.nota);
+  if (nota5) await pool.query(`update leads set qualification = $2 where id = $1`, [n.id, nota5]);
+  const campos = await gravarCampos(n, camposPersonalizados(p.corpo));
+  const escolhido = valorDoPlano(p.corpo.plano_escolhido, p.corpo.valor);
+  if (escolhido) {
+    await pool.query(`update leads set value = $2 where id = $1`, [n.id, escolhido.valor]);
+    linhas.push(`Valor do negócio: R$ ${escolhido.valor} por mês (plano ${escolhido.plano}, escolhido pelo lead).`);
+  }
+
+  await nota(n, userId, 'Atendimento da Bia (IA)', linhas.filter(Boolean).join('\n'),
+    { campos: p.corpo, nota: nota5, campos_crm: campos, valor: escolhido?.valor ?? null, conversa_id: texto(p.corpo.conversa_id, 60) || null });
   const etapa = await mover(n, userId, ETAPA_IA, 'Lead conversando com a Bia (IA) no 0573');
-  return c.json({ ok: true, mensagem: 'Qualificação registrada no CRM.', etapa } satisfies Resposta);
+  return c.json({ ok: true, mensagem: novo ? 'Lead cadastrado e registrado no CRM.' : 'Registrado no CRM.', etapa } satisfies Resposta);
 });
 
 agenteChatvolt.post('/humano', async (c) => {
@@ -188,8 +317,8 @@ agenteChatvolt.post('/humano', async (c) => {
   if (p instanceof Response) return p;
   const pausada = await pausarIaChatvolt(texto(p.corpo.conversa_id, 60));
   const fim = pausada ? ' A conversa já está com a equipe: avise o lead em uma frase e pare de responder.' : '';
-  const n = await negocioPorTelefone(p.orgId, texto(p.corpo.telefone, 40));
-  if (!n) return c.json({ ok: pausada, mensagem: `Lead não encontrado no CRM.${fim || ' Continue a conversa normalmente.'}` } satisfies Resposta);
+  const { negocio: n } = await garantirNegocio(p.orgId, texto(p.corpo.telefone, 40), texto(p.corpo.nome, 120), texto(p.corpo.tipo_negocio, 120));
+  if (!n) return c.json({ ok: pausada, mensagem: `Não foi possível registrar no CRM.${fim || ' Continue a conversa normalmente.'}` } satisfies Resposta);
   const userId = await autor(n);
   const motivo = motivoValido(p.corpo.motivo);
   const detalhe = texto(p.corpo.detalhe, 300);

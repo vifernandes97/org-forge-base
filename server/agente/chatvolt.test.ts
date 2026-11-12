@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it } from 'vitest';
-import { agenteChatvolt, etapaParaFrente, motivoValido, pausarIaChatvolt, tarefaDoHandoff, textoQualificacao } from './chatvolt';
+import { agenteChatvolt, camposPersonalizados, etapaParaFrente, motivoValido, notaValida, pausarIaChatvolt, tarefaDoHandoff, textoQualificacao, valorDoPlano } from './chatvolt';
 import type { Etapa } from '../negocios/etapa';
 
 const e = (id: string, name: string, position: number): Etapa => ({ id, name, position, funnel_id: 'f', sla_hours: null, webhook_url: null });
@@ -25,6 +25,33 @@ describe('textoQualificacao', () => {
   it('resumo e só os campos preenchidos', () => {
     expect(textoQualificacao({ resumo: 'Buffet itinerante em Campinas', eventos_mes: 8, cidade: ' Campinas ', maior_dor: '' }))
       .toBe('Buffet itinerante em Campinas\nEventos por mês: 8\nCidade: Campinas');
+  });
+});
+
+describe('nota, campos e valor', () => {
+  it('nota só de 1 a 5', () => {
+    expect(notaValida(4)).toBe(4);
+    expect(notaValida('3')).toBe(3);
+    expect(notaValida('4,6')).toBe(5);
+    expect(notaValida(0)).toBeNull();
+    expect(notaValida(7)).toBeNull();
+    expect(notaValida('alta')).toBeNull();
+  });
+  it('nota entra no texto da nota do CRM', () => {
+    expect(textoQualificacao({ resumo: 'Buffet', pessoas: 5, nota: 4 })).toBe('Buffet\nPessoas que usariam: 5\nNota da Bia: 4 de 5');
+  });
+  it('campos personalizados do CRM', () => {
+    expect(camposPersonalizados({ tipo_negocio: 'Buffet Infantil', eventos_mes: 12, cidade: '', maior_dor: 'orçamento demorado', resumo: 'x' }))
+      .toEqual({ tipo_de_negocio: 'Buffet Infantil', media_de_festas: '12', dor_principal: 'orçamento demorado' });
+  });
+  it('valor só com plano escolhido', () => {
+    expect(valorDoPlano('Pro', undefined)).toEqual({ plano: 'Pro', valor: 399 });
+    expect(valorDoPlano('plano starter', '')).toEqual({ plano: 'Starter', valor: 199 });
+    expect(valorDoPlano('Enterprise', 'R$ 1.299,00')).toEqual({ plano: 'Enterprise', valor: 1299 });
+    expect(valorDoPlano('Pro', 'R$ 299,90')).toEqual({ plano: 'Pro', valor: 299.9 });
+    expect(valorDoPlano('Pro', 5)).toEqual({ plano: 'Pro', valor: 399 });
+    expect(valorDoPlano('', 399)).toBeNull();
+    expect(valorDoPlano('ainda pensando', 399)).toBeNull();
   });
 });
 
