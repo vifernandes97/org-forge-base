@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it } from 'vitest';
-import { agenteChatvolt, etapaParaFrente, motivoValido, tarefaDoHandoff, textoQualificacao } from './chatvolt';
+import { agenteChatvolt, etapaParaFrente, motivoValido, pausarIaChatvolt, tarefaDoHandoff, textoQualificacao } from './chatvolt';
 import type { Etapa } from '../negocios/etapa';
 
 const e = (id: string, name: string, position: number): Etapa => ({ id, name, position, funnel_id: 'f', sla_hours: null, webhook_url: null });
@@ -59,5 +59,36 @@ describe('autenticação', () => {
     process.env.CHATVOLT_AGENTE_ORG = '00000000-0000-0000-0000-000000000000';
     expect((await chamar('Bearer ' + 'b'.repeat(40))).status).toBe(401);
     expect((await chamar()).status).toBe(401);
+  });
+});
+
+describe('pausarIaChatvolt', () => {
+  const env = { ...process.env };
+  afterEach(() => { process.env = { ...env }; });
+  const falso = (status = 200) => {
+    const chamadas: { url: string; init: RequestInit }[] = [];
+    const f = (async (url: string, init: RequestInit) => { chamadas.push({ url, init }); return new Response('{}', { status }); }) as unknown as typeof fetch;
+    return { f, chamadas };
+  };
+
+  it('sem chave ou com id inválido não chama', async () => {
+    delete process.env.CHATVOLT_API_KEY;
+    const { f, chamadas } = falso();
+    expect(await pausarIaChatvolt('cmwe4n4af00013w72pgm3ckbf', f)).toBe(false);
+    process.env.CHATVOLT_API_KEY = 'k';
+    expect(await pausarIaChatvolt('../x', f)).toBe(false);
+    expect(chamadas).toHaveLength(0);
+  });
+  it('põe a conversa em HUMAN_REQUESTED', async () => {
+    process.env.CHATVOLT_API_KEY = 'k';
+    const { f, chamadas } = falso();
+    expect(await pausarIaChatvolt('cmwe4n4af00013w72pgm3ckbf', f)).toBe(true);
+    expect(chamadas[0].url).toBe('https://api.chatvolt.ai/conversations/cmwe4n4af00013w72pgm3ckbf/set-status');
+    expect(JSON.parse(String(chamadas[0].init.body))).toEqual({ status: 'HUMAN_REQUESTED' });
+    expect((chamadas[0].init.headers as Record<string, string>).authorization).toBe('Bearer k');
+  });
+  it('erro da API devolve false', async () => {
+    process.env.CHATVOLT_API_KEY = 'k';
+    expect(await pausarIaChatvolt('cmwe4n4af00013w72pgm3ckbf', falso(401).f)).toBe(false);
   });
 });

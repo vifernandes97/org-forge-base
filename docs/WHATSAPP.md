@@ -897,3 +897,12 @@ ficar cego, a Lara chama o CRM durante a conversa (`server/agente/chatvolt.ts`):
   "Atendimento IA" criada por SQL no funil Comercial da Oniplataforma (posição 1,
   as demais andaram +1, sem webhook); as duas ferramentas validadas no Chatvolt
   (número falso → 200 "Lead não encontrado").
+
+### Handoff pela API do Chatvolt (2026-11-12)
+
+A ferramenta nativa "Solicitar Humano" do Chatvolt transfere assim que o lead pede uma pessoa, sem seguir o prompt (a regra "qualificação, preço, consultor" não segura). Por isso o handoff passa a ser só pelo `/humano`:
+
+- Campo novo `conversa_id` (o agente preenche com `{conversation-id}`).
+- Com `CHATVOLT_API_KEY` no `secrets.env`, o CRM chama `POST https://api.chatvolt.ai/conversations/<id>/set-status` com `{ "status": "HUMAN_REQUESTED" }` (Bearer). A conversa vai para "Humano Solicitado" e a IA para de responder, como na ferramenta nativa.
+- A pausa acontece mesmo quando o lead não está no CRM. Falha da API do Chatvolt só vai para o log; o resto do handoff segue.
+- Notas, etapa e aviso passaram a dizer "Bia (IA)" (o agente foi renomeado).

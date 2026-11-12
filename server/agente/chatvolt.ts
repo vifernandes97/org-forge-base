@@ -16,6 +16,11 @@ import { phoneMatchKey } from '../canais/identificacao/telefone.js';
 // Configuração (secrets.env): CHATVOLT_AGENTE_TOKEN (≥ 32 caracteres) e
 // CHATVOLT_AGENTE_ORG (id da organização). Sem as duas, as rotas respondem 503.
 // Lead não achado responde 200 com ok:false: a Lara segue a conversa.
+//
+// Handoff: com CHATVOLT_API_KEY e o campo conversa_id ({conversation-id} do
+// Chatvolt), /humano põe a conversa em "Humano Solicitado" pela API do Chatvolt
+// (a IA para de responder), mesmo que o lead não esteja no CRM. Isso substitui a
+// ferramenta nativa "Solicitar Humano", que transfere sem seguir o prompt.
 
 export const ETAPA_IA = 'Atendimento IA';
 export const ETAPA_HUMANO = 'Atendimento Humano';
@@ -62,6 +67,27 @@ export function tarefaDoHandoff(motivo: Motivo, detalhe: string, demoDia: string
   }
   if (motivo === 'cliente') return 'Cliente da Oni no 0573: encaminhar ao suporte';
   return `Assumir conversa no Chatvolt${detalhe ? `: ${detalhe}` : ''}`.slice(0, 200);
+}
+
+const CHATVOLT_API = 'https://api.chatvolt.ai';
+
+/** Põe a conversa em "Humano Solicitado" no Chatvolt. Falha não derruba o handoff. */
+export async function pausarIaChatvolt(conversaId: string, fetchImpl: typeof fetch = fetch): Promise<boolean> {
+  const chave = process.env.CHATVOLT_API_KEY ?? '';
+  if (!chave || !/^[a-z0-9]{10,40}$/i.test(conversaId)) return false;
+  try {
+    const r = await fetchImpl(`${CHATVOLT_API}/conversations/${conversaId}/set-status`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${chave}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ status: 'HUMAN_REQUESTED' }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) console.error('[agente] chatvolt set-status', r.status, (await r.text().catch(() => '')).slice(0, 200));
+    return r.ok;
+  } catch (e) {
+    console.error('[agente] chatvolt set-status', e);
+    return false;
+  }
 }
 
 function autorizado(header: string | undefined): boolean {
@@ -127,7 +153,7 @@ async function mover(n: Negocio, userId: string, nomeEtapa: string, motivo: stri
   const para = etapaParaFrente(lista, n.stage_id, nomeEtapa);
   const de = lista.find((e) => e.id === n.stage_id);
   if (!para || !de) return null;
-  const ok = await moverEtapa({ leadId: n.id, de, para, userId, quem: 'Lara (IA, Chatvolt)', motivo, metadata: { origem: 'chatvolt_lara' } });
+  const ok = await moverEtapa({ leadId: n.id, de, para, userId, quem: 'Bia (IA, Chatvolt)', motivo, metadata: { origem: 'chatvolt_lara' } });
   return ok ? para.name : null;
 }
 
@@ -152,16 +178,18 @@ agenteChatvolt.post('/qualificacao', async (c) => {
   if (!n) return c.json(naoAchado);
   const userId = await autor(n);
   const descricao = textoQualificacao(p.corpo);
-  await nota(n, userId, 'Qualificação pela Lara (IA)', descricao, { campos: p.corpo });
-  const etapa = await mover(n, userId, ETAPA_IA, 'Lead conversando com a Lara (IA) no 0573');
+  await nota(n, userId, 'Qualificação pela Bia (IA)', descricao, { campos: p.corpo });
+  const etapa = await mover(n, userId, ETAPA_IA, 'Lead conversando com a Bia (IA) no 0573');
   return c.json({ ok: true, mensagem: 'Qualificação registrada no CRM.', etapa } satisfies Resposta);
 });
 
 agenteChatvolt.post('/humano', async (c) => {
   const p = await preparar(c.req.raw);
   if (p instanceof Response) return p;
+  const pausada = await pausarIaChatvolt(texto(p.corpo.conversa_id, 60));
+  const fim = pausada ? ' A conversa já está com a equipe: avise o lead em uma frase e pare de responder.' : '';
   const n = await negocioPorTelefone(p.orgId, texto(p.corpo.telefone, 40));
-  if (!n) return c.json(naoAchado);
+  if (!n) return c.json({ ok: pausada, mensagem: `Lead não encontrado no CRM.${fim || ' Continue a conversa normalmente.'}` } satisfies Resposta);
   const userId = await autor(n);
   const motivo = motivoValido(p.corpo.motivo);
   const detalhe = texto(p.corpo.detalhe, 300);
@@ -172,8 +200,8 @@ agenteChatvolt.post('/humano', async (c) => {
   const descricao = [resumo, detalhe && `Motivo: ${detalhe}`, 'Responder pelo Chatvolt (número 0573).'].filter(Boolean).join('\n');
   const pool = servicePool();
 
-  await nota(n, userId, 'Lara (IA) passou para humano', descricao, { motivo, demo_dia: demoDia || null, demo_periodo: demoPeriodo || null });
-  const etapa = motivo === 'cliente' ? null : await mover(n, userId, ETAPA_HUMANO, `Lara (IA) passou para humano: ${motivo}${detalhe ? `, ${detalhe}` : ''}`);
+  await nota(n, userId, 'Bia (IA) passou para humano', descricao, { motivo, demo_dia: demoDia || null, demo_periodo: demoPeriodo || null, ia_pausada: pausada });
+  const etapa = motivo === 'cliente' ? null : await mover(n, userId, ETAPA_HUMANO, `Bia (IA) passou para humano: ${motivo}${detalhe ? `, ${detalhe}` : ''}`);
 
   // Tarefa para hoje, sem repetir uma aberta com o mesmo título.
   const { rows: abertas } = await pool.query(
@@ -191,8 +219,8 @@ agenteChatvolt.post('/humano', async (c) => {
       `select user_id from organization_members where organization_id = $1 and role in ('owner','admin')`, [n.organization_id]);
     userIds = rows.map((r) => r.user_id);
   }
-  await notificar({ organizationId: n.organization_id, userIds, type: 'ai_update', title: `Lara passou ${n.name} para humano`, body: titulo, leadId: n.id })
+  await notificar({ organizationId: n.organization_id, userIds, type: 'ai_update', title: `Bia passou ${n.name} para humano`, body: titulo, leadId: n.id })
     .catch((e) => console.error('[agente] notificar', e));
 
-  return c.json({ ok: true, mensagem: 'Equipe avisada no CRM.', etapa } satisfies Resposta);
+  return c.json({ ok: true, mensagem: `Equipe avisada no CRM.${fim}`, etapa } satisfies Resposta);
 });
