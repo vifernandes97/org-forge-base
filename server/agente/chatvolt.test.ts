@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it } from 'vitest';
-import { agenteChatvolt, camposPersonalizados, etapaParaFrente, motivoValido, notaValida, pausarIaChatvolt, tarefaDoHandoff, textoQualificacao, valorDoPlano } from './chatvolt';
+import { agenteChatvolt, camposPersonalizados, etapaParaFrente, motivoValido, notaValida, pausarIaChatvolt, tarefaDoHandoff, telefoneComDdi, textoQualificacao, valorDoPlano } from './chatvolt';
 import type { Etapa } from '../negocios/etapa';
 
 const e = (id: string, name: string, position: number): Etapa => ({ id, name, position, funnel_id: 'f', sla_hours: null, webhook_url: null });
@@ -43,6 +43,14 @@ describe('nota, campos e valor', () => {
   it('campos personalizados do CRM', () => {
     expect(camposPersonalizados({ tipo_negocio: 'Buffet Infantil', eventos_mes: 12, cidade: '', maior_dor: 'orçamento demorado', resumo: 'x' }))
       .toEqual({ tipo_de_negocio: 'Buffet Infantil', media_de_festas: '12', dor_principal: 'orçamento demorado' });
+  });
+  it('genérico não sobrescreve campo', () => {
+    expect(camposPersonalizados({ tipo_negocio: 'Outro', cidade: 'não informado', maior_dor: 'demora' })).toEqual({ dor_principal: 'demora' });
+  });
+  it('telefone ganha 55', () => {
+    expect(telefoneComDdi('11 90000-0002')).toBe('5511900000002');
+    expect(telefoneComDdi('+55 19 99937-0573')).toBe('5519999370573');
+    expect(telefoneComDdi('1133334444')).toBe('551133334444');
   });
   it('valor só com plano escolhido', () => {
     expect(valorDoPlano('Pro', undefined)).toEqual({ plano: 'Pro', valor: 399 });

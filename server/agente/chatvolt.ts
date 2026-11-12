@@ -24,7 +24,8 @@ import { phoneMatchKey } from '../canais/identificacao/telefone.js';
 //
 // /qualificacao também grava a nota 1 a 5 (leads.qualification), os campos
 // personalizados (tipo de negócio, média de festas, cidade, dor principal) e,
-// só com plano_escolhido, o valor do negócio (mensalidade do plano).
+// só com plano_escolhido, o valor do negócio (mensalidade do plano). No handoff
+// por demo ou preço, a nota sobe para pelo menos 4.
 //
 // Handoff: com CHATVOLT_API_KEY e o campo conversa_id ({conversation-id} do
 // Chatvolt), /humano põe a conversa em "Humano Solicitado" pela API do Chatvolt
@@ -68,8 +69,18 @@ export const CAMPOS_CRM: [string, string][] = [
   ['maior_dor', 'dor_principal'],
 ];
 
+const GENERICO = new Set(['outro', 'outros', 'nao informado', 'nao sei', 'desconhecido', 'n/a', '-']);
+
+/** Valor vazio ou genérico ("outro") não sobrescreve o que a Bia já descobriu. */
 export function camposPersonalizados(c: Record<string, unknown>): Record<string, string> {
-  return Object.fromEntries(CAMPOS_CRM.map(([k, f]) => [f, texto(c[k], 200)] as const).filter(([, v]) => v));
+  return Object.fromEntries(CAMPOS_CRM.map(([k, f]) => [f, texto(c[k], 200)] as const)
+    .filter(([, v]) => v && !GENERICO.has(normalizar(v))));
+}
+
+/** Telefone com DDI: número brasileiro sem o 55 (10 ou 11 dígitos) ganha o 55. */
+export function telefoneComDdi(telefone: string): string {
+  const d = telefone.replace(/\D/g, '');
+  return d.length === 10 || d.length === 11 ? `55${d}` : d;
 }
 
 /** Nota de 1 a 5 da Bia; fora disso, nada. */
@@ -170,7 +181,7 @@ async function garantirNegocio(orgId: string, telefone: string, nome: string, se
   const achado = await negocioPorTelefone(orgId, telefone);
   if (achado.negocio || achado.ambiguo) return { negocio: achado.negocio, novo: false };
   const chave = phoneMatchKey(telefone)!;
-  const digitos = telefone.replace(/\D/g, '');
+  const digitos = telefoneComDdi(telefone);
   const client = await servicePool().connect();
   let criado: { negocio: Negocio; companyId: string } | null = null;
   try {
@@ -330,6 +341,10 @@ agenteChatvolt.post('/humano', async (c) => {
   const pool = servicePool();
 
   await nota(n, userId, 'Bia (IA) passou para humano', descricao, { motivo, demo_dia: demoDia || null, demo_periodo: demoPeriodo || null, ia_pausada: pausada });
+  // Lead que aceitou demo ou falou de preço/contratação é no mínimo quente (4), mesmo que a Bia não tenha mandado a nota.
+  if (motivo === 'demo' || motivo === 'preco') {
+    await pool.query(`update leads set qualification = greatest(coalesce(qualification, 0), 4) where id = $1`, [n.id]);
+  }
   const etapa = motivo === 'cliente' ? null : await mover(n, userId, ETAPA_HUMANO, `Bia (IA) passou para humano: ${motivo}${detalhe ? `, ${detalhe}` : ''}`);
 
   // Tarefa para hoje, sem repetir uma aberta com o mesmo título.
