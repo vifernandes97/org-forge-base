@@ -893,3 +893,7 @@ ficar cego, a Lara chama o CRM durante a conversa (`server/agente/chatvolt.ts`):
   cidade, controle_atual, maior_dor`; `humano` aceita `telefone, motivo
   (demo|preco|pessoa|cliente|reclamacao|duvida|outro), detalhe, demo_dia,
   demo_periodo, resumo`.
+- **No ar em 2026-11-12:** variáveis no `secrets.env` do crm-app; etapa
+  "Atendimento IA" criada por SQL no funil Comercial da Oniplataforma (posição 1,
+  as demais andaram +1, sem webhook); as duas ferramentas validadas no Chatvolt
+  (número falso → 200 "Lead não encontrado").

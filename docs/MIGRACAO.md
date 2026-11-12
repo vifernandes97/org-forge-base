@@ -56,6 +56,8 @@ Navegador ──► crm.neosoluti.com.br (Traefik/Easypanel) ──► app (Bun,
 - **Deploy:** `scripts/deploy.sh` (webhook do Easypanel em
   `CRM_DEPLOY_WEBHOOK`, no `.env.local`). Só termina quando o `/health`
   mostra o commit enviado (`GIT_SHA` do Easypanel). Exige o commit no GitHub.
+  Em 2026-11-12 o webhook (porta 3000 da VPS) não respondia de fora: disparar
+  de dentro, `ssh vps` com `curl -X POST` em `http://127.0.0.1:3000/<caminho do webhook>`.
 - **Banco de produção:** `scripts/tunel-db.sh abrir|fechar` — ponte socat na
   rede interna, só em 127.0.0.1 da VPS, mais túnel SSH; a URL do dono vai
   para um arquivo 600 fora do repo. Fechar sempre depois.
