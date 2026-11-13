@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it } from 'vitest';
-import { agenteChatvolt, camposPersonalizados, etapaParaFrente, motivoValido, notaValida, pausarIaChatvolt, noPerfilIdeal, planoIndicado, emailValido, horarioDaDemo, tarefaDoHandoff, telefoneComDdi, telefoneDoLead, textoQualificacao, valorDoPlano } from './chatvolt';
+import { agenteChatvolt, camposPersonalizados, etapaParaFrente, motivoValido, notaValida, pausarIaChatvolt, noPerfilIdeal, notaDoLead, quantasPessoas, usaSistema, dorForte, planoIndicado, emailValido, horarioDaDemo, tarefaDoHandoff, telefoneComDdi, telefoneDoLead, textoQualificacao, valorDoPlano } from './chatvolt';
 import type { Etapa } from '../negocios/etapa';
 
 const e = (id: string, name: string, position: number): Etapa => ({ id, name, position, funnel_id: 'f', sla_hours: null, webhook_url: null });
@@ -205,5 +205,40 @@ describe('PCI', () => {
   it('tarefa do vendedor', () => {
     expect(tarefaDoHandoff('vendedor', 'buffet itinerante', '', '')).toBe('Lead fora do PCI: vendedor qualifica antes da demo: buffet itinerante');
     expect(motivoValido('vendedor')).toBe('vendedor');
+  });
+});
+
+describe('nota pelos critérios da Oni', () => {
+  it('lê quantas pessoas', () => {
+    expect(quantasPessoas('2 pessoas por enquanto.')).toBe(2);
+    expect(quantasPessoas('duas')).toBe(2);
+    expect(quantasPessoas('só eu')).toBe(1);
+    expect(quantasPessoas('eu e minha esposa')).toBe(2);
+    expect(quantasPessoas('')).toBeNull();
+  });
+  it('usa ou já usou sistema', () => {
+    expect(usaSistema('outro sistema, insatisfeito')).toBe(true);
+    expect(usaSistema('planilha e caderno')).toBe(false);
+    expect(usaSistema('nenhum sistema, tudo no WhatsApp')).toBe(false);
+    expect(usaSistema('já usei um app de agenda')).toBe(true);
+  });
+  it('dor principal forte ou fraca', () => {
+    expect(dorForte('financeiro')).toBe(false);
+    expect(dorForte('estoque e precificação')).toBe(false);
+    expect(dorForte('financeiro e orçamento')).toBe(false);
+    expect(dorForte('Orçamento demorado e falta de controle financeiro')).toBe(true);
+    expect(dorForte('agenda')).toBe(true);
+    expect(dorForte('')).toBeNull();
+  });
+  it('PCI começa em 3 e sobe com os critérios', () => {
+    expect(notaDoLead({ tipo: 'Buffet Infantil' })).toBe(3);
+    expect(notaDoLead({ tipo: 'Buffet Infantil', pessoas: '1', controle: 'planilha', dor: 'financeiro' })).toBe(3);
+    expect(notaDoLead({ tipo: 'Espaço de eventos', pessoas: '2', controle: 'planilha', dor: 'financeiro' })).toBe(4);
+    expect(notaDoLead({ tipo: 'Buffet Infantil', pessoas: '3', controle: 'outro sistema', dor: 'orçamento' })).toBe(5);
+  });
+  it('fora do PCI começa menor', () => {
+    expect(notaDoLead({ tipo: 'Buffet itinerante' })).toBe(1);
+    expect(notaDoLead({ tipo: 'Buffet itinerante', pessoas: '4', controle: 'sistema', dor: 'agenda' })).toBe(4);
+    expect(notaDoLead({ tipo: 'buffet', pessoas: '2' })).toBe(3);
   });
 });

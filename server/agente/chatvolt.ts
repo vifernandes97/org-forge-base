@@ -22,11 +22,11 @@ import { phoneMatchKey } from '../canais/identificacao/telefone.js';
 // não tem negócio aberto. Telefone usado por mais de 3 negócios é placeholder:
 // nada é criado.
 //
-// /qualificacao também grava a nota 1 a 5 (leads.qualification), os campos
+// /qualificacao também grava a nota 1 a 5 (leads.qualification, calculada por
+// notaDoLead com os critérios da Oni, não a nota que a Bia manda), os campos
 // personalizados (tipo de negócio, média de festas, cidade, dor principal) e,
 // o valor do negócio: com plano_escolhido sempre; com o plano indicado em
-// planos_informados, só se o card está sem valor. No handoff por demo ou preço,
-// a nota sobe para pelo menos 4. Demo aceita vira Reunião de demonstração, que o
+// planos_informados, só se o card está sem valor. Demo aceita vira Reunião de demonstração, que o
 // trigger de db/66 manda ao Orbi como pedido de reunião.
 //
 // Handoff: com CHATVOLT_API_KEY e o campo conversa_id ({conversation-id} do
@@ -177,6 +177,57 @@ export function noPerfilIdeal(tipo: string): boolean | null {
   if (/infantil|kids|crianca|espaco|salao|casa de festa/.test(t)) return true;
   if (/itinerante|casamento|corporativ|decora|fotograf|produtor|cerimonial|assessoria|dj|som|bolo|doce|confeit/.test(t)) return false;
   return null;
+}
+
+const NUMEROS: Record<string, number> = { um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9, dez: 10 };
+
+/** Quantas pessoas usariam o sistema; null se não der para saber. */
+export function quantasPessoas(v: unknown): number | null {
+  const t = normalizar(texto(v, 200));
+  if (!t) return null;
+  const d = t.match(/\d+/);
+  if (d) return Number(d[0]);
+  const palavra = t.split(/[^a-z]+/).find((w) => w in NUMEROS);
+  if (palavra) return NUMEROS[palavra];
+  if (/\b(so|somente|apenas)\s+eu\b|sozinh/.test(t)) return 1;
+  if (/\beu e\b|\bnos dois\b|\bsocio|\besposa|\bmarido|\bequipe|\bfuncionari/.test(t)) return 2;
+  return null;
+}
+
+/** Usa ou já usou algum sistema (não planilha, caderno ou WhatsApp). */
+export function usaSistema(v: unknown): boolean {
+  const t = normalizar(texto(v, 300));
+  if (!/sistema|software|aplicativo|\bapp\b|programa|plataforma/.test(t)) return false;
+  return !/(nenhum|sem|nunca usou|nunca usei|nao usa|nao uso|nao tem|nao tenho)\s+(\w+\s+)?(sistema|software|aplicativo|app|programa|plataforma)/.test(t);
+}
+
+// Financeiro, estoque e precificação são os recursos mais fracos da Oni: o lead converte, mas não fica.
+const DOR_FRACA = /financ|pagamento|cobranc|inadimpl|estoque|precific|custo|fluxo de caixa|\bcaixa\b/;
+const DOR_FORTE = /orcamento|agenda|data|atendimento|contrato|cliente|whatsapp|organiza|resposta|demora|festa|convite|equipe|vend/;
+
+/** A dor principal (a citada primeiro) não é financeiro, estoque ou precificação. null = dor não informada. */
+export function dorForte(v: unknown): boolean | null {
+  const t = normalizar(texto(v, 300));
+  if (!t) return null;
+  const fraca = t.search(DOR_FRACA);
+  const forte = t.search(DOR_FORTE);
+  if (fraca < 0) return true;
+  return forte >= 0 && forte < fraca;
+}
+
+/**
+ * Nota de 1 a 5 do lead, pelos critérios da Oni (não pela opinião da Bia):
+ * buffet infantil ou espaço de eventos começa em 3; fora do PCI, 1; segmento
+ * desconhecido, 2. Soma 1 para cada: mais de uma pessoa usaria o sistema, usa
+ * ou já usou sistema, dor principal fora de financeiro/estoque/precificação.
+ */
+export function notaDoLead(c: { tipo?: unknown; pessoas?: unknown; controle?: unknown; dor?: unknown }): number {
+  const pci = noPerfilIdeal(texto(c.tipo, 120));
+  let nota = pci === true ? 3 : pci === false ? 1 : 2;
+  if ((quantasPessoas(c.pessoas) ?? 0) > 1) nota++;
+  if (usaSistema(c.controle)) nota++;
+  if (dorForte(c.dor)) nota++;
+  return Math.min(nota, 5);
 }
 
 export function motivoValido(v: unknown): Motivo {
@@ -382,6 +433,19 @@ async function gravarCampos(n: Negocio, campos: Record<string, string>): Promise
   return defs.map((d) => d.field_name);
 }
 
+/** Recalcula a nota com tudo o que a Bia já registrou do lead mais o que chegou agora. */
+async function recalcularNota(n: Negocio, corpo: Record<string, unknown>): Promise<number> {
+  const { rows } = await servicePool().query<{ campos: Record<string, unknown> | null }>(
+    `select metadata->'campos' as campos from lead_activities where lead_id = $1 and title = 'Atendimento da Bia (IA)' order by created_at`, [n.id]);
+  const juntos: Record<string, unknown> = {};
+  for (const r of [...rows.map((x) => x.campos ?? {}), corpo]) {
+    for (const [k, v] of Object.entries(r)) if (texto(v, 300) && !GENERICO.has(normalizar(texto(v, 300)))) juntos[k] = v;
+  }
+  const nota5 = notaDoLead({ tipo: (await tipoDoNegocio(n)) || juntos.tipo_negocio, pessoas: juntos.pessoas, controle: juntos.controle_atual, dor: juntos.maior_dor });
+  await servicePool().query(`update leads set qualification = $2 where id = $1`, [n.id, nota5]);
+  return nota5;
+}
+
 /** Segmento do negócio (campo tipo_de_negocio), vazio se não houver. */
 async function tipoDoNegocio(n: Negocio): Promise<string> {
   const { rows } = await servicePool().query<{ value: string | null }>(
@@ -500,9 +564,10 @@ agenteChatvolt.post('/qualificacao', async (c) => {
   const pool = servicePool();
   const linhas = [textoQualificacao(p.corpo)];
 
-  const nota5 = notaValida(p.corpo.nota);
-  if (nota5) await pool.query(`update leads set qualification = $2 where id = $1`, [n.id, nota5]);
   const campos = await gravarCampos(n, camposPersonalizados(p.corpo));
+  // A nota sai dos critérios da Oni, não da opinião da Bia (a dela fica só no histórico).
+  const nota5 = await recalcularNota(n, p.corpo);
+  linhas.push(`Nota pelos critérios da Oni: ${nota5} de 5`);
   await gravarEmail(n, emailValido(p.corpo.email));
   const escolhido = valorDoPlano(p.corpo.plano_escolhido, p.corpo.valor);
   const indicado = escolhido ? null : planoIndicado(p.corpo.planos_informados);
@@ -549,9 +614,8 @@ agenteChatvolt.post('/humano', async (c) => {
   const pool = servicePool();
 
   await nota(n, userId, 'Bia (IA) passou para humano', descricao, { motivo, demo_dia: demoDia || null, demo_periodo: demoPeriodo || null, ia_pausada: pausada });
-  // Lead que aceitou demo ou falou de preço/contratação é no mínimo quente (4), mesmo que a Bia não tenha mandado a nota.
+  await recalcularNota(n, {});
   if (motivo === 'demo' || motivo === 'preco' || motivo === 'vendedor') {
-    await pool.query(`update leads set qualification = greatest(coalesce(qualification, 0), 4) where id = $1`, [n.id]);
     // Valor pelo plano que a Bia indicou, caso ela não tenha mandado planos_informados antes (card sem valor).
     const indicado = planoIndicado(p.corpo.planos_informados) ?? planoIndicado(resumo) ?? planoIndicado(detalhe);
     if (indicado) await pool.query(`update leads set value = $2 where id = $1 and coalesce(value, 0) = 0`, [n.id, indicado.valor]);
