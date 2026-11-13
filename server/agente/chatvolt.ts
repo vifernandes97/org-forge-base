@@ -59,6 +59,7 @@ const QUALIFICACAO: [string, string][] = [
   ['controle_atual', 'Como controla hoje'],
   ['maior_dor', 'Maior dor'],
   ['pessoas', 'Pessoas que usariam'],
+  ['email', 'E-mail'],
   ['planos_informados', 'Planos e preços informados'],
   ['plano_escolhido', 'Plano escolhido pelo lead'],
 ];
@@ -114,6 +115,12 @@ export function planoIndicado(planos: unknown): { plano: string; valor: number }
   if (!chave) return null;
   const preco = t.match(new RegExp(`\\b${chave}\\b[^;\\d]{0,20}r\\$\\s*([\\d.,]+)`))?.[1];
   return valorDoPlano(chave, preco ?? null);
+}
+
+/** E-mail que o lead passou na conversa; inválido vira vazio. */
+export function emailValido(v: unknown): string {
+  const e = texto(v, 320).toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e) ? e : '';
 }
 
 const DIAS_SEMANA: Record<string, number> = { domingo: 0, segunda: 1, terca: 2, quarta: 3, quinta: 4, sexta: 5, sabado: 6 };
@@ -392,6 +399,25 @@ async function mover(n: Negocio, userId: string, nomeEtapa: string, motivo: stri
 }
 
 /**
+ * Grava o e-mail do lead no contato principal (o pedido ao Orbi leva o e-mail
+ * dele, que vira convidado da demo). Não troca e-mail que já existe. Se a demo
+ * já foi pedida ao Orbi sem e-mail, mexe na descrição para o pedido ser reenviado.
+ */
+async function gravarEmail(n: Negocio, email: string) {
+  if (!email) return;
+  const pool = servicePool();
+  const { rowCount } = await pool.query(
+    `update contacts set email = $2, updated_at = now()
+      where id = (select lc.contact_id from lead_contacts lc where lc.lead_id = $1 order by lc.is_primary desc limit 1)
+        and coalesce(email, '') = ''`, [n.id, email]);
+  if (!rowCount) return;
+  await pool.query(
+    `update tasks set description = concat_ws(E'\n', description, $2::text), updated_at = now()
+      where lead_id = $1 and task_type = 'meeting' and completed_at is null and external_status in ('queued', 'pending')`,
+    [n.id, `E-mail do lead: ${email}`]);
+}
+
+/**
  * Demo aceita: uma tarefa Reunião > Reunião de demonstração por negócio. O tipo
  * Reunião tem action orbi_meeting, então o trigger de db/66 manda o pedido ao
  * Orbi (server/orbi.ts). A Bia chama /humano mais de uma vez: a tarefa aberta só
@@ -451,6 +477,7 @@ agenteChatvolt.post('/qualificacao', async (c) => {
   const nota5 = notaValida(p.corpo.nota);
   if (nota5) await pool.query(`update leads set qualification = $2 where id = $1`, [n.id, nota5]);
   const campos = await gravarCampos(n, camposPersonalizados(p.corpo));
+  await gravarEmail(n, emailValido(p.corpo.email));
   const escolhido = valorDoPlano(p.corpo.plano_escolhido, p.corpo.valor);
   const indicado = escolhido ? null : planoIndicado(p.corpo.planos_informados);
   if (escolhido) {
@@ -501,6 +528,7 @@ agenteChatvolt.post('/humano', async (c) => {
   }
   const etapa = motivo === 'cliente' ? null : await mover(n, userId, ETAPA_HUMANO, `Bia (IA) passou para humano: ${motivo}${detalhe ? `, ${detalhe}` : ''}`);
 
+  await gravarEmail(n, emailValido(p.corpo.email));
   if (motivo === 'demo') {
     await agendarDemo(n, userId, demoDia, demoPeriodo, descricao);
   } else {

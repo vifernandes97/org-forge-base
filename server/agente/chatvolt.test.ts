@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it } from 'vitest';
-import { agenteChatvolt, camposPersonalizados, etapaParaFrente, motivoValido, notaValida, pausarIaChatvolt, planoIndicado, horarioDaDemo, tarefaDoHandoff, telefoneComDdi, telefoneDoLead, textoQualificacao, valorDoPlano } from './chatvolt';
+import { agenteChatvolt, camposPersonalizados, etapaParaFrente, motivoValido, notaValida, pausarIaChatvolt, planoIndicado, emailValido, horarioDaDemo, tarefaDoHandoff, telefoneComDdi, telefoneDoLead, textoQualificacao, valorDoPlano } from './chatvolt';
 import type { Etapa } from '../negocios/etapa';
 
 const e = (id: string, name: string, position: number): Etapa => ({ id, name, position, funnel_id: 'f', sla_hours: null, webhook_url: null });
@@ -179,5 +179,14 @@ describe('valor indicado e horário da demo', () => {
     expect(horarioDaDemo('20/11', 'tarde', sexta17h)).toEqual({ data: '2026-11-20', hora: '14:00' });
     expect(horarioDaDemo('hoje', 'manhã', sexta17h)).toEqual({ data: '2026-11-16', hora: '10:00' });
     expect(horarioDaDemo('amanhã', 'manhã', sexta17h)).toEqual({ data: '2026-11-14', hora: '10:00' });
+  });
+});
+
+describe('e-mail do lead', () => {
+  it('aceita e-mail válido e normaliza', () => {
+    expect(emailValido(' Fulano@Buffet.com.br ')).toBe('fulano@buffet.com.br');
+    expect(emailValido('fulano@buffet')).toBe('');
+    expect(emailValido('não tenho')).toBe('');
+    expect(emailValido(undefined)).toBe('');
   });
 });
