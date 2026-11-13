@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it } from 'vitest';
-import { agenteChatvolt, camposPersonalizados, etapaParaFrente, motivoValido, notaValida, pausarIaChatvolt, tarefaDoHandoff, telefoneComDdi, textoQualificacao, valorDoPlano } from './chatvolt';
+import { agenteChatvolt, camposPersonalizados, etapaParaFrente, motivoValido, notaValida, pausarIaChatvolt, tarefaDoHandoff, telefoneComDdi, telefoneDoLead, textoQualificacao, valorDoPlano } from './chatvolt';
 import type { Etapa } from '../negocios/etapa';
 
 const e = (id: string, name: string, position: number): Etapa => ({ id, name, position, funnel_id: 'f', sla_hours: null, webhook_url: null });
@@ -125,5 +125,34 @@ describe('pausarIaChatvolt', () => {
   it('erro da API devolve false', async () => {
     process.env.CHATVOLT_API_KEY = 'k';
     expect(await pausarIaChatvolt('cmwe4n4af00013w72pgm3ckbf', falso(401).f)).toBe(false);
+  });
+});
+
+describe('telefoneDoLead', () => {
+  const conversa = (corpo: object, status = 200) => {
+    const urls: string[] = [];
+    const f = (async (url: string) => { urls.push(url); return new Response(JSON.stringify(corpo), { status }); }) as unknown as typeof fetch;
+    return { f, urls };
+  };
+  afterEach(() => { delete process.env.CHATVOLT_API_KEY; });
+
+  it('usa o telefone do corpo quando vem com dígitos', async () => {
+    process.env.CHATVOLT_API_KEY = 'k';
+    const { f, urls } = conversa({});
+    expect(await telefoneDoLead({ telefone: '11987654321', conversa_id: 'cmweszbnv01ra1dqp2oea3734' }, f)).toBe('11987654321');
+    expect(urls).toHaveLength(0);
+  });
+
+  it('placeholder não substituído busca pela conversa', async () => {
+    process.env.CHATVOLT_API_KEY = 'k';
+    const { f, urls } = conversa({ participantsContacts: [{ phoneNumber: '+55 11 98765-4321' }] });
+    expect(await telefoneDoLead({ telefone: '{user-phone-number}', conversa_id: 'cmweszbnv01ra1dqp2oea3734' }, f)).toBe('5511987654321');
+    expect(urls[0]).toBe('https://api.chatvolt.ai/conversations/cmweszbnv01ra1dqp2oea3734');
+  });
+
+  it('erro na API devolve o que veio', async () => {
+    process.env.CHATVOLT_API_KEY = 'k';
+    const { f } = conversa({}, 500);
+    expect(await telefoneDoLead({ telefone: '{user-phone-number}', conversa_id: 'cmweszbnv01ra1dqp2oea3734' }, f)).toBe('{user-phone-number}');
   });
 });

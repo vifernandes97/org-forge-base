@@ -143,6 +143,32 @@ export async function pausarIaChatvolt(conversaId: string, fetchImpl: typeof fet
   }
 }
 
+/** Telefone do lead pela conversa no Chatvolt. Na 1ª resposta a variável {user-phone-number} ainda não vem preenchida. */
+export async function telefoneDaConversa(conversaId: string, fetchImpl: typeof fetch = fetch): Promise<string> {
+  const chave = process.env.CHATVOLT_API_KEY ?? '';
+  if (!chave || !/^[a-z0-9]{10,40}$/i.test(conversaId)) return '';
+  try {
+    const r = await fetchImpl(`${CHATVOLT_API}/conversations/${conversaId}`, {
+      headers: { authorization: `Bearer ${chave}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) return '';
+    const j = (await r.json()) as { participantsContacts?: { phoneNumber?: string | null }[] };
+    const tel = (j.participantsContacts ?? []).map((x) => (x.phoneNumber ?? '').replace(/\D/g, '')).find((x) => x.length >= 10);
+    return tel ?? '';
+  } catch (e) {
+    console.error('[agente] chatvolt conversa', e);
+    return '';
+  }
+}
+
+/** Telefone do corpo; se veio vazio ou como placeholder, busca pela conversa. */
+export async function telefoneDoLead(corpo: Record<string, unknown>, fetchImpl: typeof fetch = fetch): Promise<string> {
+  const t = texto(corpo.telefone, 40);
+  if (t.replace(/\D/g, '').length >= 10) return t;
+  return (await telefoneDaConversa(texto(corpo.conversa_id, 60), fetchImpl)) || t;
+}
+
 function autorizado(header: string | undefined): boolean {
   const esperado = process.env.CHATVOLT_AGENTE_TOKEN ?? '';
   const recebido = (header ?? '').replace(/^Bearer\s+/i, '');
@@ -192,6 +218,34 @@ async function garantirNegocio(orgId: string, telefone: string, nome: string, se
     if (outra.negocio || outra.ambiguo) {
       await client.query('rollback');
       return { negocio: outra.negocio, novo: false };
+    }
+    // Lead do formulário que digitou outro telefone: o formulário entrou há pouco e ninguém falou com ele ainda.
+    const { rows: recentes } = await client.query<Negocio & { company_id: string }>(
+      `select l.id, l.organization_id, l.name, l.stage_id, l.funnel_id, l.assigned_to, l.company_id
+       from leads l join stages s on s.id = l.stage_id
+       where l.organization_id = $1 and l.source = 'formulário' and l.status = 'open' and l.archived_at is null
+         and l.merged_into_lead_id is null and l.created_at > now() - interval '10 minutes'
+         and s.position = (select min(position) from stages where funnel_id = l.funnel_id)
+         and not exists (select 1 from lead_activities a where a.lead_id = l.id and a.title like '%Bia (IA)%')
+       limit 2`, [orgId]);
+    if (recentes.length === 1) {
+      const f = recentes[0];
+      const { rows: [ct] } = await client.query<{ id: string }>(
+        `insert into contacts (organization_id, lead_id, name, phone, phone_key, company_id) values ($1, $2, $3, $4, $5, $6) returning id`,
+        [orgId, f.id, nome || 'WhatsApp', `+${digitos}`, chave, f.company_id]);
+      await client.query(`insert into lead_contacts (organization_id, lead_id, contact_id, is_primary) values ($1, $2, $3, false)`,
+        [orgId, f.id, ct.id]);
+      const { rows: [m0] } = await client.query<{ user_id: string }>(
+        `select user_id from organization_members where organization_id = $1 order by (role = 'owner') desc, created_at limit 1`, [orgId]);
+      await client.query(
+        `insert into lead_activities (organization_id, lead_id, user_id, activity_type, title, description, metadata)
+         values ($1, $2, $3, 'note', 'WhatsApp vinculado pela Bia (IA)', $4, $5)`,
+        [orgId, f.id, f.assigned_to ?? m0?.user_id,
+         `O lead chamou no 0573 com um telefone diferente do formulário: +${digitos}. Contato adicionado a este negócio.`,
+         { origem: 'chatvolt_lara' }]);
+      await client.query('commit');
+      const { company_id: _c, ...negocio } = f;
+      return { negocio, novo: false };
     }
     const { rows: [etapa] } = await client.query<Etapa>(
       `select s.id, s.name, s.position, s.funnel_id, s.sla_hours, s.webhook_url from stages s
@@ -302,7 +356,7 @@ export const agenteChatvolt = new Hono();
 agenteChatvolt.post('/qualificacao', async (c) => {
   const p = await preparar(c.req.raw);
   if (p instanceof Response) return p;
-  const { negocio: n, novo } = await garantirNegocio(p.orgId, texto(p.corpo.telefone, 40), texto(p.corpo.nome, 120), texto(p.corpo.tipo_negocio, 120));
+  const { negocio: n, novo } = await garantirNegocio(p.orgId, await telefoneDoLead(p.corpo), texto(p.corpo.nome, 120), texto(p.corpo.tipo_negocio, 120));
   if (!n) return c.json(naoAchado);
   const userId = await autor(n);
   const pool = servicePool();
@@ -334,7 +388,7 @@ agenteChatvolt.post('/humano', async (c) => {
   if (p instanceof Response) return p;
   const pausada = await pausarIaChatvolt(texto(p.corpo.conversa_id, 60));
   const fim = pausada ? ' A conversa já está com a equipe: avise o lead em uma frase e pare de responder.' : '';
-  const { negocio: n } = await garantirNegocio(p.orgId, texto(p.corpo.telefone, 40), texto(p.corpo.nome, 120), texto(p.corpo.tipo_negocio, 120));
+  const { negocio: n } = await garantirNegocio(p.orgId, await telefoneDoLead(p.corpo), texto(p.corpo.nome, 120), texto(p.corpo.tipo_negocio, 120));
   if (!n) return c.json({ ok: pausada, mensagem: `Não foi possível registrar no CRM.${fim || ' Continue a conversa normalmente.'}` } satisfies Resposta);
   const userId = await autor(n);
   const motivo = motivoValido(p.corpo.motivo);
