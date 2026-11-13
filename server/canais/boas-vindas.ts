@@ -308,6 +308,8 @@ export async function boasVindasFormulario(leadId: string): Promise<ResultadoBoa
                  when ${LEAD_CONVERSOU('$1::uuid')} then 'ja_conversou'
                  when exists (select 1 from channel_chats ch where ch.organization_id = $2 and ch.phone_key = $3
                               and exists (select 1 from channel_messages m where m.chat_id = ch.id and not m.from_me)) then 'ja_conversou'
+                 -- Conversa no 0573 fica no Chatvolt, fora de channel_chats: a Bia deixa registro no negócio.
+                 when exists (select 1 from lead_activities a where a.lead_id = $1 and a.metadata->>'origem' = 'chatvolt_lara') then 'ja_conversou_bia'
             end as motivo`, [leadId, lf.organization_id, lf.phone_key]);
   if (ja?.motivo) return { status: 'ignored', reason: ja.motivo };
 
