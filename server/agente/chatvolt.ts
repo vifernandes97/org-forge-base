@@ -41,7 +41,7 @@ const PROIBIDA = 'engajamento';
 const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 const texto = (v: unknown, max = 500) => (typeof v === 'string' ? v.trim().slice(0, max) : typeof v === 'number' ? String(v) : '');
 
-export const MOTIVOS = ['demo', 'preco', 'pessoa', 'cliente', 'reclamacao', 'duvida', 'outro'] as const;
+export const MOTIVOS = ['demo', 'vendedor', 'preco', 'pessoa', 'cliente', 'reclamacao', 'duvida', 'outro'] as const;
 export type Motivo = (typeof MOTIVOS)[number];
 
 /** Etapa de destino se o negócio ainda está antes dela; nulo para não mexer (nunca volta, nunca Engajamento). */
@@ -166,6 +166,19 @@ export function textoQualificacao(c: Record<string, unknown>): string {
   return [resumo, ...linhas, nota ? `Nota da Bia: ${nota} de 5` : ''].filter(Boolean).join('\n');
 }
 
+/**
+ * PCI da Oni: buffet infantil e espaço de eventos. true = no PCI, false = fora
+ * (itinerante, casamento, corporativo, decoração, fotografia, produtora…),
+ * null = não dá para saber (ex.: só "buffet").
+ */
+export function noPerfilIdeal(tipo: string): boolean | null {
+  const t = normalizar(tipo);
+  if (!t) return null;
+  if (/infantil|kids|crianca|espaco|salao|casa de festa/.test(t)) return true;
+  if (/itinerante|casamento|corporativ|decora|fotograf|produtor|cerimonial|assessoria|dj|som|bolo|doce|confeit/.test(t)) return false;
+  return null;
+}
+
 export function motivoValido(v: unknown): Motivo {
   const m = normalizar(texto(v)) as Motivo;
   return MOTIVOS.includes(m) ? m : 'outro';
@@ -178,6 +191,7 @@ export function tarefaDoHandoff(motivo: Motivo, detalhe: string, demoDia: string
     return `Confirmar horário da demo${quando ? `: ${quando}` : ''}`;
   }
   if (motivo === 'cliente') return 'Cliente da Oni no 0573: encaminhar ao suporte';
+  if (motivo === 'vendedor') return `Lead fora do PCI: vendedor qualifica antes da demo${detalhe ? `: ${detalhe}` : ''}`.slice(0, 200);
   return `Assumir conversa no Chatvolt${detalhe ? `: ${detalhe}` : ''}`.slice(0, 200);
 }
 
@@ -355,13 +369,25 @@ async function gravarCampos(n: Negocio, campos: Record<string, string>): Promise
     [n.organization_id, nomes]);
   for (const d of defs) {
     const { rowCount } = await pool.query(
-      `update custom_field_values set value = $3 where lead_id = $1 and field_definition_id = $2`, [n.id, d.id, campos[d.field_name]]);
+      // O segmento do formulário é a fonte do PCI: a Bia só preenche se estiver vazio.
+      d.field_name === 'tipo_de_negocio'
+        ? `update custom_field_values set value = case when coalesce(value, '') = '' then $3 else value end where lead_id = $1 and field_definition_id = $2`
+        : `update custom_field_values set value = $3 where lead_id = $1 and field_definition_id = $2`,
+      [n.id, d.id, campos[d.field_name]]);
     if (!rowCount) {
       await pool.query(`insert into custom_field_values (lead_id, field_definition_id, value) values ($1, $2, $3)`,
         [n.id, d.id, campos[d.field_name]]);
     }
   }
   return defs.map((d) => d.field_name);
+}
+
+/** Segmento do negócio (campo tipo_de_negocio), vazio se não houver. */
+async function tipoDoNegocio(n: Negocio): Promise<string> {
+  const { rows } = await servicePool().query<{ value: string | null }>(
+    `select v.value from custom_field_values v join custom_field_definitions d on d.id = v.field_definition_id
+      where v.lead_id = $1 and d.organization_id = $2 and d.field_name = 'tipo_de_negocio' limit 1`, [n.id, n.organization_id]);
+  return rows[0]?.value ?? '';
 }
 
 async function autor(n: Negocio): Promise<string> {
@@ -509,18 +535,22 @@ agenteChatvolt.post('/humano', async (c) => {
   const { negocio: n } = await garantirNegocio(p.orgId, await telefoneDoLead(p.corpo), texto(p.corpo.nome, 120), texto(p.corpo.tipo_negocio, 120));
   if (!n) return c.json({ ok: pausada, mensagem: `Não foi possível registrar no CRM.${fim || ' Continue a conversa normalmente.'}` } satisfies Resposta);
   const userId = await autor(n);
-  const motivo = motivoValido(p.corpo.motivo);
+  let motivo = motivoValido(p.corpo.motivo);
+  // Fora do PCI não tem demo marcada pela Bia: vai para o vendedor qualificar antes.
+  const tipo = (await tipoDoNegocio(n)) || texto(p.corpo.tipo_negocio, 120);
+  const foraDoPci = noPerfilIdeal(tipo) === false;
+  if (motivo === 'demo' && foraDoPci) motivo = 'vendedor';
   const detalhe = texto(p.corpo.detalhe, 300);
   const demoDia = texto(p.corpo.demo_dia, 60);
   const demoPeriodo = texto(p.corpo.demo_periodo, 30);
   const resumo = texto(p.corpo.resumo, 1500);
   const titulo = tarefaDoHandoff(motivo, detalhe, demoDia, demoPeriodo);
-  const descricao = [resumo, detalhe && `Motivo: ${detalhe}`, 'Responder pelo Chatvolt (número 0573).'].filter(Boolean).join('\n');
+  const descricao = [resumo, detalhe && `Motivo: ${detalhe}`, motivo === 'vendedor' && `Fora do PCI (segmento: ${tipo || 'não informado'}): qualificar antes de marcar demo.`, 'Responder pelo Chatvolt (número 0573).'].filter(Boolean).join('\n');
   const pool = servicePool();
 
   await nota(n, userId, 'Bia (IA) passou para humano', descricao, { motivo, demo_dia: demoDia || null, demo_periodo: demoPeriodo || null, ia_pausada: pausada });
   // Lead que aceitou demo ou falou de preço/contratação é no mínimo quente (4), mesmo que a Bia não tenha mandado a nota.
-  if (motivo === 'demo' || motivo === 'preco') {
+  if (motivo === 'demo' || motivo === 'preco' || motivo === 'vendedor') {
     await pool.query(`update leads set qualification = greatest(coalesce(qualification, 0), 4) where id = $1`, [n.id]);
     // Valor pelo plano que a Bia indicou, caso ela não tenha mandado planos_informados antes (card sem valor).
     const indicado = planoIndicado(p.corpo.planos_informados) ?? planoIndicado(resumo) ?? planoIndicado(detalhe);
@@ -552,5 +582,6 @@ agenteChatvolt.post('/humano', async (c) => {
   await notificar({ organizationId: n.organization_id, userIds, type: 'ai_update', title: `Bia passou ${n.name} para humano`, body: titulo, leadId: n.id })
     .catch((e) => console.error('[agente] notificar', e));
 
-  return c.json({ ok: true, mensagem: `Equipe avisada no CRM.${fim}`, etapa } satisfies Resposta);
+  const aviso = motivo === 'vendedor' ? ' Não marque demonstração: diga que o consultor vai chamar para entender a operação.' : '';
+  return c.json({ ok: true, mensagem: `Equipe avisada no CRM.${aviso}${fim}`, etapa } satisfies Resposta);
 });

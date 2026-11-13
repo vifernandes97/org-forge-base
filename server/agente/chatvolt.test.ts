@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it } from 'vitest';
-import { agenteChatvolt, camposPersonalizados, etapaParaFrente, motivoValido, notaValida, pausarIaChatvolt, planoIndicado, emailValido, horarioDaDemo, tarefaDoHandoff, telefoneComDdi, telefoneDoLead, textoQualificacao, valorDoPlano } from './chatvolt';
+import { agenteChatvolt, camposPersonalizados, etapaParaFrente, motivoValido, notaValida, pausarIaChatvolt, noPerfilIdeal, planoIndicado, emailValido, horarioDaDemo, tarefaDoHandoff, telefoneComDdi, telefoneDoLead, textoQualificacao, valorDoPlano } from './chatvolt';
 import type { Etapa } from '../negocios/etapa';
 
 const e = (id: string, name: string, position: number): Etapa => ({ id, name, position, funnel_id: 'f', sla_hours: null, webhook_url: null });
@@ -188,5 +188,22 @@ describe('e-mail do lead', () => {
     expect(emailValido('fulano@buffet')).toBe('');
     expect(emailValido('não tenho')).toBe('');
     expect(emailValido(undefined)).toBe('');
+  });
+});
+
+describe('PCI', () => {
+  it('buffet infantil e espaço de eventos estão no PCI; o resto não', () => {
+    expect(noPerfilIdeal('Buffet Infantil')).toBe(true);
+    expect(noPerfilIdeal('Espaço de eventos')).toBe(true);
+    expect(noPerfilIdeal('Buffet Itinerante')).toBe(false);
+    expect(noPerfilIdeal('Casamento / Corporativo')).toBe(false);
+    expect(noPerfilIdeal('Decoração / Fotografia')).toBe(false);
+    expect(noPerfilIdeal('Produtora de eventos')).toBe(false);
+    expect(noPerfilIdeal('buffet')).toBeNull();
+    expect(noPerfilIdeal('')).toBeNull();
+  });
+  it('tarefa do vendedor', () => {
+    expect(tarefaDoHandoff('vendedor', 'buffet itinerante', '', '')).toBe('Lead fora do PCI: vendedor qualifica antes da demo: buffet itinerante');
+    expect(motivoValido('vendedor')).toBe('vendedor');
   });
 });
