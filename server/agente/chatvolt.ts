@@ -24,8 +24,10 @@ import { phoneMatchKey } from '../canais/identificacao/telefone.js';
 //
 // /qualificacao também grava a nota 1 a 5 (leads.qualification), os campos
 // personalizados (tipo de negócio, média de festas, cidade, dor principal) e,
-// só com plano_escolhido, o valor do negócio (mensalidade do plano). No handoff
-// por demo ou preço, a nota sobe para pelo menos 4.
+// o valor do negócio: com plano_escolhido sempre; com o plano indicado em
+// planos_informados, só se o card está sem valor. No handoff por demo ou preço,
+// a nota sobe para pelo menos 4. Demo aceita vira Reunião de demonstração, que o
+// trigger de db/66 manda ao Orbi como pedido de reunião.
 //
 // Handoff: com CHATVOLT_API_KEY e o campo conversa_id ({conversation-id} do
 // Chatvolt), /humano põe a conversa em "Humano Solicitado" pela API do Chatvolt
@@ -98,6 +100,56 @@ export function valorDoPlano(plano: unknown, valor: unknown): { plano: string; v
   const n = Number(typeof valor === 'string' ? valor.replace(/[^\d,.]/g, '').replace(/\.(?=\d{3}\b)/g, '').replace(',', '.') : valor);
   const nome = chave[0].toUpperCase() + chave.slice(1);
   return { plano: nome, valor: Number.isFinite(n) && n >= 50 && n <= 20000 ? n : PRECOS[chave] };
+}
+
+/** Plano que a Bia indicou em planos_informados ("Starter R$ 199; indicado Starter"); vale para o valor do negócio. */
+export function planoIndicado(planos: unknown): { plano: string; valor: number } | null {
+  const t = normalizar(texto(planos, 300));
+  if (!t) return null;
+  const nomes = Object.keys(PRECOS);
+  const marcado = t.match(new RegExp(`indicad[oa]s?\\s*:?\\s*(?:o\\s+|plano\\s+)?(${nomes.join('|')})\\b`))?.[1];
+  // "pro" também é "para o": só conta como plano com "plano pro" ou preço/pontuação logo depois.
+  const citados = nomes.filter((k) => new RegExp(k === 'pro' ? `plano\\s+pro\\b|\\bpro\\b\\s*(?:[:(-]\\s*)?(?:r\\$|por r\\$|;|,|$)` : `\\b${k}\\b`).test(t));
+  const chave = marcado ?? (citados.length === 1 ? citados[0] : null);
+  if (!chave) return null;
+  const preco = t.match(new RegExp(`\\b${chave}\\b[^;\\d]{0,20}r\\$\\s*([\\d.,]+)`))?.[1];
+  return valorDoPlano(chave, preco ?? null);
+}
+
+const DIAS_SEMANA: Record<string, number> = { domingo: 0, segunda: 1, terca: 2, quarta: 3, quinta: 4, sexta: 5, sabado: 6 };
+
+/** Data e hora da demo a partir do que o lead disse ("quinta", "14/11", "amanhã" + "manhã"/"15h"); sem dia, próximo dia útil. */
+export function horarioDaDemo(dia: string, periodo: string, agora = new Date()): { data: string; hora: string } {
+  const sp = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  const hoje = new Date(sp.getFullYear(), sp.getMonth(), sp.getDate());
+  const d = normalizar(dia);
+  const tudo = `${d} ${normalizar(periodo)}`;
+  const h = tudo.match(/\b(\d{1,2})\s*(?:h|:)\s*(\d{2})?/);
+  const hora = h && Number(h[1]) >= 7 && Number(h[1]) <= 21
+    ? `${h[1].padStart(2, '0')}:${h[2] ?? '00'}`
+    : /noite/.test(tudo) ? '19:00' : /tarde/.test(tudo) ? '14:00' : '10:00';
+  const util = (x: Date) => { while (x.getDay() === 0 || x.getDay() === 6) x.setDate(x.getDate() + 1); return x; };
+  const mais = (n: number) => { const x = new Date(hoje); x.setDate(x.getDate() + n); return x; };
+
+  let alvo: Date | null = null;
+  const dm = d.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+  if (dm) {
+    const ano = dm[3] ? Number(dm[3].length === 2 ? `20${dm[3]}` : dm[3]) : hoje.getFullYear();
+    alvo = new Date(ano, Number(dm[2]) - 1, Number(dm[1]));
+    if (!dm[3] && alvo < hoje) alvo.setFullYear(ano + 1);
+  } else if (/depois de amanha/.test(d)) alvo = mais(2);
+  else if (/amanha/.test(d)) alvo = mais(1);
+  else if (/\bhoje\b/.test(d)) alvo = mais(0);
+  else {
+    const w = Object.entries(DIAS_SEMANA).find(([nome]) => d.includes(nome))?.[1];
+    if (w !== undefined) alvo = mais((w - hoje.getDay() + 7) % 7 || 7);
+  }
+  const [hh, mm] = hora.split(':').map(Number);
+  if (!alvo || alvo < hoje || (alvo.getTime() === hoje.getTime() && hh * 60 + mm <= sp.getHours() * 60 + sp.getMinutes())) {
+    alvo = util(mais(1));
+  }
+  const data = `${alvo.getFullYear()}-${String(alvo.getMonth() + 1).padStart(2, '0')}-${String(alvo.getDate()).padStart(2, '0')}`;
+  return { data, hora };
 }
 
 export function textoQualificacao(c: Record<string, unknown>): string {
@@ -339,6 +391,40 @@ async function mover(n: Negocio, userId: string, nomeEtapa: string, motivo: stri
   return ok ? para.name : null;
 }
 
+/**
+ * Demo aceita: uma tarefa Reunião > Reunião de demonstração por negócio. O tipo
+ * Reunião tem action orbi_meeting, então o trigger de db/66 manda o pedido ao
+ * Orbi (server/orbi.ts). A Bia chama /humano mais de uma vez: a tarefa aberta só
+ * muda se o horário mudar (o que reenvia o mesmo pedido no Orbi).
+ */
+async function agendarDemo(n: Negocio, userId: string, dia: string, periodo: string, descricao: string) {
+  const pool = servicePool();
+  const { data, hora } = horarioDaDemo(dia, periodo);
+  const pedido = [dia, periodo].filter(Boolean).join(', ') || 'sem dia definido';
+  const obs = [`Horário sugerido pela Bia (o lead pediu: ${pedido}). Confirme com o lead pelo 0573 e ajuste aqui.`, descricao].join('\n');
+  const { rows: [sub] } = await pool.query<{ id: string }>(
+    `select st.id from task_subtypes st join task_types t on t.id = st.task_type_id
+      where st.organization_id = $1 and t.code = 'meeting' and st.is_active and st.label ilike '%demonstra%'
+      order by st.position limit 1`, [n.organization_id]);
+  const { rows: [aberta] } = await pool.query<{ id: string; quando: string }>(
+    `select id, to_char(due_date at time zone 'America/Sao_Paulo', 'YYYY-MM-DD HH24:MI') as quando from tasks
+      where lead_id = $1 and task_type = 'meeting' and completed_at is null
+        and (task_subtype_id is not distinct from $2 or title like 'Demo Oniplataforma%')
+      order by created_at desc limit 1`, [n.id, sub?.id ?? null]);
+  if (aberta) {
+    if (aberta.quando !== `${data} ${hora}`) {
+      await pool.query(
+        `update tasks set due_date = ($2 || ' ' || $3)::timestamp at time zone 'America/Sao_Paulo', description = $4, updated_at = now() where id = $1`,
+        [aberta.id, data, hora, obs]);
+    }
+    return;
+  }
+  await pool.query(
+    `insert into tasks (organization_id, lead_id, assigned_to, title, description, task_type, task_subtype_id, due_date, priority)
+     values ($1, $2, $3, $4, $5, 'meeting', $6, ($7 || ' ' || $8)::timestamp at time zone 'America/Sao_Paulo', 'high')`,
+    [n.organization_id, n.id, userId, `Demo Oniplataforma: ${n.name}`.slice(0, 200), obs, sub?.id ?? null, data, hora]);
+}
+
 type Resposta = { ok: boolean; mensagem: string; etapa?: string | null };
 
 async function preparar(req: Request): Promise<{ orgId: string; corpo: Record<string, unknown> } | Response> {
@@ -366,9 +452,14 @@ agenteChatvolt.post('/qualificacao', async (c) => {
   if (nota5) await pool.query(`update leads set qualification = $2 where id = $1`, [n.id, nota5]);
   const campos = await gravarCampos(n, camposPersonalizados(p.corpo));
   const escolhido = valorDoPlano(p.corpo.plano_escolhido, p.corpo.valor);
+  const indicado = escolhido ? null : planoIndicado(p.corpo.planos_informados);
   if (escolhido) {
     await pool.query(`update leads set value = $2 where id = $1`, [n.id, escolhido.valor]);
     linhas.push(`Valor do negócio: R$ ${escolhido.valor} por mês (plano ${escolhido.plano}, escolhido pelo lead).`);
+  } else if (indicado) {
+    // Plano só indicado: preenche o valor se o card ainda está sem valor (não passa por cima do que a equipe pôs).
+    const { rowCount } = await pool.query(`update leads set value = $2 where id = $1 and coalesce(value, 0) = 0`, [n.id, indicado.valor]);
+    if (rowCount) linhas.push(`Valor do negócio: R$ ${indicado.valor} por mês (plano ${indicado.plano}, indicado pela Bia).`);
   }
 
   // A Bia às vezes chama várias vezes na mesma resposta: nota vazia ou igual à última não é gravada.
@@ -377,7 +468,7 @@ agenteChatvolt.post('/qualificacao', async (c) => {
     `select description from lead_activities where lead_id = $1 and title = 'Atendimento da Bia (IA)' order by created_at desc limit 1`, [n.id]);
   if (descricao && descricao !== ultima?.description) {
     await nota(n, userId, 'Atendimento da Bia (IA)', descricao,
-      { campos: p.corpo, nota: nota5, campos_crm: campos, valor: escolhido?.valor ?? null, conversa_id: texto(p.corpo.conversa_id, 60) || null });
+      { campos: p.corpo, nota: nota5, campos_crm: campos, valor: escolhido?.valor ?? indicado?.valor ?? null, conversa_id: texto(p.corpo.conversa_id, 60) || null });
   }
   const etapa = await mover(n, userId, ETAPA_IA, 'Lead conversando com a Bia (IA) no 0573');
   return c.json({ ok: true, mensagem: novo ? 'Lead cadastrado e registrado no CRM.' : 'Registrado no CRM.', etapa } satisfies Resposta);
@@ -404,17 +495,24 @@ agenteChatvolt.post('/humano', async (c) => {
   // Lead que aceitou demo ou falou de preço/contratação é no mínimo quente (4), mesmo que a Bia não tenha mandado a nota.
   if (motivo === 'demo' || motivo === 'preco') {
     await pool.query(`update leads set qualification = greatest(coalesce(qualification, 0), 4) where id = $1`, [n.id]);
+    // Valor pelo plano que a Bia indicou, caso ela não tenha mandado planos_informados antes (card sem valor).
+    const indicado = planoIndicado(p.corpo.planos_informados) ?? planoIndicado(resumo) ?? planoIndicado(detalhe);
+    if (indicado) await pool.query(`update leads set value = $2 where id = $1 and coalesce(value, 0) = 0`, [n.id, indicado.valor]);
   }
   const etapa = motivo === 'cliente' ? null : await mover(n, userId, ETAPA_HUMANO, `Bia (IA) passou para humano: ${motivo}${detalhe ? `, ${detalhe}` : ''}`);
 
-  // Tarefa para hoje, sem repetir uma aberta com o mesmo título.
-  const { rows: abertas } = await pool.query(
-    `select 1 from tasks where lead_id = $1 and title = $2 and completed_at is null limit 1`, [n.id, titulo]);
-  if (!abertas.length) {
-    await pool.query(
-      `insert into tasks (organization_id, lead_id, assigned_to, title, description, task_type, due_date, priority)
-       values ($1, $2, $3, $4, $5, 'follow_up', ((now() at time zone 'America/Sao_Paulo')::date + time '23:59') at time zone 'America/Sao_Paulo', 'high')`,
-      [n.organization_id, n.id, userId, titulo, descricao]);
+  if (motivo === 'demo') {
+    await agendarDemo(n, userId, demoDia, demoPeriodo, descricao);
+  } else {
+    // Tarefa para hoje, sem repetir uma aberta com o mesmo título.
+    const { rows: abertas } = await pool.query(
+      `select 1 from tasks where lead_id = $1 and title = $2 and completed_at is null limit 1`, [n.id, titulo]);
+    if (!abertas.length) {
+      await pool.query(
+        `insert into tasks (organization_id, lead_id, assigned_to, title, description, task_type, due_date, priority)
+         values ($1, $2, $3, $4, $5, 'follow_up', ((now() at time zone 'America/Sao_Paulo')::date + time '23:59') at time zone 'America/Sao_Paulo', 'high')`,
+        [n.organization_id, n.id, userId, titulo, descricao]);
+    }
   }
 
   let userIds = n.assigned_to ? [n.assigned_to] : [];

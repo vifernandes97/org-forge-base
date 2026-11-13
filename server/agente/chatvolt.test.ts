@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it } from 'vitest';
-import { agenteChatvolt, camposPersonalizados, etapaParaFrente, motivoValido, notaValida, pausarIaChatvolt, tarefaDoHandoff, telefoneComDdi, telefoneDoLead, textoQualificacao, valorDoPlano } from './chatvolt';
+import { agenteChatvolt, camposPersonalizados, etapaParaFrente, motivoValido, notaValida, pausarIaChatvolt, planoIndicado, horarioDaDemo, tarefaDoHandoff, telefoneComDdi, telefoneDoLead, textoQualificacao, valorDoPlano } from './chatvolt';
 import type { Etapa } from '../negocios/etapa';
 
 const e = (id: string, name: string, position: number): Etapa => ({ id, name, position, funnel_id: 'f', sla_hours: null, webhook_url: null });
@@ -154,5 +154,30 @@ describe('telefoneDoLead', () => {
     process.env.CHATVOLT_API_KEY = 'k';
     const { f } = conversa({}, 500);
     expect(await telefoneDoLead({ telefone: '{user-phone-number}', conversa_id: 'cmweszbnv01ra1dqp2oea3734' }, f)).toBe('{user-phone-number}');
+  });
+});
+
+describe('valor indicado e horário da demo', () => {
+  it('lê o plano indicado em planos_informados', () => {
+    expect(planoIndicado('Starter R$ 199; indicado Starter')).toEqual({ plano: 'Starter', valor: 199 });
+    expect(planoIndicado('Starter R$ 199, Pro R$ 399; indicado: Pro')).toEqual({ plano: 'Pro', valor: 399 });
+    expect(planoIndicado('Pro por R$ 299 na Black Friday')).toEqual({ plano: 'Pro', valor: 299 });
+    expect(planoIndicado('Starter R$ 199 e Pro R$ 399')).toBeNull();
+    expect(planoIndicado('Starter R$ 199 pro casal')).toEqual({ plano: 'Starter', valor: 199 });
+    expect(planoIndicado('Buffet do casal, usam caderno. Indicado plano Starter R$199. Demo pela manhã.')).toEqual({ plano: 'Starter', valor: 199 });
+    expect(planoIndicado('')).toBeNull();
+  });
+  // 13/11/2026 é sexta; 17h em São Paulo = 20h UTC.
+  const sexta17h = new Date('2026-11-13T20:00:00Z');
+  it('sem dia: próximo dia útil, hora pelo período', () => {
+    expect(horarioDaDemo('', 'manhã', sexta17h)).toEqual({ data: '2026-11-16', hora: '10:00' });
+    expect(horarioDaDemo('a definir', 'tarde', sexta17h)).toEqual({ data: '2026-11-16', hora: '14:00' });
+  });
+  it('dia da semana, data e hora explícita', () => {
+    expect(horarioDaDemo('quinta', 'manhã', sexta17h)).toEqual({ data: '2026-11-19', hora: '10:00' });
+    expect(horarioDaDemo('segunda às 15h', '', sexta17h)).toEqual({ data: '2026-11-16', hora: '15:00' });
+    expect(horarioDaDemo('20/11', 'tarde', sexta17h)).toEqual({ data: '2026-11-20', hora: '14:00' });
+    expect(horarioDaDemo('hoje', 'manhã', sexta17h)).toEqual({ data: '2026-11-16', hora: '10:00' });
+    expect(horarioDaDemo('amanhã', 'manhã', sexta17h)).toEqual({ data: '2026-11-14', hora: '10:00' });
   });
 });
