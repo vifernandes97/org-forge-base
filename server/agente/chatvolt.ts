@@ -317,8 +317,14 @@ agenteChatvolt.post('/qualificacao', async (c) => {
     linhas.push(`Valor do negócio: R$ ${escolhido.valor} por mês (plano ${escolhido.plano}, escolhido pelo lead).`);
   }
 
-  await nota(n, userId, 'Atendimento da Bia (IA)', linhas.filter(Boolean).join('\n'),
-    { campos: p.corpo, nota: nota5, campos_crm: campos, valor: escolhido?.valor ?? null, conversa_id: texto(p.corpo.conversa_id, 60) || null });
+  // A Bia às vezes chama várias vezes na mesma resposta: nota vazia ou igual à última não é gravada.
+  const descricao = linhas.filter(Boolean).join('\n');
+  const { rows: [ultima] } = await pool.query<{ description: string | null }>(
+    `select description from lead_activities where lead_id = $1 and title = 'Atendimento da Bia (IA)' order by created_at desc limit 1`, [n.id]);
+  if (descricao && descricao !== ultima?.description) {
+    await nota(n, userId, 'Atendimento da Bia (IA)', descricao,
+      { campos: p.corpo, nota: nota5, campos_crm: campos, valor: escolhido?.valor ?? null, conversa_id: texto(p.corpo.conversa_id, 60) || null });
+  }
   const etapa = await mover(n, userId, ETAPA_IA, 'Lead conversando com a Bia (IA) no 0573');
   return c.json({ ok: true, mensagem: novo ? 'Lead cadastrado e registrado no CRM.' : 'Registrado no CRM.', etapa } satisfies Resposta);
 });
