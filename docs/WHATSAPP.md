@@ -906,3 +906,7 @@ A ferramenta nativa "Solicitar Humano" do Chatvolt transfere assim que o lead pe
 - Com `CHATVOLT_API_KEY` no `secrets.env`, o CRM chama `POST https://api.chatvolt.ai/conversations/<id>/set-status` com `{ "status": "HUMAN_REQUESTED" }` (Bearer). A conversa vai para "Humano Solicitado" e a IA para de responder, como na ferramenta nativa.
 - A pausa acontece mesmo quando o lead não está no CRM. Falha da API do Chatvolt só vai para o log; o resto do handoff segue.
 - Notas, etapa e aviso passaram a dizer "Bia (IA)" (o agente foi renomeado).
+
+### Cadastro, nota, campos e valor pela Bia (2026-11-12)
+
+`/qualificacao` e `/humano` criam o negócio quando o telefone não tem negócio aberto (lead que chegou direto no 0573): `resolve_company_contact`, negócio em Novo Lead do funil que tem "Atendimento IA", origem `whatsapp_0573`, nota "Lead criado pela Bia (IA)" e aviso de novo lead. Trava `pg_advisory_xact_lock` por telefone para não duplicar; telefone com mais de 3 negócios (placeholder) não cria. `/qualificacao` também grava `leads.qualification` (campo `nota`, 1 a 5), os campos personalizados `tipo_de_negocio`, `media_de_festas`, `cidade`, `dor_principal` ("outro" não sobrescreve) e, só com `plano_escolhido`, `leads.value` (Starter 199, Pro 399, Enterprise 549, ou `valor`). Handoff por demo ou preço sobe a nota para pelo menos 4. Nota vazia ou igual à anterior não é gravada.
