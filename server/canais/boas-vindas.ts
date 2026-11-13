@@ -282,8 +282,10 @@ export async function boasVindasFormulario(leadId: string): Promise<ResultadoBoa
             cn.welcome_form_text, c.phone as contact_phone, c.phone_key
      from leads l
      join lateral (
+       -- Sem exigir is_active: a conexão pode estar desligada para a entrada de mensagens
+       -- (Oni: 3535 desligado no piloto do 0573) e o n8n ainda mandar o template pela Meta.
        select * from channel_connections cn
-       where cn.organization_id = l.organization_id and cn.is_active
+       where cn.organization_id = l.organization_id
          and cn.welcome_webhook_url is not null and cn.welcome_form_text is not null
          and (cn.funnel_id is null or cn.funnel_id = l.funnel_id)
        order by (cn.funnel_id = l.funnel_id) desc nulls last limit 1
