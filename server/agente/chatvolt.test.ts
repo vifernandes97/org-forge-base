@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it } from 'vitest';
-import { agenteChatvolt, camposPersonalizados, etapaParaFrente, motivoValido, notaValida, pausarIaChatvolt, noPerfilIdeal, notaDoLead, quantasPessoas, usaSistema, dorForte, planoIndicado, emailValido, horarioDaDemo, tarefaDoHandoff, telefoneComDdi, telefoneDoLead, textoQualificacao, valorDoPlano } from './chatvolt';
+import { agenteChatvolt, camposPersonalizados, etapaParaFrente, motivoValido, notaValida, pausarIaChatvolt, noPerfilIdeal, notaDoLead, enviarVariaveisChatvolt, quantasPessoas, usaSistema, dorForte, planoIndicado, emailValido, horarioDaDemo, tarefaDoHandoff, telefoneComDdi, telefoneDoLead, textoQualificacao, valorDoPlano } from './chatvolt';
 import type { Etapa } from '../negocios/etapa';
 
 const e = (id: string, name: string, position: number): Etapa => ({ id, name, position, funnel_id: 'f', sla_hours: null, webhook_url: null });
@@ -240,5 +240,25 @@ describe('nota pelos critérios da Oni', () => {
     expect(notaDoLead({ tipo: 'Buffet itinerante' })).toBe(1);
     expect(notaDoLead({ tipo: 'Buffet itinerante', pessoas: '4', controle: 'sistema', dor: 'agenda' })).toBe(4);
     expect(notaDoLead({ tipo: 'buffet', pessoas: '2' })).toBe(3);
+  });
+});
+
+describe('variáveis no Chatvolt', () => {
+  const antes = process.env.CHATVOLT_API_KEY;
+  afterEach(() => { process.env.CHATVOLT_API_KEY = antes; });
+  it('manda só o que mudou e para no primeiro erro', async () => {
+    process.env.CHATVOLT_API_KEY = 'chave';
+    const corpos: { key: string; value: string; id: string }[] = [];
+    const ok = (async (_u: string, init: RequestInit) => { corpos.push(JSON.parse(String(init.body))); return new Response('{}'); }) as unknown as typeof fetch;
+    expect(await enviarVariaveisChatvolt('cmconversa123', { segmento: 'Buffet Infantil', cidade: '', nota_crm: '3 de 5' }, ok)).toBe(2);
+    expect(corpos.map((c) => c.key)).toEqual(['segmento', 'nota_crm']);
+    expect(corpos[0].id).toBe('cmconversa123');
+    expect(await enviarVariaveisChatvolt('cmconversa123', { segmento: 'Buffet Infantil', nota_crm: '4 de 5' }, ok)).toBe(1);
+    const erro = (async () => new Response('x', { status: 404 })) as unknown as typeof fetch;
+    expect(await enviarVariaveisChatvolt('cmconversa456', { a: '1', b: '2' }, erro)).toBe(0);
+  });
+  it('sem chave ou id inválido não chama', async () => {
+    process.env.CHATVOLT_API_KEY = '';
+    expect(await enviarVariaveisChatvolt('cmconversa789', { a: '1' })).toBe(0);
   });
 });

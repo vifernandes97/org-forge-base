@@ -267,6 +267,68 @@ export async function pausarIaChatvolt(conversaId: string, fetchImpl: typeof fet
   }
 }
 
+// O que já foi mandado por conversa: só vai ao Chatvolt o que mudou (a Bia chama o CRM a cada mensagem).
+const enviadas = new Map<string, Record<string, string>>();
+
+/** Grava no contato da conversa do Chatvolt as variáveis que mudaram. Falha não derruba a rota. */
+export async function enviarVariaveisChatvolt(conversaId: string, vars: Record<string, string>, fetchImpl: typeof fetch = fetch): Promise<number> {
+  const chave = process.env.CHATVOLT_API_KEY ?? '';
+  if (!chave || !/^[a-z0-9]{10,40}$/i.test(conversaId)) return 0;
+  const antes = enviadas.get(conversaId) ?? {};
+  const mudou = Object.entries(vars).filter(([k, v]) => v && antes[k] !== v);
+  let ok = 0;
+  for (const [key, value] of mudou) {
+    try {
+      const r = await fetchImpl(`${CHATVOLT_API}/contacts/variables`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${chave}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ id: conversaId, key, value, source: 'human' }),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!r.ok) { console.error('[agente] chatvolt variável', key, r.status, (await r.text().catch(() => '')).slice(0, 200)); break; }
+      antes[key] = value;
+      ok++;
+    } catch (e) {
+      console.error('[agente] chatvolt variável', key, e);
+      break;
+    }
+  }
+  enviadas.set(conversaId, antes);
+  return ok;
+}
+
+/** Dados do formulário e do negócio que o vendedor quer ver no Chatvolt sem abrir o CRM. */
+async function variaveisDoNegocio(n: Negocio): Promise<Record<string, string>> {
+  const { rows: [l] } = await servicePool().query<{ qualification: number | null; value: string | null; etapa: string | null; empresa: string | null; segmento: string | null }>(
+    `select l.qualification, l.value, s.name as etapa, co.trade_name as empresa, sg.label as segmento
+       from leads l left join stages s on s.id = l.stage_id left join companies co on co.id = l.company_id
+       left join company_segments sg on sg.id = co.segment_id where l.id = $1`, [n.id]);
+  const { rows: cf } = await servicePool().query<{ field_name: string; value: string | null }>(
+    `select d.field_name, v.value from custom_field_values v join custom_field_definitions d on d.id = v.field_definition_id
+      where v.lead_id = $1 and d.organization_id = $2`, [n.id, n.organization_id]);
+  const c = Object.fromEntries(cf.map((r) => [r.field_name, (r.value ?? '').trim()]));
+  const crm = (process.env.BETTER_AUTH_URL || 'https://crm.neosoluti.com.br').replace(/\/+$/, '');
+  const valor = Number(l?.value ?? 0);
+  return {
+    segmento: l?.segmento || c.tipo_de_negocio || '',
+    empresa: l?.empresa || '',
+    cidade: c.cidade || '',
+    festas_por_mes: c.media_de_festas || '',
+    dor: c.dor_principal || '',
+    origem: [c.utm_source, c.utm_campaign, c.utm_content].filter(Boolean).join(' / '),
+    nota_crm: l?.qualification ? `${l.qualification} de 5` : '',
+    valor_crm: valor > 0 ? `R$ ${valor.toLocaleString('pt-BR')}` : '',
+    etapa_crm: l?.etapa || '',
+    link_crm: `${crm}/?lead=${n.id}`,
+  };
+}
+
+/** Atualiza o painel do Chatvolt sem segurar a resposta da Bia. */
+function atualizarPainelChatvolt(n: Negocio, conversaId: string) {
+  if (!conversaId) return;
+  void variaveisDoNegocio(n).then((v) => enviarVariaveisChatvolt(conversaId, v)).catch((e) => console.error('[agente] painel chatvolt', e));
+}
+
 /** Telefone do lead pela conversa no Chatvolt. Na 1ª resposta a variável {user-phone-number} ainda não vem preenchida. */
 export async function telefoneDaConversa(conversaId: string, fetchImpl: typeof fetch = fetch): Promise<string> {
   const chave = process.env.CHATVOLT_API_KEY ?? '';
@@ -589,6 +651,7 @@ agenteChatvolt.post('/qualificacao', async (c) => {
       { campos: p.corpo, nota: nota5, campos_crm: campos, valor: escolhido?.valor ?? indicado?.valor ?? null, conversa_id: texto(p.corpo.conversa_id, 60) || null });
   }
   const etapa = await mover(n, userId, ETAPA_IA, 'Lead conversando com a Bia (IA) no 0573');
+  atualizarPainelChatvolt(n, texto(p.corpo.conversa_id, 60));
   return c.json({ ok: true, mensagem: novo ? 'Lead cadastrado e registrado no CRM.' : 'Registrado no CRM.', etapa } satisfies Resposta);
 });
 
@@ -621,6 +684,7 @@ agenteChatvolt.post('/humano', async (c) => {
     if (indicado) await pool.query(`update leads set value = $2 where id = $1 and coalesce(value, 0) = 0`, [n.id, indicado.valor]);
   }
   const etapa = motivo === 'cliente' ? null : await mover(n, userId, ETAPA_HUMANO, `Bia (IA) passou para humano: ${motivo}${detalhe ? `, ${detalhe}` : ''}`);
+  atualizarPainelChatvolt(n, texto(p.corpo.conversa_id, 60));
 
   await gravarEmail(n, emailValido(p.corpo.email));
   if (motivo === 'demo') {
