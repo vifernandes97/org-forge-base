@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import type { Stage } from '@/types';
 
 interface StagePipelineProps {
@@ -11,65 +11,48 @@ interface StagePipelineProps {
 }
 
 export function StagePipeline({ stages, currentStageId, onStageChange, disabled }: StagePipelineProps) {
-  const currentIndex = stages.findIndex(s => s.id === currentStageId);
+  const currentIndex = stages.findIndex(stage => stage.id === currentStageId);
+  const trackRef = useRef<HTMLOListElement>(null);
   const currentRef = useRef<HTMLButtonElement>(null);
 
-  // On narrow screens the pipeline scrolls: keep the current stage centered in view.
   useEffect(() => {
-    const btn = currentRef.current;
-    const viewport = btn?.closest<HTMLElement>('[data-radix-scroll-area-viewport]');
-    if (btn && viewport) viewport.scrollLeft = btn.offsetLeft - (viewport.clientWidth - btn.offsetWidth) / 2;
-  }, [currentStageId, stages.length]);
+    const track = trackRef.current;
+    const current = currentRef.current;
+    if (track && current) {
+      track.scrollLeft = current.offsetLeft - (track.clientWidth - current.offsetWidth) / 2;
+    }
+  }, [currentIndex, currentStageId, stages.length]);
 
   return (
-    <ScrollArea className="w-full">
-      <div className="flex items-stretch min-w-max">
-        {stages.map((stage, index) => {
-          const isCurrent = stage.id === currentStageId;
-          const isPast = index < currentIndex;
-          const isFuture = index > currentIndex;
+    <ol ref={trackRef} aria-label="Etapas do funil" className="relative flex gap-1.5 overflow-x-auto px-0.5 pb-2 pt-0.5">
+      {stages.map((stage, index) => {
+        const isCurrent = index === currentIndex;
+        const isPast = index < currentIndex;
 
-          return (
+        return (
+          <li key={stage.id} className="min-w-max flex-1">
             <button
-              key={stage.id}
+              type="button"
               ref={isCurrent ? currentRef : undefined}
+              aria-current={isCurrent ? 'step' : undefined}
               disabled={disabled || isCurrent}
               onClick={() => onStageChange(stage.id)}
               className={cn(
-                'relative flex items-center justify-center px-4 py-2 text-xs font-medium transition-all whitespace-nowrap',
-                'min-w-[100px] flex-1',
-                // Clip-path for arrow/chevron shape
-                index < stages.length - 1 ? 'mr-[-8px]' : '',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-                disabled || isCurrent ? 'cursor-default' : 'cursor-pointer hover:brightness-110',
+                'flex min-h-9 w-full items-center gap-2 rounded-md border px-3 text-left text-xs font-medium',
+                'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                isCurrent
+                  ? 'border-primary/40 bg-primary/10 font-semibold text-foreground'
+                  : 'border-transparent bg-muted/70 text-muted-foreground enabled:hover:bg-accent enabled:hover:text-accent-foreground',
               )}
-              style={{
-                backgroundColor: isCurrent
-                  ? stage.color
-                  : isPast
-                    ? `${stage.color}66`
-                    : 'hsl(var(--muted))',
-                color: isCurrent
-                  ? '#fff'
-                  : isPast
-                    ? stage.color
-                    : 'hsl(var(--muted-foreground))',
-                clipPath: index === 0
-                  ? 'polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%)'
-                  : index === stages.length - 1
-                    ? 'polygon(0 0, 100% 0, 100% 100%, 0 100%, 10px 50%)'
-                    : 'polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%)',
-                paddingLeft: index === 0 ? '16px' : '20px',
-                paddingRight: index === stages.length - 1 ? '16px' : '20px',
-              }}
-              title={stage.name}
             >
-              <span className="relative z-10 truncate max-w-[120px]">{stage.name}</span>
+              {isPast
+                ? <Check aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                : <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full border border-foreground/20" style={{ backgroundColor: stage.color }} />}
+              {stage.name}
             </button>
-          );
-        })}
-      </div>
-      <ScrollBar orientation="horizontal" />
-    </ScrollArea>
+          </li>
+        );
+      })}
+    </ol>
   );
 }

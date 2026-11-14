@@ -1,20 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { LeadCompanyPanel } from '@/components/companies/LeadCompanyPanel';
 import { getLeadDisplay } from '@/lib/leadDisplay';
 import { TaskList } from '@/components/tasks/TaskList';
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
-import { Plus, Archive, ArchiveRestore, Trophy, Merge, ChevronLeft, MoreHorizontal } from 'lucide-react';
+import { Plus, Archive, ArchiveRestore, Trophy, Merge, MoreHorizontal, X, Building2, History } from 'lucide-react';
 import { QuickActivityForm } from './activities/QuickActivityForm';
 import { ActivityTimeline } from './activities/ActivityTimeline';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { PriorityBadge } from './PriorityBadge';
 import { StatusBadge } from './StatusBadge';
@@ -34,7 +31,7 @@ import { MoveToFunnelDialog } from './MoveToFunnelDialog';
 import { ArchiveReasonCombobox } from './ArchiveReasonCombobox';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Pencil, Trash2, Clock, AlertTriangle, Tag, User, DollarSign, FileText, GitBranch, Handshake, Star, StickyNote, ListChecks } from 'lucide-react';
+import { Pencil, Trash2, Clock, AlertTriangle, Tag, User, DollarSign, GitBranch, Handshake, Star, StickyNote, ListChecks } from 'lucide-react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { differenceInHours, formatDistanceToNow } from 'date-fns';
@@ -45,16 +42,19 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import type { LeadWithRelations } from '@/types';
 
+const dealCurrency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
 interface LeadDetailSheetProps {
   leadId: string | null;
   onClose: () => void;
 }
 
 export function LeadDetailSheet({ leadId: propLeadId, onClose }: LeadDetailSheetProps) {
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const [overrideLeadId, setOverrideLeadId] = useState<string | null>(null);
   useEffect(() => { setOverrideLeadId(null); }, [propLeadId]);
   const leadId = propLeadId ? overrideLeadId || propLeadId : null;
-  const { data: lead, isLoading } = useLead(leadId || undefined);
+  const { data: lead, isLoading, isError, isFetching, refetch } = useLead(leadId || undefined);
   const { data: customFields } = useCustomFields();
   const { data: archiveReasons } = useActiveArchiveReasons();
   const { data: teamMembers } = useTeamMembers();
@@ -75,7 +75,7 @@ export function LeadDetailSheet({ leadId: propLeadId, onClose }: LeadDetailSheet
   const [deleteOpen, setDeleteOpen] = useState(false);
   // Below lg the body is one column: phones switch between panes instead of scrolling past every card.
   const [pane, setPane] = useState<'details' | 'activities' | 'tasks'>('details');
-  useEffect(() => { setPane('details'); }, [propLeadId]);
+  useEffect(() => { setPane('details'); }, [leadId]);
   const [selectedReasonId, setSelectedReasonId] = useState<string>('');
   const [archiveDetails, setArchiveDetails] = useState('');
   const moveToFunnelMut = useMoveLeadToFunnel();
@@ -240,209 +240,245 @@ export function LeadDetailSheet({ leadId: propLeadId, onClose }: LeadDetailSheet
   const hoursInStage = typedLead?.stage_entered_at
     ? differenceInHours(new Date(), new Date(typedLead.stage_entered_at))
     : 0;
-  const slaHours = (typedLead as any)?.stage?.sla_hours;
+  const slaHours = typedLead?.stage?.sla_hours;
   const slaExceeded = slaHours && hoursInStage > slaHours;
 
   const isArchived = !!typedLead?.archived_at;
+  const isWon = typedLead?.status === 'won';
+  const { title, primaryContact } = getLeadDisplay(typedLead);
+  const assigneeOptions = (teamMembers || []).map(member => ({
+    value: member.user_id,
+    label: member.profile?.full_name || member.profile?.email || 'Membro da equipe',
+  }));
+  const assigneeId = typedLead?.assigned_to;
+  if (assigneeId && !assigneeOptions.some(option => option.value === assigneeId)) {
+    const profile = typedLead.assigned_profile;
+    assigneeOptions.push({ value: assigneeId, label: profile?.full_name || profile?.email || 'Membro da equipe' });
+  }
+  const assignee = assigneeOptions.find(option => option.value === assigneeId);
+  const stageAge = typedLead?.stage_entered_at
+    ? formatDistanceToNow(new Date(typedLead.stage_entered_at), { locale: ptBR, addSuffix: true })
+    : null;
+  const archive = typedLead as (LeadWithRelations & {
+    archive_reason?: { label: string } | null;
+    archive_details?: string | null;
+  }) | undefined;
   const activeCustomFields = (customFields || []).filter(d => d.is_active);
 
   return (
     <TooltipProvider>
       <Sheet open={!!leadId} onOpenChange={open => { if (!open) onClose(); }}>
-        <SheetContent className="w-full sm:max-w-[90vw] p-0 flex flex-col overflow-hidden" closeClassName="max-sm:hidden">
-          {isLoading || !typedLead ? (
-            <div className="px-6 pt-6 pb-4 space-y-4">
-              <div className="flex items-start justify-between">
-                <Skeleton className="h-7 w-48" />
-                <div className="flex gap-1.5"><Skeleton className="h-8 w-8" /><Skeleton className="h-8 w-8" /></div>
+        <SheetContent
+          className="flex w-full flex-col gap-0 overflow-y-auto p-0 lg:max-w-[94vw] lg:overflow-hidden 2xl:max-w-[1440px]"
+          closeClassName="hidden"
+          aria-describedby={undefined}
+          onOpenAutoFocus={event => {
+            event.preventDefault();
+            titleRef.current?.focus();
+          }}
+        >
+          <SheetHeader className="shrink-0 gap-4 space-y-0 border-b bg-card px-4 py-4 text-left sm:px-6">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-3">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <div className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/10 text-primary sm:flex">
+                  <Building2 aria-hidden="true" className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <SheetTitle
+                    ref={titleRef}
+                    tabIndex={-1}
+                    title={typedLead ? title : undefined}
+                    className="line-clamp-2 break-words text-xl leading-tight tracking-tight outline-none sm:text-2xl"
+                  >
+                    {typedLead ? title : 'Detalhes do negócio'}
+                  </SheetTitle>
+                  {primaryContact?.name && primaryContact.name !== title && (
+                    <p className="mt-1 break-words text-sm text-muted-foreground">{primaryContact.name}</p>
+                  )}
+                </div>
               </div>
-              <div className="flex gap-2"><Skeleton className="h-5 w-16" /><Skeleton className="h-5 w-20" /></div>
-              <Separator />
-              <div className="space-y-3">
-                {[1,2,3,4].map(i => <Skeleton key={i} className="h-5 w-3/4" />)}
+
+              <div className="flex shrink-0 items-center gap-1.5">
+                {typedLead && (
+                  <>
+                    {(!isArchived || isWon) && (
+                      <Button
+                        variant={isWon ? 'outline' : 'default'}
+                        size="sm"
+                        className="hidden sm:inline-flex"
+                        onClick={handleToggleWon}
+                        disabled={updateLeadMut.isPending}
+                      >
+                        {isWon ? 'Reabrir' : <><Trophy className="mr-2 h-4 w-4" /> Marcar como ganho</>}
+                      </Button>
+                    )}
+                    <Button variant="outline" size="sm" onClick={() => setEditOpen(true)} aria-label="Editar negócio">
+                      <Pencil className="h-4 w-4" /><span className="ml-2 hidden sm:inline">Editar</span>
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="px-2.5" aria-label="Mais ações">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        {(!isArchived || isWon) && (
+                          <DropdownMenuItem className="sm:hidden" onSelect={handleToggleWon} disabled={updateLeadMut.isPending}>
+                            <Trophy className="mr-2 h-4 w-4" /> {isWon ? 'Reabrir' : 'Marcar como ganho'}
+                          </DropdownMenuItem>
+                        )}
+                        {!isArchived && (
+                          <>
+                            <DropdownMenuItem onSelect={() => setMoveFunnelOpen(true)}>
+                              <GitBranch className="mr-2 h-4 w-4" /> Mover para outro funil
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => setMergeOpen(true)}>
+                              <Merge className="mr-2 h-4 w-4" /> Mesclar negócio
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => setArchiveDialogOpen(true)}>
+                              <Archive className="mr-2 h-4 w-4" /> Arquivar
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
+                        <DropdownMenuItem onSelect={() => setDeleteOpen(true)} className="text-destructive focus:text-destructive">
+                          <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </>
+                )}
+                <SheetClose asChild>
+                  <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Fechar negócio">
+                    <X className="h-5 w-5" />
+                  </Button>
+                </SheetClose>
               </div>
+            </div>
+
+            {typedLead && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <StatusBadge status={typedLead.status || 'open'} />
+                <PriorityBadge priority={typedLead.priority} />
+                {isArchived && <Badge variant="secondary" className="gap-1"><Archive className="h-3 w-3" /> Arquivado</Badge>}
+                {slaExceeded && (
+                  <Badge variant="destructive" className="gap-1">
+                    <AlertTriangle className="h-3 w-3" /> SLA excedido · {slaHours}h
+                  </Badge>
+                )}
+              </div>
+            )}
+          </SheetHeader>
+
+          {isLoading ? (
+            <div role="status" className="space-y-4 p-6">
+              <span className="sr-only">Carregando negócio…</span>
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-40 w-full" />
+            </div>
+          ) : !typedLead ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+              <p className="text-sm text-muted-foreground" role="status">
+                {isError ? 'Não foi possível carregar o negócio.' : 'Negócio indisponível.'}
+              </p>
+              <Button variant="outline" onClick={() => void refetch()} disabled={isFetching}>
+                {isFetching ? 'Carregando…' : 'Tentar novamente'}
+              </Button>
             </div>
           ) : (
             <>
-              {/* Archived banner */}
-              {isArchived && (
-                <div className="bg-muted border-b px-4 py-3 flex items-center justify-between gap-2 sm:px-6">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Archive className="h-4 w-4" />
-                    <span>Este negócio está arquivado.</span>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={handleUnarchive} disabled={unarchiveLeadMut.isPending}>
-                    <ArchiveRestore className="h-3.5 w-3.5 mr-1" /> Desarquivar
-                  </Button>
-                </div>
-              )}
-
-              {/* Header */}
-              <SheetHeader className="px-4 pt-2 pb-4 sm:px-6 sm:pt-6 border-b space-y-3 shrink-0 text-left">
-                {/* Phones: back + main actions, the rest under "⋯" */}
-                <div className="-mx-2 flex items-center gap-0.5 sm:hidden">
-                  <Button variant="ghost" size="icon" onClick={onClose} aria-label="Voltar">
-                    <ChevronLeft className="h-5 w-5" />
-                  </Button>
-                  <div className="flex-1" />
-                  {!isArchived && typedLead.status !== 'won' && (
-                    <Button variant="ghost" size="icon" onClick={handleToggleWon} aria-label="Marcar como ganho" className="text-green-600 hover:text-green-600">
-                      <Trophy className="h-5 w-5" />
-                    </Button>
-                  )}
-                  {typedLead.status === 'won' && (
-                    <Button variant="ghost" size="sm" onClick={handleToggleWon} className="text-muted-foreground">Reabrir</Button>
-                  )}
-                  <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)} aria-label="Editar negócio">
-                    <Pencil className="h-5 w-5" />
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" aria-label="Mais ações">
-                        <MoreHorizontal className="h-5 w-5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      {!isArchived && (
-                        <>
-                          <DropdownMenuItem onClick={() => setMoveFunnelOpen(true)}>
-                            <GitBranch className="mr-2 h-4 w-4" /> Mover para outro funil
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setMergeOpen(true)}>
-                            <Merge className="mr-2 h-4 w-4" /> Mesclar negócio
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setArchiveDialogOpen(true)}>
-                            <Archive className="mr-2 h-4 w-4" /> Arquivar
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                        </>
-                      )}
-                      <DropdownMenuItem onClick={() => setDeleteOpen(true)} className="text-destructive focus:text-destructive">
-                        <Trash2 className="mr-2 h-4 w-4" /> Excluir
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-xl font-semibold leading-tight line-clamp-2 sm:truncate">{getLeadDisplay(typedLead).title}</h2>
-                    {getLeadDisplay(typedLead).primaryContact?.name && (
-                      <p className="text-sm text-muted-foreground truncate">{getLeadDisplay(typedLead).primaryContact!.name}</p>
-                    )}
-                  </div>
-                  <div className="hidden gap-1.5 shrink-0 sm:mr-6 sm:flex">
-                    {!isArchived && typedLead.status !== 'won' && (
-                      <Button variant="ghost" size="icon" onClick={handleToggleWon} aria-label="Marcar como ganho" className="text-green-600 hover:text-green-600">
-                        <Trophy className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {typedLead.status === 'won' && (
-                      <Button variant="ghost" size="sm" onClick={handleToggleWon} className="text-muted-foreground text-xs">
-                        Reabrir
-                      </Button>
-                    )}
-                    {!isArchived && (
-                      <Button variant="ghost" size="icon" onClick={() => setMoveFunnelOpen(true)} aria-label="Mover para outro funil" title="Mover para outro funil">
-                        <GitBranch className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {!isArchived && (
-                      <Button variant="ghost" size="icon" onClick={() => setMergeOpen(true)} aria-label="Mesclar negócio">
-                        <Merge className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {!isArchived && (
-                      <Button variant="ghost" size="icon" onClick={() => setArchiveDialogOpen(true)} aria-label="Arquivar negócio">
-                        <Archive className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)} aria-label="Editar negócio">
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" aria-label="Excluir negócio" onClick={() => setDeleteOpen(true)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                    <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir negócio?</AlertDialogTitle>
-                          <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <StatusBadge status={typedLead.status || 'open'} />
-                  <PriorityBadge priority={typedLead.priority} />
-                  {isArchived && (
-                    <Badge variant="secondary" className="gap-1">
-                      <Archive className="h-3 w-3" /> Arquivado
-                    </Badge>
-                  )}
-                  {slaExceeded && (
-                    <Badge variant="destructive" className="gap-1">
-                      <AlertTriangle className="h-3 w-3" />
-                      SLA excedido
-                    </Badge>
+              <section aria-label="Funil do negócio" className="shrink-0 space-y-2 border-b bg-card px-4 py-3 sm:px-6">
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                  <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold">
+                    <GitBranch aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="break-words">{typedLead.funnel?.name || 'Funil'}</span>
+                  </h3>
+                  {stageAge && (
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Clock aria-hidden="true" className="h-3.5 w-3.5" /> Nesta etapa {stageAge}
+                    </span>
                   )}
                 </div>
-                {isArchived && ((typedLead as any).archive_reason?.label || (typedLead as any).archive_details) && (
-                  <div className="rounded-md bg-muted/50 p-3 text-sm space-y-1">
-                    {(typedLead as any).archive_reason?.label && (
-                      <p><span className="text-muted-foreground">Motivo do arquivamento: </span>{(typedLead as any).archive_reason.label}</p>
-                    )}
-                    {(typedLead as any).archive_details && (
-                      <p className="whitespace-pre-wrap text-muted-foreground">{(typedLead as any).archive_details}</p>
-                    )}
-                  </div>
-                )}
-              </SheetHeader>
-
-              {/* Stage Pipeline - Bitrix style */}
-              {stages && stages.length > 0 && (
-                <div className="px-4 py-3 border-b shrink-0 sm:px-6">
+                {stages && stages.length > 0 ? (
                   <StagePipeline
                     stages={stages}
                     currentStageId={typedLead.stage_id}
                     onStageChange={handleStageChange}
                     disabled={isArchived || updateLeadMut.isPending}
                   />
-                </div>
-              )}
+                ) : typedLead.stage && <p className="text-sm text-muted-foreground">{typedLead.stage.name}</p>}
+              </section>
 
-              <div className="flex shrink-0 border-b px-4 lg:hidden" role="tablist" aria-label="Seções do negócio">
-                {([['details', 'Detalhes'], ['activities', 'Atividades'], ['tasks', 'Tarefas']] as const).map(([value, label]) => (
+              <nav className="sticky top-0 z-10 flex shrink-0 border-b bg-card px-3 lg:hidden" aria-label="Seções do negócio">
+                {([
+                  ['details', 'Detalhes', Handshake],
+                  ['activities', 'Atividades', History],
+                  ['tasks', 'Tarefas', ListChecks],
+                ] as const).map(([value, label, Icon]) => (
                   <button
                     key={value}
                     type="button"
-                    role="tab"
-                    aria-selected={pane === value}
-                    onClick={() => setPane(value)}
+                    aria-pressed={pane === value}
+                    onClick={event => {
+                      setPane(value);
+                      const modal = event.currentTarget.closest('[role="dialog"]');
+                      const funnel = event.currentTarget.parentElement?.previousElementSibling;
+                      if (modal && funnel instanceof HTMLElement) {
+                        modal.scrollTop = Math.min(modal.scrollTop, funnel.offsetTop + funnel.offsetHeight);
+                      }
+                    }}
                     className={cn(
-                      '-mb-px flex-1 border-b-2 py-2.5 text-sm font-medium transition-colors',
-                      pane === value ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground',
+                      '-mb-px flex flex-1 items-center justify-center gap-1.5 border-b-2 py-3 text-sm font-medium transition-colors',
+                      pane === value ? 'border-primary text-primary' : 'border-transparent text-muted-foreground',
                     )}
                   >
+                    <Icon aria-hidden="true" className="h-4 w-4" />
                     {label}
                   </button>
                 ))}
-              </div>
+              </nav>
 
               {/* Body: deal data cards (primary) + activity column (secondary) */}
-              <div className="flex-1 min-h-0 grid grid-cols-1 overflow-auto lg:overflow-hidden lg:grid-cols-[minmax(0,1fr)_400px] 2xl:grid-cols-[minmax(0,1fr)_460px]">
-                <div className={cn('bg-muted/30 p-4 lg:block lg:overflow-auto lg:p-5', pane !== 'details' && 'hidden')}>
+              <div className="grid min-w-0 flex-1 grid-cols-1 items-start lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(320px,34%)] lg:items-stretch lg:overflow-hidden">
+                <div className={cn('min-w-0 bg-muted/35 p-4 lg:block lg:overflow-y-auto lg:p-6', pane !== 'details' && 'hidden')}>
                   <div className="space-y-4">
+                    {isArchived && (
+                      <section className="rounded-xl border bg-card p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <h3 className="flex items-center gap-2 text-sm font-semibold">
+                            <Archive className="h-4 w-4 text-muted-foreground" /> Negócio arquivado
+                          </h3>
+                          <Button variant="outline" size="sm" onClick={handleUnarchive} disabled={unarchiveLeadMut.isPending}>
+                            <ArchiveRestore className="mr-2 h-4 w-4" /> Desarquivar
+                          </Button>
+                        </div>
+                        {archive?.archive_reason?.label && <p className="mt-2 break-words text-sm">{archive.archive_reason.label}</p>}
+                        {archive?.archive_details && <p className="mt-1 whitespace-pre-wrap break-words text-sm text-muted-foreground">{archive.archive_details}</p>}
+                      </section>
+                    )}
+
+                    <dl className="grid grid-cols-1 divide-y rounded-xl border bg-card min-[380px]:grid-cols-2 min-[380px]:divide-x min-[380px]:divide-y-0">
+                      <div className="min-w-0 px-4 py-3">
+                        <dt className="text-xs font-medium text-muted-foreground">Valor do negócio</dt>
+                        <dd className="mt-1 break-words text-lg font-semibold tracking-tight tabular-nums">
+                          {dealCurrency.format(Number(typedLead.value) || 0)}
+                        </dd>
+                      </div>
+                      <div className="min-w-0 px-4 py-3">
+                        <dt className="text-xs font-medium text-muted-foreground">Responsável</dt>
+                        <dd className="mt-1 break-words text-sm font-semibold leading-7">
+                          {assignee?.label || 'Sem responsável'}
+                        </dd>
+                      </div>
+                    </dl>
+
                     <LeadCompanyPanel
                       lead={typedLead}
                       readOnly={isArchived}
                       onOpenLead={setOverrideLeadId}
                       companyColumn={
-                        <DetailSection title="Negócio" icon={<Handshake className="h-3.5 w-3.5" />}>
+                        <DetailSection title="Dados do negócio" icon={<Handshake className="h-3.5 w-3.5" />}>
                           <InlineEditField
                             type="currency"
                             label="Valor"
@@ -457,27 +493,9 @@ export function LeadDetailSheet({ leadId: propLeadId, onClose }: LeadDetailSheet
                             value={typedLead.assigned_to || ''}
                             icon={<User className="h-4 w-4" />}
                             placeholder="Sem responsável"
-                            options={(teamMembers || []).map((m: any) => ({
-                              value: m.user_id,
-                              label: m.profile?.full_name || m.profile?.email || 'Membro',
-                            }))}
+                            options={assigneeOptions}
                             onSave={(v) => handleInlineSave('assigned_to', v)}
                           />
-                          {typedLead.funnel && (
-                            <div className="flex items-center gap-3 py-0.5 text-sm">
-                              <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                              <span className="w-28 shrink-0 text-xs font-medium text-muted-foreground">Funil</span>
-                              <span className="truncate">{typedLead.funnel.name}</span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-3 py-0.5 text-sm">
-                            <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <span className="w-28 shrink-0 text-xs font-medium text-muted-foreground">Na etapa há</span>
-                            <span className={slaExceeded ? 'text-destructive font-medium' : ''}>
-                              {formatDistanceToNow(new Date(typedLead.stage_entered_at), { locale: ptBR })}
-                              {slaExceeded && ` (SLA: ${slaHours}h)`}
-                            </span>
-                          </div>
                           <InlineEditField
                             type="text"
                             label="Fonte"
@@ -594,28 +612,30 @@ export function LeadDetailSheet({ leadId: propLeadId, onClose }: LeadDetailSheet
                 </div>
 
                 {/* Activities & Tasks */}
-                <aside className={cn('flex flex-col overflow-hidden lg:flex lg:min-h-0 lg:border-l', pane === 'details' && 'hidden')}>
+                <aside className={cn('min-w-0 flex-col bg-card lg:flex lg:min-h-0 lg:border-l', pane === 'details' && 'hidden')}>
                   <Tabs
                     value={pane === 'tasks' ? 'tasks' : 'activities'}
                     onValueChange={v => setPane(v as 'activities' | 'tasks')}
-                    className="flex-1 flex flex-col overflow-hidden"
+                    className="flex min-h-0 flex-1 flex-col"
                   >
-                    <div className="hidden h-12 shrink-0 items-center border-b px-4 lg:flex">
-                      <TabsList className="h-8">
-                        <TabsTrigger value="activities" className="text-xs">Atividades</TabsTrigger>
-                        <TabsTrigger value="tasks" className="text-xs">Tarefas</TabsTrigger>
+                    <div className="hidden shrink-0 items-center border-b p-3 lg:flex">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="activities" className="gap-2"><History className="h-4 w-4" /> Atividades</TabsTrigger>
+                        <TabsTrigger value="tasks" className="gap-2"><ListChecks className="h-4 w-4" /> Tarefas</TabsTrigger>
                       </TabsList>
                     </div>
 
-                    <TabsContent value="activities" className="flex-1 overflow-auto p-4 space-y-4 m-0">
+                    <TabsContent value="activities" className="m-0 min-h-0 flex-1 space-y-4 p-4 lg:overflow-y-auto lg:p-5">
                       <QuickActivityForm leadId={typedLead.id} />
+                      <h3 className="text-sm font-semibold">Histórico de atividades</h3>
                       <ActivityTimeline leadId={typedLead.id} />
                     </TabsContent>
 
-                    <TabsContent value="tasks" className="flex-1 overflow-auto p-4 space-y-4 m-0">
-                      <div className="flex justify-end">
+                    <TabsContent value="tasks" className="m-0 min-h-0 flex-1 space-y-4 p-4 lg:overflow-y-auto lg:p-5">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-sm font-semibold">Tarefas do negócio</h3>
                         <Button size="sm" onClick={() => setTaskFormOpen(true)}>
-                          <Plus className="h-4 w-4 mr-1" />Nova Tarefa
+                          <Plus className="h-4 w-4 mr-1" />Nova tarefa
                         </Button>
                       </div>
                       <TaskList leadId={typedLead.id} />
@@ -646,6 +666,19 @@ export function LeadDetailSheet({ leadId: propLeadId, onClose }: LeadDetailSheet
           onConfirm={handleMoveToFunnel}
         />
       )}
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir negócio?</AlertDialogTitle>
+            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Archive dialog */}
       <AlertDialog open={archiveDialogOpen} onOpenChange={v => { setArchiveDialogOpen(v); if (!v) { setSelectedReasonId(''); setArchiveDetails(''); } }}>

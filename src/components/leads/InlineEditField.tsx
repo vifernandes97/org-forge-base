@@ -145,18 +145,23 @@ export function InlineEditField(props: InlineEditFieldProps) {
         onClick={() => setEditing(true)}
         role="button"
         tabIndex={0}
-        onKeyDown={e => { if (e.key === 'Enter') setEditing(true); }}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setEditing(true);
+          }
+        }}
       >
         {icon && <span className="text-muted-foreground shrink-0">{icon}</span>}
         {LabelNode}
-        <div className="flex-1 min-w-0 truncate">
+        <div className={cn('min-w-0 flex-1', type === 'textarea' ? 'whitespace-pre-wrap break-words' : 'truncate')}>
           {isEmpty ? (
             <span className="text-muted-foreground italic">{placeholder}</span>
           ) : (
             <span className={cn(type === 'currency' && 'font-medium')}>{displayValue}</span>
           )}
         </div>
-        <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+        <Pencil className="h-3 w-3 text-muted-foreground shrink-0 transition-colors group-hover:text-foreground group-focus-visible:text-foreground" />
       </div>
     );
   }

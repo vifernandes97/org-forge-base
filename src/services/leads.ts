@@ -121,7 +121,7 @@ export async function getLeads(orgId: string): Promise<Lead[]> {
 export async function getLead(id: string) {
   const { data, error } = await supabase
     .from('leads')
-    .select(`*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*), custom_field_values(*), ${LEAD_COMPANY_REL}`)
+    .select(`*, stage:stages(*), funnel:funnels(*), assigned_profile:profiles!leads_assigned_to_fkey(*), custom_field_values(*), archive_reason:archive_reasons(label), ${LEAD_COMPANY_REL}`)
     .eq('id', id)
     .single();
   if (error) throw error;
