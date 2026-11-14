@@ -6,6 +6,14 @@ Documentação para manutenção e suporte:
 - `docs/WHATSAPP.md` — orquestrador WhatsApp → CRM com IA: arquitetura, banco, filas, produção (§14), diagnóstico (§15) e dados alterados (§16).
 - `roadmap.md` — o que está feito e o que falta.
 
+## Detalhes do negócio
+
+Na tela de Negócios, abra um cartão ou uma linha para consultar o valor, o responsável, a prioridade e a etapa atual. O funil também mostra há quanto tempo o negócio está na etapa e sinaliza quando o prazo de SLA é excedido.
+
+- No desktop, use **Atividades** ou **Tarefas** ao lado dos detalhes. No celular, alterne entre **Detalhes**, **Atividades** e **Tarefas**.
+- Use **Editar** para atualizar o negócio. O menu de ações reúne opções para mover de funil, mesclar, arquivar ou excluir.
+- Em um negócio arquivado, a seção **Detalhes** mostra o motivo quando registrado e oferece a opção **Desarquivar**.
+
 ---
 
 # Org Connect

@@ -117,9 +117,9 @@ export function LeadCompanyPanel({ lead, readOnly, onOpenLead, companyColumn, co
   };
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
-        <div className="space-y-4">
+    <div className="space-y-4 [container-type:inline-size]">
+      <div className="grid grid-cols-1 items-start gap-4 [@container(min-width:680px)]:grid-cols-2">
+        <div className="min-w-0 space-y-4">
           {/* Empresa */}
           <DetailSection
             title="Empresa"
@@ -185,7 +185,7 @@ export function LeadCompanyPanel({ lead, readOnly, onOpenLead, companyColumn, co
           {companyColumn}
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           {/* Contatos */}
           <DetailSection
             bodyClassName="p-0"

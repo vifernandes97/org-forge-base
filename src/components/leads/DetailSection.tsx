@@ -13,10 +13,10 @@ interface DetailSectionProps {
 /** Card used to group fields in the deal detail modal. */
 export function DetailSection({ title, icon, action, children, className, bodyClassName }: DetailSectionProps) {
   return (
-    <section className={cn('rounded-lg border bg-card', className)}>
-      <header className="flex h-10 items-center justify-between gap-2 border-b px-4">
-        <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {icon}
+    <section className={cn('min-w-0 rounded-xl border bg-card', className)}>
+      <header className="flex min-h-11 items-center justify-between gap-2 border-b px-4 py-2">
+        <h3 className="flex items-center gap-2 text-sm font-semibold">
+          {icon && <span className="shrink-0 text-muted-foreground">{icon}</span>}
           {title}
         </h3>
         {action}
