@@ -275,7 +275,12 @@ interface LeadFormulario extends Negocio {
   phone_key: string | null;
 }
 
-export async function boasVindasFormulario(leadId: string): Promise<ResultadoBoasVindas> {
+/**
+ * reenvio: job posto à mão para reenviar uma boas-vindas que falhou (ex.: Meta
+ * fora do ar em 13–14/11). Pula só a trava de etapa — o lead pode ter andado
+ * no funil enquanto não recebia nada; quem já conversou continua de fora.
+ */
+export async function boasVindasFormulario(leadId: string, opcoes: { reenvio?: boolean } = {}): Promise<ResultadoBoasVindas> {
   const pool = servicePool();
   const { rows: [lf] } = await pool.query<LeadFormulario>(
     `select ${NEGOCIO_COLS}, l.organization_id, cn.id as connection_id, cn.instance_name, cn.welcome_webhook_url, cn.welcome_secret,
@@ -299,7 +304,7 @@ export async function boasVindasFormulario(leadId: string): Promise<ResultadoBoa
      where l.id = $1 and l.status = 'open' and l.archived_at is null and l.merged_into_lead_id is null`, [leadId]);
   // Sem lock nestes casos: nada foi enviado e o telefone continua livre para a frase.
   if (!lf) return { status: 'ignored', reason: 'sem_configuracao' };
-  if (!lf.em_entrada) return { status: 'ignored', reason: 'negocio_em_andamento' };
+  if (!lf.em_entrada && !opcoes.reenvio) return { status: 'ignored', reason: 'negocio_em_andamento' };
   if (!lf.segment) return { status: 'ignored', reason: 'sem_segmento' };
   const numero = telefoneParaEnvio(lf.contact_phone);
   if (!numero || !lf.phone_key) return { status: 'ignored', reason: 'sem_telefone' };

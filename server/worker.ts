@@ -85,8 +85,8 @@ export async function iniciarWorker() {
     }
   });
 
-  await b.work<{ leadId: string }>(FILAS.boasVindasFormulario, { batchSize: 1 }, async ([job]) => {
-    const r = await boasVindasFormulario(job.data.leadId);
+  await b.work<{ leadId: string; reenvio?: boolean }>(FILAS.boasVindasFormulario, { batchSize: 1 }, async ([job]) => {
+    const r = await boasVindasFormulario(job.data.leadId, { reenvio: job.data.reenvio === true });
     console.log(`[canais] boas-vindas do formulário ${job.data.leadId}: ${r.status}${r.reason ? ` (${r.reason})` : ''}`);
   });
 

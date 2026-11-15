@@ -857,6 +857,13 @@ order by w.created_at desc limit 20;
 - Envio sem a frase: `origin = 'form'` em `channel_welcomes`; quando o job não
   manda nada (já conversou, sem segmento…) não grava linha — só o log
   `[canais] boas-vindas do formulário <lead>: ignored (<motivo>)`.
+- Reenviar envios sem a frase que falharam (ex.: `meta_falhou`): apagar as
+  linhas de `channel_welcomes` e enfileirar `canais.lead.boasvindas` com
+  `{ leadId, reenvio: true }` e `startAfter` na hora desejada. `reenvio` pula só
+  a trava de etapa (o lead pode ter andado no funil sem receber nada); quem já
+  conversou continua de fora. Usado em 2026-11-15: a Meta recusou os envios de
+  13/11 13:41 a 14/11 23:11 com `(#10) … Paid Message Account` (forma de
+  pagamento ausente no portfólio), 13 leads reagendados para 16/11 08:00.
 - Log: `[canais] boas-vindas <chat>: <status> (<motivo>)`.
 
 ## 18. Números ignorados — 2026-11-10
