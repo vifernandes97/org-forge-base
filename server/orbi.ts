@@ -3,6 +3,7 @@ import { exigirAdmin } from './acesso.js';
 import { cifrar, decifrar } from './canais/cifra.js';
 import { servicePool } from './db.js';
 import { assinaturaValida } from './orbi-assinatura.js';
+import { chamarEntradaDoOrbi, credencial, type Credencial } from './orbi-cliente.js';
 
 // Integração com o Orbi (docs/ORBI.md). Tarefa de tipo com action
 // 'orbi_meeting' entra na fila pelo trigger de db/66 (external_status =
@@ -26,22 +27,8 @@ export function urlDoRetorno(orgId: string) {
   return `${base}/api/orbi/retorno/${orgId}`;
 }
 
-type Credencial = { baseUrl: string; chave: string };
-
-async function credencial(orgId: string): Promise<Credencial | null> {
-  const { rows } = await servicePool().query<{ base_url: string; api_key_enc: string }>(
-    `select base_url, api_key_enc from org_orbi_integrations where organization_id = $1 and enabled`, [orgId]);
-  if (!rows[0]) return null;
-  return { baseUrl: rows[0].base_url.replace(/\/+$/, ''), chave: decifrar(rows[0].api_key_enc) };
-}
-
 const chamarOrbi = (c: Credencial, metodo: string, caminho: string, corpo?: unknown) =>
-  fetch(`${c.baseUrl}/api/integrations/inbound/requests${caminho}`, {
-    method: metodo,
-    headers: { Authorization: `Bearer ${c.chave}`, ...(corpo ? { 'Content-Type': 'application/json' } : {}) },
-    body: corpo ? JSON.stringify(corpo) : undefined,
-    signal: AbortSignal.timeout(15_000),
-  });
+  chamarEntradaDoOrbi(c, metodo, `/requests${caminho}`, corpo);
 
 async function marcarIntegracao(orgId: string, erro: string | null) {
   await servicePool().query(

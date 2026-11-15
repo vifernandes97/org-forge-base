@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CalendarCheck, Copy } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useOrganization } from '@/contexts/OrganizationContext';
-import { getOrbiIntegration, orbiCallbackUrl, removeOrbiIntegration, saveOrbiIntegration } from '@/services/orbi';
+import { getOrbiIntegration, normalizarLinkDeAgendamento, orbiCallbackUrl, removeOrbiIntegration, saveOrbiBookingLink, saveOrbiIntegration } from '@/services/orbi';
 
 export default function OrbiSettingsPage() {
   const { organization, isOwner, isAdmin } = useOrganization();
@@ -25,11 +25,23 @@ export default function OrbiSettingsPage() {
   const [baseUrl, setBaseUrl] = useState('https://orbi.neosoluti.com.br');
   const [apiKey, setApiKey] = useState('');
   const [secret, setSecret] = useState('');
+  const [link, setLink] = useState('');
+  useEffect(() => { setLink(integ?.booking_link ?? ''); }, [integ?.booking_link]);
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['orbi-integration'] });
   const save = useMutation({
     mutationFn: () => saveOrbiIntegration({ organization_id: orgId!, base_url: baseUrl.trim(), api_key: apiKey.trim(), callback_secret: secret.trim() }),
     onSuccess: () => { toast.success('Orbi conectado'); setApiKey(''); setSecret(''); refresh(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const saveLink = useMutation({
+    mutationFn: async () => {
+      const v = normalizarLinkDeAgendamento(link);
+      if (v instanceof Error) throw v;
+      await saveOrbiBookingLink(orgId!, v);
+      return v;
+    },
+    onSuccess: (v) => { toast.success(v ? 'A Bia vai oferecer os horários deste tipo' : 'A Bia não oferece mais horários'); refresh(); },
     onError: (e: Error) => toast.error(e.message),
   });
   const remove = useMutation({
@@ -108,6 +120,23 @@ export default function OrbiSettingsPage() {
               )}
             </div>
           </section>
+
+          {integ && (
+            <section className="space-y-3 rounded-lg border bg-card p-4">
+              <h2 className="font-semibold text-sm">3. Agendamento pela Bia (WhatsApp)</h2>
+              <p className="text-xs text-muted-foreground">
+                Cole o link de um tipo de reunião do Orbi (Minha conta → Agendamento). A Bia oferece ao lead os horários livres dele e,
+                quando o lead aceita, a reunião já entra confirmada na agenda do Orbi e como tarefa no negócio. Vazio: a Bia só pede a
+                demo à equipe, como antes.
+              </p>
+              <div className="flex gap-2">
+                <Input value={link} onChange={e => setLink(e.target.value)} placeholder="https://orbi.neosoluti.com.br/agendar/pessoa/demo" className="font-mono text-xs" />
+                <Button onClick={() => saveLink.mutate()} disabled={saveLink.isPending || link.trim() === (integ.booking_link ?? '')}>
+                  {saveLink.isPending ? 'Salvando…' : 'Salvar'}
+                </Button>
+              </div>
+            </section>
+          )}
         </>
       )}
     </div>

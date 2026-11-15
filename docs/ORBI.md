@@ -47,11 +47,41 @@ O contrato do lado do Orbi está no `CLAUDE.md` do Orbi (§5) e no DECISOES de
   confirmação (link para o pedido) / No Orbi / Recusada / Falha (com
   Reenviar).
 
+## Agendamento pela Bia (2026-11-15)
+
+A Bia (Chatvolt, docs/WHATSAPP.md §19) oferece ao lead os horários livres de
+**um tipo de reunião** do Orbi e marca o que ele aceitar. O contrato do lado
+do Orbi está no `CLAUDE.md` de lá ("Agendamento pela integração") e no
+DECISOES de 2026-11-15.
+
+- **Configurar:** CRM → Configurações → Orbi → "3. Agendamento pela Bia": colar
+  o link do tipo (`https://orbi…/agendar/<pessoa>/<tipo>`), que fica em
+  `org_orbi_integrations.booking_link` (`db/70_agendamento_orbi.sql`). O tipo
+  precisa estar ativo num workspace da mesma organização da chave; o link
+  público pode estar desligado. Vazio = a Bia pede a demo como antes.
+- **Horários:** `POST /api/agente/chatvolt/horarios` → Orbi
+  `GET /api/integrations/inbound/booking-slots` (14 dias); o CRM escolhe até 4
+  opções (`server/agente/agendamento.ts`, `escolherOpcoes`) e escreve em
+  português ("quinta, 20/11, às 14h").
+- **Marcar:** `POST /api/agente/chatvolt/agendar` → Orbi
+  `POST /api/integrations/inbound/bookings` (`externalId`
+  `crm-lead-<lead>-<instante>`: a Bia repetindo não duplica). A reserva **nasce
+  confirmada** lá (escolha do dono: o lead já aceitou na conversa), com Meet
+  quando o tipo pede e há Google. No CRM, a tarefa Reunião de demonstração
+  entra **já** com `external_status = 'accepted'` (o trigger `z_tasks_orbi_fila`
+  não reenvia), concluída como no retorno de um pedido aceito,
+  `external_request_id` = reserva e `external_ref_id` = reunião; atividade
+  "Demo marcada pela Bia (IA)", etapa Atendimento Humano (`moverEtapa`) e
+  aviso. Um pedido de demo antigo ainda aberto é concluído, o que o cancela no
+  Orbi.
+- **Limites:** uma demo futura por negócio (trocar de horário passa por
+  humano); cancelar ou remarcar no Orbi ainda **não** volta ao CRM.
+
 ## Diagnóstico
 
 ```sql
 select id, title, external_status, external_error, external_attempts, external_next_at
   from tasks where external_status is not null order by updated_at desc limit 20;
 select * from orbi_cancels;
-select organization_id, enabled, last_error, last_ok_at from org_orbi_integrations;
+select organization_id, enabled, last_error, last_ok_at, booking_link from org_orbi_integrations;
 ```

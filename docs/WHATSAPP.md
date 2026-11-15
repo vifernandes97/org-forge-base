@@ -887,6 +887,8 @@ ficar cego, a Lara chama o CRM durante a conversa (`server/agente/chatvolt.ts`):
 | --- | --- | --- |
 | `POST /api/agente/chatvolt/qualificacao` | ao juntar dados do negócio | nota "Qualificação pela Lara (IA)"; move para **Atendimento IA** se estiver antes dela |
 | `POST /api/agente/chatvolt/humano` | ao passar para humano | nota; move para **Atendimento Humano** (menos `motivo=cliente`); tarefa de hoje (`Confirmar horário da demo: dia, período` ou `Assumir conversa no Chatvolt: …`); aviso ao responsável |
+| `POST /api/agente/chatvolt/horarios` | lead aceitou a demo (depois do preço) | nada; devolve até 4 horários livres do tipo de reunião do Orbi (docs/ORBI.md, "Agendamento pela Bia") |
+| `POST /api/agente/chatvolt/agendar` | lead escolheu um horário | reserva confirmada no Orbi; tarefa Reunião de demonstração (No Orbi), atividade, **Atendimento Humano**, aviso |
 
 - **Credencial:** `Authorization: Bearer <CHATVOLT_AGENTE_TOKEN>`. Org em
   `CHATVOLT_AGENTE_ORG`. Os dois no `secrets.env`; sem eles, 503.

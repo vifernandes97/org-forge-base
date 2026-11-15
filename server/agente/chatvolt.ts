@@ -4,6 +4,9 @@ import { servicePool } from '../db.js';
 import { notificar, notificarNovoLead } from '../notificacoes.js';
 import { moverEtapa, type Etapa } from '../negocios/etapa.js';
 import { phoneMatchKey } from '../canais/identificacao/telefone.js';
+import {
+  configuracaoDoAgendamento, escolherOpcoes, horariosDoOrbi, paraOpcoes, periodoDe, reservarNoOrbi, rotuloDoHorario, type Opcao,
+} from './agendamento.js';
 
 // Ferramentas HTTP do agente Lara (Chatvolt, número 0573 da Oniplataforma).
 // Piloto: a Lara chama o CRM durante a conversa para registrar a qualificação e
@@ -12,6 +15,8 @@ import { phoneMatchKey } from '../canais/identificacao/telefone.js';
 //
 //   POST /api/agente/chatvolt/qualificacao   Authorization: Bearer <CHATVOLT_AGENTE_TOKEN>
 //   POST /api/agente/chatvolt/humano         idem
+//   POST /api/agente/chatvolt/horarios       idem: horários livres da demo no Orbi
+//   POST /api/agente/chatvolt/agendar        idem: marca a demo no horário que o lead aceitou
 //
 // Configuração (secrets.env): CHATVOLT_AGENTE_TOKEN (≥ 32 caracteres) e
 // CHATVOLT_AGENTE_ORG (id da organização). Sem as duas, as rotas respondem 503.
@@ -157,6 +162,13 @@ export function horarioDaDemo(dia: string, periodo: string, agora = new Date()):
   }
   const data = `${alvo.getFullYear()}-${String(alvo.getMonth() + 1).padStart(2, '0')}-${String(alvo.getDate()).padStart(2, '0')}`;
   return { data, hora };
+}
+
+/** Dia que o lead pediu ("quinta", "amanhã", "20/11"), ou nulo se não deu para entender. */
+export function dataPedida(dia: string, agora = new Date()): string | null {
+  const d = normalizar(dia);
+  if (!/\b\d{1,2}\/\d{1,2}|\bhoje\b|amanha|segunda|terca|quarta|quinta|sexta|sabado|domingo/.test(d)) return null;
+  return horarioDaDemo(dia, '', agora).data;
 }
 
 export function textoQualificacao(c: Record<string, unknown>): string {
@@ -712,4 +724,156 @@ agenteChatvolt.post('/humano', async (c) => {
 
   const aviso = motivo === 'vendedor' ? ' Não marque demonstração: diga que o consultor vai chamar para entender a operação.' : '';
   return c.json({ ok: true, mensagem: `Equipe avisada no CRM.${aviso}${fim}`, etapa } satisfies Resposta);
+});
+
+// ── Agendamento da demo pela Bia (docs/ORBI.md, "Agendamento pela Bia") ──
+
+const DIAS_DE_HORARIOS = 14;
+const SEM_AGENDA = 'Não consegui ver a agenda agora. Pergunte o dia e o período que o lead prefere e chame humano com motivo demo.';
+const FORA_DO_PCI = 'Este lead está fora do perfil: não marque demonstração. Chame humano com motivo vendedor e diga que o consultor vai chamar para entender a operação.';
+
+/** Demo futura já na agenda do Orbi para o negócio (marcada pela Bia ou confirmada lá). */
+async function demoMarcada(leadId: string): Promise<{ id: string; inicio: string } | null> {
+  const { rows } = await servicePool().query<{ id: string; inicio: Date }>(
+    `select id, due_date as inicio from tasks
+      where lead_id = $1 and task_type = 'meeting' and external_status = 'accepted' and due_date > now()
+      order by due_date limit 1`, [leadId]);
+  return rows[0] ? { id: rows[0].id, inicio: rows[0].inicio.toISOString() } : null;
+}
+
+async function quemAvisar(n: Negocio): Promise<string[]> {
+  if (n.assigned_to) return [n.assigned_to];
+  const { rows } = await servicePool().query<{ user_id: string }>(
+    `select user_id from organization_members where organization_id = $1 and role in ('owner','admin')`, [n.organization_id]);
+  return rows.map((r) => r.user_id);
+}
+
+const listaDeOpcoes = (o: Opcao[]) => o.map((x, i) => `${i + 1}) ${x.texto} [inicio=${x.inicio}]`).join('; ');
+
+agenteChatvolt.post('/horarios', async (c) => {
+  const p = await preparar(c.req.raw);
+  if (p instanceof Response) return p;
+  const conf = await configuracaoDoAgendamento(p.orgId);
+  if (!conf) return c.json({ ok: false, mensagem: SEM_AGENDA, opcoes: [] });
+
+  const telefone = await telefoneDoLead(p.corpo);
+  const { negocio: n } = telefone ? await negocioPorTelefone(p.orgId, telefone) : { negocio: null };
+  if (n) {
+    const tipo = (await tipoDoNegocio(n)) || texto(p.corpo.tipo_negocio, 120);
+    if (noPerfilIdeal(tipo) === false) return c.json({ ok: false, mensagem: FORA_DO_PCI, opcoes: [] });
+    const ja = await demoMarcada(n.id);
+    if (ja) {
+      return c.json({ ok: false, mensagem: `A demo já está marcada para ${rotuloDoHorario(ja.inicio)}. Lembre o lead; se ele quiser outro horário, chame humano com motivo demo.`, opcoes: [] });
+    }
+  }
+
+  const agora = new Date();
+  const r = await horariosDoOrbi(conf, agora, new Date(agora.getTime() + DIAS_DE_HORARIOS * 86_400_000));
+  if (!r.ok) {
+    console.error('[agente] horários do Orbi', r.motivo);
+    return c.json({ ok: false, mensagem: SEM_AGENDA, opcoes: [] });
+  }
+  const pedido = { data: dataPedida(texto(p.corpo.dia, 60), agora), periodo: periodoDe(p.corpo.periodo) };
+  const { horarios, atendeuPedido } = escolherOpcoes(r.slots, pedido);
+  const opcoes = paraOpcoes(horarios, agora);
+  if (!opcoes.length) {
+    return c.json({ ok: false, mensagem: `Não há horário livre nos próximos ${DIAS_DE_HORARIOS} dias. Chame humano com motivo demo.`, opcoes });
+  }
+  const aviso = (pedido.data || pedido.periodo) && !atendeuPedido ? 'Não há horário livre no dia/período que o lead pediu. ' : '';
+  return c.json({
+    ok: true,
+    mensagem: `${aviso}Horários livres para a demonstração (${r.duracao} min): ${listaDeOpcoes(opcoes)}. Ofereça estas opções ao lead pelo texto, sem inventar outras. Quando ele escolher, chame agendar com o campo inicio exatamente como veio na opção.`,
+    opcoes,
+  });
+});
+
+agenteChatvolt.post('/agendar', async (c) => {
+  const p = await preparar(c.req.raw);
+  if (p instanceof Response) return p;
+  const inicio = texto(p.corpo.inicio, 40);
+  if (!inicio || Number.isNaN(Date.parse(inicio))) {
+    return c.json({ ok: false, mensagem: 'Horário inválido: chame horarios de novo e use o campo inicio de uma das opções.' });
+  }
+  const conf = await configuracaoDoAgendamento(p.orgId);
+  if (!conf) return c.json({ ok: false, mensagem: SEM_AGENDA });
+
+  const telefone = await telefoneDoLead(p.corpo);
+  const nome = texto(p.corpo.nome, 120);
+  const { negocio: n } = await garantirNegocio(p.orgId, telefone, nome, texto(p.corpo.tipo_negocio, 120));
+  if (!n) return c.json({ ok: false, mensagem: 'Não encontrei o lead no CRM. Chame humano com motivo demo e o horário que o lead escolheu.' });
+  const tipo = (await tipoDoNegocio(n)) || texto(p.corpo.tipo_negocio, 120);
+  if (noPerfilIdeal(tipo) === false) return c.json({ ok: false, mensagem: FORA_DO_PCI });
+
+  const quando = rotuloDoHorario(inicio);
+  const ja = await demoMarcada(n.id);
+  if (ja) {
+    if (Date.parse(ja.inicio) === Date.parse(inicio)) return c.json({ ok: true, mensagem: `A demo já está marcada para ${quando}. Confirme ao lead.` });
+    return c.json({ ok: false, mensagem: `A demo já está marcada para ${rotuloDoHorario(ja.inicio)}. Se o lead quer trocar, chame humano com motivo demo.` });
+  }
+
+  const email = emailValido(p.corpo.email);
+  const resumo = texto(p.corpo.resumo, 1500);
+  const crm = (process.env.BETTER_AUTH_URL || 'https://crm.neosoluti.com.br').replace(/\/+$/, '');
+  const digitos = telefone.replace(/\D/g, '');
+  const r = await reservarNoOrbi(conf, {
+    externalId: `crm-lead-${n.id}-${Date.parse(inicio)}`,
+    start: new Date(inicio).toISOString(),
+    name: nome || n.name || 'Lead do WhatsApp',
+    ...(email ? { email } : {}),
+    ...(digitos.length >= 10 ? { phone: `+${digitos}` } : {}),
+    notes: [resumo, `Negócio no CRM: ${crm}/?lead=${n.id}`].filter(Boolean).join('\n\n'),
+  });
+  if (!r.ok && r.ocupado) {
+    const opcoes = paraOpcoes(escolherOpcoes(r.alternativas, {}).horarios);
+    return c.json({
+      ok: false,
+      mensagem: opcoes.length
+        ? `Esse horário acabou de ser ocupado. Peça desculpas e ofereça: ${listaDeOpcoes(opcoes)}.`
+        : 'Esse horário acabou de ser ocupado. Chame horarios de novo para ver outros.',
+      opcoes,
+    });
+  }
+  if (!r.ok) {
+    console.error('[agente] reservar no Orbi', r.motivo);
+    return c.json({ ok: false, mensagem: `Não consegui marcar agora. Chame humano com motivo demo e demo_dia "${quando}".` });
+  }
+
+  const userId = await autor(n);
+  const pool = servicePool();
+  const { rows: [sub] } = await pool.query<{ id: string }>(
+    `select st.id from task_subtypes st join task_types t on t.id = st.task_type_id
+      where st.organization_id = $1 and t.code = 'meeting' and st.is_active and st.label ilike '%demonstra%'
+      order by st.position limit 1`, [n.organization_id]);
+  // Pedido de demo antigo (dia e período vagos, via /humano) ainda aberto: concluí-lo cancela o pedido no Orbi (trigger de db/66).
+  await pool.query(
+    `update tasks set completed_at = now(), updated_at = now()
+      where lead_id = $1 and task_type = 'meeting' and completed_at is null and external_status is distinct from 'accepted'`, [n.id]);
+  const link = r.reserva.meetingUrl;
+  const descricao = [`Marcada pela Bia (IA) no horário que o lead aceitou: ${quando}. Já está confirmada na agenda do Orbi.`, link && `Link da chamada: ${link}`, email && `E-mail do lead: ${email}`, resumo].filter(Boolean).join('\n');
+  // external_status junto do insert: o trigger de db/66 não manda de novo ao Orbi (é tráfego da integração).
+  const { rows: [tarefa] } = await pool.query<{ id: string }>(
+    `insert into tasks (organization_id, lead_id, assigned_to, title, description, task_type, task_subtype_id, due_date, priority,
+                        external_status, external_request_id, external_ref_id, completed_at)
+     values ($1, $2, $3, $4, $5, 'meeting', $6, $7, 'high', 'accepted', $8, $9, now()) returning id`,
+    [n.organization_id, n.id, userId, `Demo Oniplataforma: ${n.name || nome || 'lead do WhatsApp'}`.slice(0, 200), descricao, sub?.id ?? null, r.reserva.start, r.reserva.id, r.reserva.seriesId]);
+  await pool.query(
+    `insert into lead_activities (organization_id, lead_id, user_id, activity_type, title, description, metadata)
+     values ($1, $2, $3, 'task_completed', $4, $5, $6)`,
+    [n.organization_id, n.id, userId, `Demo marcada pela Bia (IA): ${quando}`, descricao,
+      { origem: 'chatvolt_lara', source: 'orbi', task_id: tarefa.id, orbi_booking_id: r.reserva.id, orbi_series_id: r.reserva.seriesId, conversa_id: texto(p.corpo.conversa_id, 60) || null }]);
+  if (r.reserva.warning) console.warn('[agente] reserva no Orbi:', r.reserva.warning);
+
+  await gravarEmail(n, email);
+  await recalcularNota(n, {});
+  const etapa = await mover(n, userId, ETAPA_HUMANO, `Demo marcada pela Bia (IA): ${quando}`);
+  atualizarPainelChatvolt(n, texto(p.corpo.conversa_id, 60));
+  await notificar({ organizationId: n.organization_id, userIds: await quemAvisar(n), type: 'ai_update', title: `Bia marcou demo com ${n.name || nome || 'um lead'}`, body: quando, leadId: n.id })
+    .catch((e) => console.error('[agente] notificar', e));
+
+  const convite = email ? ' O convite chega no e-mail dele.' : '';
+  return c.json({
+    ok: true,
+    mensagem: `Demo marcada para ${quando}.${link ? ` Link da chamada: ${link}.` : ''}${convite} Confirme ao lead.`,
+    etapa,
+  } satisfies Resposta);
 });
