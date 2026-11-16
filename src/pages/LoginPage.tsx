@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Eye, EyeOff } from 'lucide-react';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { useToast } from '@/hooks/use-toast';
+import { destinoSeguro } from '@/lib/destino';
 
 const schema = z.object({
   email: z.string().email('Email inválido'),
@@ -36,7 +37,7 @@ export default function LoginPage() {
     try {
       setLoading(true);
       await signIn(data.email, data.password);
-      navigate(inviteToken ? `/invite/${inviteToken}` : '/dashboard');
+      navigate(inviteToken ? `/invite/${inviteToken}` : destinoSeguro(searchParams.get('next')));
     } catch (err: any) {
       toast({ title: 'Erro ao entrar', description: err.message, variant: 'destructive' });
     } finally {

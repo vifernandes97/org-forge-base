@@ -1,5 +1,6 @@
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { destinoSeguro } from '@/lib/destino';
 
 export function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -13,6 +14,6 @@ export function PublicRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (user) return <Navigate to={invite ? `/invite/${invite}` : '/dashboard'} replace />;
+  if (user) return <Navigate to={invite ? `/invite/${invite}` : destinoSeguro(searchParams.get('next'))} replace />;
   return <>{children}</>;
 }

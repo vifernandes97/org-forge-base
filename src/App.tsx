@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import CompaniesPage from "./pages/CompaniesPage";
@@ -29,6 +29,12 @@ import NotFound from "@/pages/NotFound";
 
 
 const queryClient = new QueryClient();
+
+// A raiz vai para o dashboard levando a query: o link_crm do Chatvolt é /?lead=<id>.
+function RootRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={`/dashboard${search}`} replace />;
+}
 
 const App = () => (
   <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="crm_theme" disableTransitionOnChange>
@@ -85,7 +91,7 @@ const App = () => (
               } />
 
               {/* Redirect root */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/" element={<RootRedirect />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </OrganizationProvider>
