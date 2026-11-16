@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Loader2, MessageCircle, Plus, QrCode, RefreshCw, Trash2 } from 'lucide-react';
+import { Copy, Link2, Loader2, MessageCircle, Plus, QrCode, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,7 +22,7 @@ import {
   connectChannel, useAddIgnoredNumber, useIgnoredNumbers, useRemoveIgnoredNumber, useChannelChats, useChannelConnections, useCreateChannelConnection, useDeleteChannelConnection,
   useRefreshChannel, useUpdateChannelConnection,
 } from '@/hooks/useChannels';
-import type { ChannelConnection, ChannelStatus, ChatStatus } from '@/services/channels';
+import { getChannelWebhookUrl, type ChannelConnection, type ChannelStatus, type ChatStatus } from '@/services/channels';
 
 const STATUS: Record<ChannelStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   connected: { label: 'Conectado', variant: 'default' },
@@ -105,12 +105,48 @@ function QrDialog({ connection, onClose }: { connection: ChannelConnection | nul
   );
 }
 
-function NovaConexaoDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (o: boolean) => void; onCreated: (id: string, existing: boolean) => void }) {
+/** URL para colar no Chatvolt. Vem do servidor (o token não é legível pelo navegador). */
+function WebhookDialog({ connectionId, onClose }: { connectionId: string | null; onClose: () => void }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+
+  useEffect(() => {
+    setUrl(null); setErro(null);
+    if (!connectionId) return;
+    getChannelWebhookUrl(connectionId).then(r => setUrl(r.webhook_url), e => setErro((e as Error).message));
+  }, [connectionId]);
+
+  const copiar = () => url && navigator.clipboard.writeText(url).then(() => toast.success('URL copiada'));
+
+  return (
+    <Dialog open={!!connectionId} onOpenChange={o => !o && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Webhook do Chatvolt</DialogTitle>
+          <DialogDescription>
+            No Chatvolt, abra o agente › Configurações › Webhooks, cole esta URL e marque os eventos de mensagem
+            (mensagem do usuário com resposta do agente, mensagem do usuário com a IA desligada, mensagem enviada pelo agente e follow-up).
+          </DialogDescription>
+        </DialogHeader>
+        {erro ? <p className="text-sm text-destructive">{erro}</p> : !url ? <Skeleton className="h-10" /> : (
+          <div className="flex gap-2">
+            <Input readOnly value={url} className="font-mono text-xs" onFocus={e => e.currentTarget.select()} />
+            <Button variant="outline" size="icon" aria-label="Copiar URL" onClick={copiar}><Copy className="h-4 w-4" /></Button>
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground">A URL funciona como senha: quem tiver ela consegue mandar mensagens para o CRM. Não compartilhe.</p>
+        <DialogFooter><Button variant="outline" onClick={onClose}>Fechar</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function NovaConexaoDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (o: boolean) => void; onCreated: (id: string, modo: 'new' | 'existing' | 'chatvolt') => void }) {
   const { organization } = useOrganization();
   const { data: funnels } = useFunnels();
   const create = useCreateChannelConnection();
   const [nome, setNome] = useState('');
-  const [modo, setModo] = useState<'new' | 'existing'>('new');
+  const [modo, setModo] = useState<'new' | 'existing' | 'chatvolt'>('new');
   const [instancia, setInstancia] = useState('');
   const [funil, setFunil] = useState('__default__');
 
@@ -127,15 +163,16 @@ function NovaConexaoDialog({ open, onOpenChange, onCreated }: { open: boolean; o
         existing: modo === 'existing',
         instance_name: modo === 'existing' ? instancia.trim() : undefined,
         funnel_id: funil === '__default__' ? null : funil,
+        provider: modo === 'chatvolt' ? 'chatvolt' : undefined,
       });
       toast.success('Conexão criada');
-      onCreated(r.id, modo === 'existing');
+      onCreated(r.id, modo);
     } catch (e) {
       toast.error('Não foi possível criar', { description: (e as Error).message });
     }
   };
 
-  const valido = nome.trim() && (modo === 'new' || instancia.trim());
+  const valido = nome.trim() && (modo !== 'existing' || instancia.trim());
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -149,7 +186,7 @@ function NovaConexaoDialog({ open, onOpenChange, onCreated }: { open: boolean; o
             <Label htmlFor="wa-nome">Nome</Label>
             <Input id="wa-nome" value={nome} onChange={e => setNome(e.target.value)} placeholder="Comercial — Vinícius" />
           </div>
-          <RadioGroup value={modo} onValueChange={v => setModo(v as 'new' | 'existing')} className="space-y-2">
+          <RadioGroup value={modo} onValueChange={v => setModo(v as 'new' | 'existing' | 'chatvolt')} className="space-y-2">
             <label className="flex items-start gap-2 text-sm">
               <RadioGroupItem value="new" className="mt-0.5" />
               <span><span className="font-medium">Conectar um número</span><span className="block text-muted-foreground">Cria a instância e mostra o QR code.</span></span>
@@ -157,6 +194,10 @@ function NovaConexaoDialog({ open, onOpenChange, onCreated }: { open: boolean; o
             <label className="flex items-start gap-2 text-sm">
               <RadioGroupItem value="existing" className="mt-0.5" />
               <span><span className="font-medium">Usar instância que já existe na Evolution</span><span className="block text-muted-foreground">O número já está conectado; só ligamos o webhook.</span></span>
+            </label>
+            <label className="flex items-start gap-2 text-sm">
+              <RadioGroupItem value="chatvolt" className="mt-0.5" />
+              <span><span className="font-medium">Número atendido no Chatvolt</span><span className="block text-muted-foreground">API oficial com agente de IA; o CRM recebe as conversas pelo webhook do agente.</span></span>
             </label>
           </RadioGroup>
           {modo === 'existing' && (
@@ -187,7 +228,8 @@ function NovaConexaoDialog({ open, onOpenChange, onCreated }: { open: boolean; o
   );
 }
 
-function ConexaoCard({ con, canManage, onQr }: { con: ChannelConnection; canManage: boolean; onQr: () => void }) {
+function ConexaoCard({ con, canManage, onQr, onWebhook }: { con: ChannelConnection; canManage: boolean; onQr: () => void; onWebhook: () => void }) {
+  const chatvolt = con.provider === 'chatvolt';
   const update = useUpdateChannelConnection();
   const refresh = useRefreshChannel();
   const remove = useDeleteChannelConnection();
@@ -217,17 +259,23 @@ function ConexaoCard({ con, canManage, onQr }: { con: ChannelConnection; canMana
         </div>
         {con.status === 'error' && con.status_detail && <p className="text-xs text-destructive">{con.status_detail}</p>}
         <div className="text-xs text-muted-foreground">
-          Instância <span className="font-mono">{con.instance_name}</span>
+          {chatvolt ? 'Chatvolt (webhook do agente)' : <>Instância <span className="font-mono">{con.instance_name}</span></>}
           {con.last_event_at && <> · último evento {formatDistanceToNow(new Date(con.last_event_at), { addSuffix: true, locale: ptBR })}</>}
         </div>
         {canManage && (
           <div className="flex flex-wrap gap-2">
-            {con.status !== 'connected' && (
-              <Button size="sm" onClick={onQr}><QrCode className="mr-2 h-4 w-4" />Conectar</Button>
+            {chatvolt ? (
+              <Button size="sm" variant="outline" onClick={onWebhook}><Link2 className="mr-2 h-4 w-4" />URL do webhook</Button>
+            ) : (
+              <>
+                {con.status !== 'connected' && (
+                  <Button size="sm" onClick={onQr}><QrCode className="mr-2 h-4 w-4" />Conectar</Button>
+                )}
+                <Button size="sm" variant="outline" onClick={atualizar} disabled={refresh.isPending}>
+                  <RefreshCw className={`mr-2 h-4 w-4 ${refresh.isPending ? 'animate-spin' : ''}`} />Atualizar
+                </Button>
+              </>
             )}
-            <Button size="sm" variant="outline" onClick={atualizar} disabled={refresh.isPending}>
-              <RefreshCw className={`mr-2 h-4 w-4 ${refresh.isPending ? 'animate-spin' : ''}`} />Atualizar
-            </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button size="sm" variant="ghost" className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Remover</Button>
@@ -236,7 +284,9 @@ function ConexaoCard({ con, canManage, onQr }: { con: ChannelConnection; canMana
                 <AlertDialogHeader>
                   <AlertDialogTitle>Remover {con.display_name}?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    {con.managed
+                    {chatvolt
+                      ? 'Tire também a URL do webhook no Chatvolt. '
+                      : con.managed
                       ? 'O número é desconectado e a instância apagada na Evolution. '
                       : 'A instância continua na Evolution; só deixamos de receber as mensagens. '}
                     As conversas e mensagens guardadas desta conexão são apagadas do CRM. Notas já criadas nos negócios ficam.
@@ -385,11 +435,14 @@ export default function WhatsAppPage() {
   const { data: conexoes, isLoading } = useChannelConnections();
   const [nova, setNova] = useState(false);
   const [qrDe, setQrDe] = useState<ChannelConnection | null>(null);
+  const [webhookDe, setWebhookDe] = useState<string | null>(null);
 
-  const criada = (id: string, existing: boolean) => {
+  const criada = (id: string, modo: 'new' | 'existing' | 'chatvolt') => {
     setNova(false);
     // Número novo: já abre o QR. A lista ainda não tem a linha; monta o mínimo.
-    if (!existing) setQrDe({ id, display_name: 'o número' } as ChannelConnection);
+    if (modo === 'new') setQrDe({ id, display_name: 'o número' } as ChannelConnection);
+    // Chatvolt: já mostra a URL para colar no agente.
+    if (modo === 'chatvolt') setWebhookDe(id);
   };
 
   return (
@@ -415,7 +468,7 @@ export default function WhatsAppPage() {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {conexoes.map(con => <ConexaoCard key={con.id} con={con} canManage={canManage} onQr={() => setQrDe(con)} />)}
+          {conexoes.map(con => <ConexaoCard key={con.id} con={con} canManage={canManage} onQr={() => setQrDe(con)} onWebhook={() => setWebhookDe(con.id)} />)}
         </div>
       )}
 
@@ -424,6 +477,7 @@ export default function WhatsAppPage() {
 
       <NovaConexaoDialog open={nova} onOpenChange={setNova} onCreated={criada} />
       <QrDialog connection={qrDe} onClose={() => setQrDe(null)} />
+      <WebhookDialog connectionId={webhookDe} onClose={() => setWebhookDe(null)} />
     </div>
   );
 }

@@ -6,6 +6,8 @@ import { enviarWebhook } from '../../webhook-saida.js';
 import { etapaDeEntrada, negociosCandidatos, type ConversaCtx, type NegocioCtx } from './contexto.js';
 import { horaDaTarefa, type Decisao } from './decisao.js';
 
+const diaSP = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+
 // A IA propõe, a política decide (docs/WHATSAPP.md §6). Cada proposta vira uma
 // linha em ai_actions com o estado: applied, pending (autonomia "suggest"),
 // skipped (a política barrou, com o motivo). Em teste (dryRun) nada é gravado.
@@ -199,6 +201,11 @@ export async function aplicarDecisao(opts: {
     const hora = horaDaTarefa(t.horario);
     const base = { type: 'task' as const, lead_id: negocio.id, confidence: null, payload: { titulo, descricao: t.descricao, prazo_dias: prazo, horario: hora, tipo: t.tipo } };
     if (!titulo || abertas.has(normalizar(titulo))) { acoes.push({ ...base, state: 'skipped', reason: 'Tarefa igual já aberta' }); continue; }
+    // Reunião no mesmo dia de uma já marcada (aberta ou confirmada no Orbi): não manda outro pedido ao Orbi.
+    if (t.tipo === 'meeting' && negocio.reunioes.some((r) => diaSP(new Date(r.due_date)) === diaSP(new Date(Date.now() + prazo * 86_400_000)))) {
+      acoes.push({ ...base, state: 'skipped', reason: 'Já há reunião marcada nesse dia' });
+      continue;
+    }
     abertas.add(normalizar(titulo));
     acoes.push({ ...base, state: 'applied', reason: null });
     if (!dryRun) {

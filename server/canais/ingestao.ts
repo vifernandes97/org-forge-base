@@ -91,7 +91,8 @@ export async function receberWebhookCanal(providerName: string, token: string, r
   if (!con.is_active) return Response.json({ ok: true, ignored: 'inactive' });
 
   const corpo = await req.json().catch(() => null);
-  if (!corpo) return Response.json({ error: 'JSON inválido' }, { status: 400 });
+  // O Chatvolt testa a URL ao salvar e só aceita resposta 2xx; o corpo do teste não é documentado.
+  if (!corpo) return providerName === 'chatvolt' ? Response.json({ ok: true, ignored: 'empty' }) : Response.json({ error: 'JSON inválido' }, { status: 400 });
 
   const eventos = provedor(providerName).parseWebhook(corpo);
   const vincular = new Set<string>();

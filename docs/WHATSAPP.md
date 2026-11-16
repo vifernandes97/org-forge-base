@@ -919,3 +919,43 @@ A ferramenta nativa "Solicitar Humano" do Chatvolt transfere assim que o lead pe
 ### Cadastro, nota, campos e valor pela Bia (2026-11-12)
 
 `/qualificacao` e `/humano` criam o negócio quando o telefone não tem negócio aberto (lead que chegou direto no 0573): `resolve_company_contact`, negócio em Novo Lead do funil que tem "Atendimento IA", origem `whatsapp_0573`, nota "Lead criado pela Bia (IA)" e aviso de novo lead. Trava `pg_advisory_xact_lock` por telefone para não duplicar; telefone com mais de 3 negócios (placeholder) não cria. `/qualificacao` também grava `leads.qualification` (campo `nota`, 1 a 5), os campos personalizados `tipo_de_negocio`, `media_de_festas`, `cidade`, `dor_principal` ("outro" não sobrescreve) e, só com `plano_escolhido`, `leads.value` (Starter 199, Pro 399, Enterprise 549, ou `valor`). Handoff por demo ou preço sobe a nota para pelo menos 4. Nota vazia ou igual à anterior não é gravada.
+
+## 20. Conversas do Chatvolt como canal (webhook do agente) — 2026-11-16
+
+**Por quê:** o que um humano combina pela caixa do Chatvolt (IA desligada) não
+passava por nenhuma ferramenta da Bia, então o CRM nunca via a reunião e nada ia
+ao Orbi (caso Déby, 16/11: "amanhã às 10h?" / "Sim"). Agora as conversas do 0573
+entram como mais um canal e passam pela mesma análise do 3535.
+
+- **Provedor `chatvolt`** (`server/canais/provedores/chatvolt.ts`, `db/71`): sem
+  instância nem QR. O webhook de saída do agente chama
+  `POST /api/channels/chatvolt/<token>` (endereço público, `BETTER_AUTH_URL`).
+  A conexão usa o servidor `chatvolt-principal` (chave `CHATVOLT_API_KEY`).
+- **Eventos → mensagens** (`raw.autor`):
+  | Evento | Mensagem |
+  | --- | --- |
+  | `AGENT_USER_MESSAGE` | lead (`userMessage`, 1 s antes) + IA (`agentResponse`) |
+  | `USER_MESSAGE_RECEIVED` | lead, com a IA desligada |
+  | `AGENT_MESSAGE_SENDED` | **Equipe**: humano pela caixa do Chatvolt |
+  | `AGENT_MESSAGE_FOLLOW_UP` | IA |
+  Os demais (bloqueada, nota, grupo, NPS, etapa) só marcam a conexão como
+  conectada; corpo vazio (o teste ao salvar no Chatvolt) responde 200. Id da
+  mensagem: `<messageId>:user|agent`; a conversa é por telefone
+  (`userPhoneNumber`, ou a variável `user-phone-number`), senão
+  `<conversationId>@chatvolt`. Anexo: `attachments[0]`, baixado pela URL.
+- **Na análise:** mensagem com `autor = 'ia'` aparece como "Assistente virtual
+  (IA)" (não conta como atendimento humano). Reunião com dia e hora combinados
+  vira tarefa `meeting`, que o trigger de db/66 manda ao Orbi como pedido. O
+  contexto lista as "Reuniões marcadas" (abertas ou `accepted`, como a demo que
+  a Bia marca) e a política pula outra reunião no mesmo dia, para não duplicar
+  o pedido no Orbi.
+- **Configurar:** CRM → WhatsApp → Nova conexão → "Número atendido no Chatvolt"
+  (funil Comercial) → copiar a URL → Chatvolt › agente › Configurações ›
+  Webhooks, com os quatro eventos de mensagem. Depois, acrescentar nas
+  instruções da IA do CRM o trecho de `comercial/chatvolt/integracao-crm.md`
+  (etapa Atendimento IA etc.).
+- **Não documentado pelo Chatvolt** (conferir no primeiro payload real, em
+  `channel_messages.raw`): formato de `createdAt` e de `userPhoneNumber`, se
+  `AGENT_MESSAGE_SENDED` também dispara para envio da IA (aí a mensagem
+  apareceria duplicada como Equipe) e se há reenvio (sem `createdAt`, o
+  reenvio não é reconhecido como repetido).

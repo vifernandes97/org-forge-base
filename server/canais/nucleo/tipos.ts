@@ -43,7 +43,7 @@ export type EventoNormalizado = MensagemNormalizada | ConexaoAtualizada;
 /** Credenciais já decifradas de um servidor de provedor. */
 export interface ServidorCanal {
   id: string;
-  provider: 'evolution';
+  provider: 'evolution' | 'chatvolt';
   baseUrl: string;
   apiKey: string;
 }

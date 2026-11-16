@@ -10,6 +10,7 @@ export type ChannelStatus = 'pending' | 'qr' | 'connected' | 'disconnected' | 'e
 export interface ChannelConnection {
   id: string;
   organization_id: string;
+  provider: 'evolution' | 'chatvolt';
   instance_name: string;
   display_name: string;
   managed: boolean;
@@ -40,7 +41,7 @@ export interface ChannelChat {
 }
 
 // Coluna a coluna: o token do webhook não é legível pelo navegador.
-const COLUNAS_CONEXAO = 'id, organization_id, instance_name, display_name, managed, phone_number, status, status_detail, actor_user_id, funnel_id, is_active, last_event_at, created_at';
+const COLUNAS_CONEXAO = 'id, organization_id, provider, instance_name, display_name, managed, phone_number, status, status_detail, actor_user_id, funnel_id, is_active, last_event_at, created_at';
 
 export async function getChannelConnections(orgId: string): Promise<ChannelConnection[]> {
   const { data, error } = await supabase
@@ -88,7 +89,11 @@ export const createChannelConnection = (payload: {
   existing: boolean;
   instance_name?: string;
   funnel_id?: string | null;
-}) => api<{ id: string }>('POST', '/connections', payload);
+  provider?: 'chatvolt';
+}) => api<{ id: string; webhook_url?: string }>('POST', '/connections', payload);
+
+/** URL que o Chatvolt chama (Agente › Configurações › Webhooks). */
+export const getChannelWebhookUrl = (id: string) => api<{ webhook_url: string }>('GET', `/connections/${id}/webhook`);
 
 export const connectChannel = (id: string) =>
   api<{ status: ChannelStatus; qrCode: string | null; pairingCode: string | null }>('POST', `/connections/${id}/connect`);

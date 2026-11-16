@@ -4,13 +4,14 @@ import { exigirAdmin } from '../acesso.js';
 import { servicePool } from '../db.js';
 import { esquecerConexao, receberWebhookCanal } from './ingestao.js';
 import { provedor } from './provedores/index.js';
-import { servidor, servidorDaPlataforma, urlDoWebhook } from './servidores.js';
+import { servidor, servidorChatvolt, servidorDaPlataforma, urlDoWebhook } from './servidores.js';
 
 // Rotas dos canais:
 //   POST /api/channels/:provider/:token   webhook do provedor (público; o token é a credencial)
 //   /api/channels/connections…            tela de Configurações → WhatsApp (sessão + owner/admin)
 // Ler conexões e conversas é pelo PostgREST (RLS); aqui fica só o que mexe na
-// Evolution ou no token.
+// Evolution ou no token. Conexão do Chatvolt: sem instância nem QR; a tela
+// mostra a URL do webhook para colar no agente de lá (docs/WHATSAPP.md §20).
 
 export const canais = new Hono();
 
@@ -43,13 +44,14 @@ const NOME_INSTANCIA = /^[A-Za-z0-9_-]{3,64}$/;
 
 canais.post('/connections', async (c) => {
   const corpo = (await c.req.json().catch(() => ({}))) as {
-    organization_id?: string; display_name?: string; instance_name?: string; existing?: boolean; funnel_id?: string | null;
+    organization_id?: string; display_name?: string; instance_name?: string; existing?: boolean; funnel_id?: string | null; provider?: string;
   };
   const acesso = await exigirAdmin(c.req.raw, corpo.organization_id);
   if (acesso instanceof Response) return acesso;
 
   const displayName = corpo.display_name?.trim();
   if (!displayName) return c.json({ error: 'Dê um nome à conexão' }, 400);
+  if (corpo.provider === 'chatvolt') return criarChatvolt(corpo.organization_id!, displayName, corpo.funnel_id ?? null, acesso.userId);
   const existente = !!corpo.existing;
   const instanceName = existente
     ? corpo.instance_name?.trim() ?? ''
@@ -92,6 +94,31 @@ canais.post('/connections', async (c) => {
     return erro(e);
   }
   return c.json({ id });
+});
+
+async function criarChatvolt(orgId: string, displayName: string, funnelId: string | null, userId: string): Promise<Response> {
+  let serverId: string | null;
+  try {
+    serverId = await servidorChatvolt();
+  } catch (e) {
+    return erro(e, 500);
+  }
+  if (!serverId) return Response.json({ error: 'Chatvolt não configurado (CHATVOLT_API_KEY)' }, { status: 503 });
+  const token = randomBytes(24).toString('base64url');
+  // instance_name só identifica a conexão na tela (é único por servidor).
+  const instanceName = `chatvolt-${orgId.slice(0, 8)}-${randomBytes(3).toString('hex')}`;
+  const ins = await servicePool().query<{ id: string }>(
+    `insert into channel_connections (organization_id, server_id, provider, instance_name, display_name, webhook_token, managed, actor_user_id, funnel_id, status)
+     values ($1, $2, 'chatvolt', $3, $4, $5, false, $6, $7, 'pending') returning id`,
+    [orgId, serverId, instanceName, displayName, token, userId, funnelId]);
+  return Response.json({ id: ins.rows[0].id, webhook_url: urlDoWebhook('chatvolt', token) });
+}
+
+/** URL do webhook para colar no Chatvolt (o token é a credencial: só owner/admin vê). */
+canais.get('/connections/:id/webhook', async (c) => {
+  const r = await conexaoDoAdmin(c.req.raw, c.req.param('id'));
+  if (r instanceof Response) return r;
+  return c.json({ webhook_url: urlDoWebhook(r.con.provider, r.con.webhook_token) });
 });
 
 canais.post('/connections/:id/connect', async (c) => {

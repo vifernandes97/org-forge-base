@@ -81,6 +81,7 @@ DECISOES de 2026-11-15.
   segmento, cidade, festas por mês, pessoas, controle atual, dor, objeção,
   preço informado, plano, nota, valor, etapa, origem/UTM, resumo da Bia e link
   do negócio. Campos do negócio primeiro; o que a Bia registrou completa.
+- **Demo combinada por humano no Chatvolt:** vem pelo canal `chatvolt` (docs/WHATSAPP.md §20): a análise cria a tarefa Reunião e ela segue como pedido, a confirmar no Orbi.
 - **Limites:** uma demo futura por negócio (trocar de horário passa por
   humano); cancelar ou remarcar no Orbi ainda **não** volta ao CRM.
 

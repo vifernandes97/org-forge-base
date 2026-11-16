@@ -32,6 +32,8 @@ export interface NegocioCtx {
   etapas: Etapa[];
   atividades: { activity_type: string; title: string; description: string | null; created_at: Date }[];
   tarefas: { title: string; due_date: Date }[];
+  /** Reuniões daqui para a frente, abertas ou já confirmadas no Orbi (a demo que a Bia marca nasce concluída). */
+  reunioes: { title: string; due_date: Date }[];
 }
 
 export interface ConversaCtx {
@@ -103,16 +105,19 @@ export async function negociosCandidatos(chat: ConversaCtx): Promise<NegocioCtx[
   }
   if (!ids.length) return [];
 
-  const { rows: leads } = await pool.query<Omit<NegocioCtx, 'etapas' | 'atividades' | 'tarefas' | 'contatos'>>(
+  const { rows: leads } = await pool.query<Omit<NegocioCtx, 'etapas' | 'atividades' | 'tarefas' | 'reunioes' | 'contatos'>>(
     `select l.id, l.name, l.value, l.stage_id, l.funnel_id, f.name as funnel_name, l.assigned_to, co.trade_name as empresa
      from leads l join funnels f on f.id = l.funnel_id left join companies co on co.id = l.company_id
      where l.id = any($1) and l.archived_at is null and l.merged_into_lead_id is null`, [ids]);
 
   return Promise.all(leads.map(async (l) => {
-    const [etapas, atividades, tarefas, contatos] = await Promise.all([
+    const [etapas, atividades, tarefas, reunioes, contatos] = await Promise.all([
       pool.query<Etapa>(`select id, name, position, funnel_id, sla_hours, webhook_url from stages where funnel_id = $1 order by position`, [l.funnel_id]),
       pool.query(`select activity_type, title, description, created_at from lead_activities where lead_id = $1 order by created_at desc limit 10`, [l.id]),
       pool.query(`select title, due_date from tasks where lead_id = $1 and completed_at is null order by due_date limit 10`, [l.id]),
+      pool.query(
+        `select title, due_date from tasks where lead_id = $1 and task_type = 'meeting' and due_date >= now() - interval '1 hour'
+           and (completed_at is null or external_status = 'accepted') order by due_date limit 5`, [l.id]),
       pool.query<{ name: string }>(`select c.name from lead_contacts lc join contacts c on c.id = lc.contact_id where lc.lead_id = $1 order by lc.is_primary desc`, [l.id]),
     ]);
     return {
@@ -121,6 +126,7 @@ export async function negociosCandidatos(chat: ConversaCtx): Promise<NegocioCtx[
       etapas: etapas.rows,
       atividades: atividades.rows.reverse(),
       tarefas: tarefas.rows,
+      reunioes: reunioes.rows,
       contatos: contatos.rows.map((c) => c.name).filter(Boolean),
     } as NegocioCtx;
   })).then((lista) => lista.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)));
