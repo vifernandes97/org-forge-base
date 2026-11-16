@@ -69,3 +69,20 @@ describe('escolher as opções', () => {
     expect(escolherOpcoes([], {}).horarios).toEqual([]);
   });
 });
+
+describe('ficha do lead na demo', () => {
+  it('só os campos preenchidos, resumo e link no fim', async () => {
+    const { linhasDaFicha } = await import('./chatvolt.js');
+    const f = linhasDaFicha({
+      empresa: 'Buffet Alegria', segmento: 'Buffet Infantil', cidade: 'Campinas', festas: '12', pessoas: '3', controle: 'planilha',
+      dor: 'contratos', objecao: '', nota: 4, valor: 199, etapa: 'Atendimento Humano', origem: 'formulário · meta / cpc',
+      resumo: 'Quer parar de perder festa.', link: 'https://crm/?lead=1',
+    });
+    expect(f).toBe([
+      'Empresa: Buffet Alegria', 'Segmento: Buffet Infantil', 'Cidade: Campinas', 'Festas por mês: 12', 'Pessoas que usariam: 3',
+      'Controla hoje com: planilha', 'Dor principal: contratos', 'Nota: 4 de 5', 'Valor: R$ 199/mês', 'Etapa: Atendimento Humano',
+      'Origem: formulário · meta / cpc', '', 'Resumo da Bia: Quer parar de perder festa.', '', 'Negócio no CRM: https://crm/?lead=1',
+    ].join('\n'));
+    expect(linhasDaFicha({ link: 'x' })).toBe('Negócio no CRM: x');
+  });
+});

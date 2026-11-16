@@ -74,6 +74,13 @@ DECISOES de 2026-11-15.
   "Demo marcada pela Bia (IA)", etapa Atendimento Humano (`moverEtapa`) e
   aviso. Um pedido de demo antigo ainda aberto é concluído, o que o cancela no
   Orbi.
+- **Dados do lead na reunião** (`fichaDoLead`, desde 2026-11-16): nome e
+  e-mail do contato principal do CRM (o e-mail que a Bia mandar vale primeiro;
+  com e-mail, o lead recebe o convite do Google e a confirmação do Orbi) e, nas
+  `notes` (descrição no Orbi e no Google, e na tarefa), a ficha: empresa,
+  segmento, cidade, festas por mês, pessoas, controle atual, dor, objeção,
+  preço informado, plano, nota, valor, etapa, origem/UTM, resumo da Bia e link
+  do negócio. Campos do negócio primeiro; o que a Bia registrou completa.
 - **Limites:** uma demo futura por negócio (trocar de horário passa por
   humano); cancelar ou remarcar no Orbi ainda **não** volta ao CRM.
 

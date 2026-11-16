@@ -335,6 +335,57 @@ async function variaveisDoNegocio(n: Negocio): Promise<Record<string, string>> {
   };
 }
 
+export type DadosDaFicha = {
+  empresa?: string | null; segmento?: string | null; cidade?: string | null; festas?: string | null; pessoas?: string | null;
+  controle?: string | null; dor?: string | null; objecao?: string | null; preco?: string | null; plano?: string | null;
+  nota?: number | null; valor?: number | null; etapa?: string | null; origem?: string | null; resumo?: string | null; link: string;
+};
+
+/** Ficha do lead na reunião (Orbi e Google) e na tarefa: o que o consultor precisa saber antes da demo. */
+export function linhasDaFicha(d: DadosDaFicha): string {
+  const l = (rotulo: string, v: unknown) => {
+    const t = String(v ?? '').trim();
+    return t ? `${rotulo}: ${t}` : '';
+  };
+  const dados = [
+    l('Empresa', d.empresa), l('Segmento', d.segmento), l('Cidade', d.cidade), l('Festas por mês', d.festas),
+    l('Pessoas que usariam', d.pessoas), l('Controla hoje com', d.controle), l('Dor principal', d.dor), l('Objeção', d.objecao),
+    l('Preço informado', d.preco), l('Plano escolhido', d.plano),
+    l('Nota', d.nota ? `${d.nota} de 5` : ''), l('Valor', d.valor && d.valor > 0 ? `R$ ${d.valor.toLocaleString('pt-BR')}/mês` : ''),
+    l('Etapa', d.etapa), l('Origem', d.origem),
+  ].filter(Boolean);
+  return [dados.join('\n'), d.resumo ? `Resumo da Bia: ${d.resumo.trim()}` : '', `Negócio no CRM: ${d.link}`].filter(Boolean).join('\n\n');
+}
+
+/** Lead para a demo: contato principal do CRM e a ficha (campos do negócio + o que a Bia já registrou). */
+async function fichaDoLead(n: Negocio, resumoAgora: string): Promise<{ nome: string; email: string; ficha: string }> {
+  const pool = servicePool();
+  const { rows: [l] } = await pool.query<{ qualification: number | null; value: string | null; etapa: string | null; empresa: string | null; segmento: string | null; source: string | null; contato: string | null; email: string | null }>(
+    `select l.qualification, l.value, s.name as etapa, co.trade_name as empresa, sg.label as segmento, l.source, ct.name as contato, ct.email
+       from leads l left join stages s on s.id = l.stage_id left join companies co on co.id = l.company_id
+       left join company_segments sg on sg.id = co.segment_id
+       left join lateral (select c.name, c.email from lead_contacts lc join contacts c on c.id = lc.contact_id
+                           where lc.lead_id = l.id order by lc.is_primary desc limit 1) ct on true
+      where l.id = $1`, [n.id]);
+  const { rows: cf } = await pool.query<{ field_name: string; value: string | null }>(
+    `select d.field_name, v.value from custom_field_values v join custom_field_definitions d on d.id = v.field_definition_id
+      where v.lead_id = $1 and d.organization_id = $2`, [n.id, n.organization_id]);
+  const c = Object.fromEntries(cf.map((r) => [r.field_name, (r.value ?? '').trim()]));
+  const { rows: regs } = await pool.query<{ campos: Record<string, unknown> | null }>(
+    `select metadata->'campos' as campos from lead_activities where lead_id = $1 and title = 'Atendimento da Bia (IA)' order by created_at`, [n.id]);
+  const bia: Record<string, string> = {};
+  for (const r of regs) for (const [k, v] of Object.entries(r.campos ?? {})) if (texto(v, 500)) bia[k] = texto(v, 500);
+  const crm = (process.env.BETTER_AUTH_URL || 'https://crm.neosoluti.com.br').replace(/\/+$/, '');
+  const utm = [c.utm_source, c.utm_medium, c.utm_campaign, c.utm_content].filter(Boolean).join(' / ');
+  const ficha = linhasDaFicha({
+    empresa: l?.empresa, segmento: l?.segmento || c.tipo_de_negocio || bia.tipo_negocio, cidade: c.cidade || bia.cidade,
+    festas: c.media_de_festas || bia.eventos_mes, pessoas: bia.pessoas, controle: bia.controle_atual, dor: c.dor_principal || bia.maior_dor,
+    objecao: c.objecao, preco: bia.planos_informados, plano: bia.plano_escolhido, nota: l?.qualification, valor: Number(l?.value ?? 0),
+    etapa: l?.etapa, origem: [l?.source, utm].filter(Boolean).join(' · '), resumo: resumoAgora || bia.resumo, link: `${crm}/?lead=${n.id}`,
+  });
+  return { nome: (l?.contato ?? '').trim(), email: emailValido(l?.email), ficha };
+}
+
 /** Atualiza o painel do Chatvolt sem segurar a resposta da Bia. */
 function atualizarPainelChatvolt(n: Negocio, conversaId: string) {
   if (!conversaId) return;
@@ -811,17 +862,18 @@ agenteChatvolt.post('/agendar', async (c) => {
     return c.json({ ok: false, mensagem: `A demo já está marcada para ${rotuloDoHorario(ja.inicio)}. Se o lead quer trocar, chame humano com motivo demo.` });
   }
 
-  const email = emailValido(p.corpo.email);
   const resumo = texto(p.corpo.resumo, 1500);
-  const crm = (process.env.BETTER_AUTH_URL || 'https://crm.neosoluti.com.br').replace(/\/+$/, '');
+  // O lead do formulário já tem e-mail no CRM: a Bia não pede (decisão de 13/11); o que ela mandar vale primeiro.
+  const lead = await fichaDoLead(n, resumo);
+  const email = emailValido(p.corpo.email) || lead.email;
   const digitos = telefone.replace(/\D/g, '');
   const r = await reservarNoOrbi(conf, {
     externalId: `crm-lead-${n.id}-${Date.parse(inicio)}`,
     start: new Date(inicio).toISOString(),
-    name: nome || n.name || 'Lead do WhatsApp',
+    name: (lead.nome || nome || n.name || 'Lead do WhatsApp').slice(0, 120),
     ...(email ? { email } : {}),
     ...(digitos.length >= 10 ? { phone: `+${digitos}` } : {}),
-    notes: [resumo, `Negócio no CRM: ${crm}/?lead=${n.id}`].filter(Boolean).join('\n\n'),
+    notes: lead.ficha.slice(0, 3800),
   });
   if (!r.ok && r.ocupado) {
     const opcoes = paraOpcoes(escolherOpcoes(r.alternativas, {}).horarios);
@@ -849,13 +901,13 @@ agenteChatvolt.post('/agendar', async (c) => {
     `update tasks set completed_at = now(), updated_at = now()
       where lead_id = $1 and task_type = 'meeting' and completed_at is null and external_status is distinct from 'accepted'`, [n.id]);
   const link = r.reserva.meetingUrl;
-  const descricao = [`Marcada pela Bia (IA) no horário que o lead aceitou: ${quando}. Já está confirmada na agenda do Orbi.`, link && `Link da chamada: ${link}`, email && `E-mail do lead: ${email}`, resumo].filter(Boolean).join('\n');
+  const descricao = [`Marcada pela Bia (IA) no horário que o lead aceitou: ${quando}. Já está confirmada na agenda do Orbi.`, link && `Link da chamada: ${link}`, email ? `E-mail do lead: ${email}` : '', '\n' + lead.ficha].filter(Boolean).join('\n');
   // external_status junto do insert: o trigger de db/66 não manda de novo ao Orbi (é tráfego da integração).
   const { rows: [tarefa] } = await pool.query<{ id: string }>(
     `insert into tasks (organization_id, lead_id, assigned_to, title, description, task_type, task_subtype_id, due_date, priority,
                         external_status, external_request_id, external_ref_id, completed_at)
      values ($1, $2, $3, $4, $5, 'meeting', $6, $7, 'high', 'accepted', $8, $9, now()) returning id`,
-    [n.organization_id, n.id, userId, `Demo Oniplataforma: ${n.name || nome || 'lead do WhatsApp'}`.slice(0, 200), descricao, sub?.id ?? null, r.reserva.start, r.reserva.id, r.reserva.seriesId]);
+    [n.organization_id, n.id, userId, `Demo Oniplataforma: ${n.name || lead.nome || nome || 'lead do WhatsApp'}`.slice(0, 200), descricao, sub?.id ?? null, r.reserva.start, r.reserva.id, r.reserva.seriesId]);
   await pool.query(
     `insert into lead_activities (organization_id, lead_id, user_id, activity_type, title, description, metadata)
      values ($1, $2, $3, 'task_completed', $4, $5, $6)`,
