@@ -948,9 +948,9 @@ agenteChatvolt.post('/agendar', async (c) => {
   // external_status junto do insert: o trigger de db/66 não manda de novo ao Orbi (é tráfego da integração).
   const { rows: [tarefa] } = await pool.query<{ id: string }>(
     `insert into tasks (organization_id, lead_id, assigned_to, title, description, task_type, task_subtype_id, due_date, priority,
-                        external_status, external_request_id, external_ref_id, completed_at)
-     values ($1, $2, $3, $4, $5, 'meeting', $6, $7, 'high', 'accepted', $8, $9, now()) returning id`,
-    [n.organization_id, n.id, userId, `Demo Oniplataforma: ${n.name || lead.nome || nome || 'lead do WhatsApp'}`.slice(0, 200), descricao, sub?.id ?? null, r.reserva.start, r.reserva.id, r.reserva.seriesId]);
+                        external_status, external_request_id, external_ref_id, meeting_url, completed_at)
+     values ($1, $2, $3, $4, $5, 'meeting', $6, $7, 'high', 'accepted', $8, $9, $10, now()) returning id`,
+    [n.organization_id, n.id, userId, `Demo Oniplataforma: ${n.name || lead.nome || nome || 'lead do WhatsApp'}`.slice(0, 200), descricao, sub?.id ?? null, r.reserva.start, r.reserva.id, r.reserva.seriesId, link ?? null]);
   await pool.query(
     `insert into lead_activities (organization_id, lead_id, user_id, activity_type, title, description, metadata)
      values ($1, $2, $3, 'task_completed', $4, $5, $6)`,

@@ -8,6 +8,7 @@ import { analisarConversa } from './ia/analise/analisar.js';
 import { agendarAnalise } from './ia/analise/agendar.js';
 import { provedor } from './canais/provedores/index.js';
 import { servidor, servidorDaPlataforma } from './canais/servidores.js';
+import { confirmarDemos } from './agente/confirmacao-demo.js';
 
 // Worker do orquestrador de canais (ROLE=worker, ou junto da API com ROLE=all).
 // Mais réplicas = mais vazão: os jobs são idempotentes e o pg-boss entrega
@@ -90,11 +91,16 @@ export async function iniciarWorker() {
     console.log(`[canais] boas-vindas do formulário ${job.data.leadId}: ${r.status}${r.reason ? ` (${r.reason})` : ''}`);
   });
 
+  await b.work(FILAS.confirmarDemos, async () => {
+    const n = await confirmarDemos();
+    if (n) console.log(`[agente] ${n} confirmação(ões) de demo enviada(s)`);
+  });
   await b.work(FILAS.manutencao, manutencao);
   await b.work(FILAS.saudeConexoes, saudeDasConexoes);
 
   await b.schedule(FILAS.manutencao, '15 3 * * *', null, { tz: 'America/Sao_Paulo' });
   await b.schedule(FILAS.saudeConexoes, '*/5 * * * *');
+  await b.schedule(FILAS.confirmarDemos, '*/5 * * * *');
   console.log('[worker] filas de canais no ar');
 }
 

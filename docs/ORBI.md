@@ -85,6 +85,55 @@ DECISOES de 2026-11-15.
 - **Limites:** uma demo futura por negócio (trocar de horário passa por
   humano); cancelar ou remarcar no Orbi ainda **não** volta ao CRM.
 
+## Confirmação 3 h antes (2026-11-17)
+
+Quem tem demo marcada no Orbi recebe no WhatsApp, 3 h antes, o template
+`oni_confirmacao_demo_v3` ("Olá, {{1}}! … confirmar a demonstração às {{2}}",
+botão "Entrar na demonstração" com o link do Meet), pelo número 0573 via
+Chatvolt.
+
+- **Job** (`server/agente/confirmacao-demo.ts`, fila `agenda.demo.confirmar`,
+  cron de 5 min no worker): pega tarefas Reunião `external_status = 'accepted'`
+  (subtipo Demonstração ou "demo" no título), com negócio aberto, que começam
+  dentro de 3 h e ainda não têm linha em `demo_confirmations` (a trava, uma por
+  tarefa). Demo marcada com menos de 3 h de antecedência sai no próximo ciclo
+  (até 5 min depois); com menos de 15 min para começar não sai (`tarde_demais`).
+- **Envio:** `POST https://api.chatvolt.ai/whatsapp/<phoneNumberId>/template-message`
+  (Bearer `CHATVOLT_API_KEY`) com `var_1` = primeiro nome (sem nome que pareça
+  nome: "tudo bem"), `var_2` = hora `HH:mm` em São Paulo e o botão de URL
+  (`index: '0'`) com o código do Meet. O Chatvolt devolve a conversa e o id da
+  mensagem, guardado em `demo_confirmations`; a análise da IA lê essa mensagem
+  como "Equipe (mensagem automática)". Sucesso grava a nota "Confirmação da demo
+  enviada no WhatsApp" no negócio.
+- **Link:** `tasks.meeting_url` (`db/72`), gravado pelo `/agendar` da Bia a partir
+  da reserva do Orbi. Demo que chega pelo retorno do Orbi (pedido confirmado por
+  humano) **não traz o link** e fica `skipped` / `sem_link`; falta o Orbi mandar
+  `meetingUrl` no retorno. Link que não é `https://meet.google.com/<código>` também
+  fica sem confirmação.
+- **Ligar:** desligado por padrão. No `secrets.env` do crm-app:
+  `CONFIRMACAO_DEMO_ATIVA=1`, `CHATVOLT_WHATSAPP_PHONE_ID` (Chatvolt → agente →
+  Implantar → WhatsApp Official → Phone Number ID; **não** é o telefone),
+  `CHATVOLT_AGENT_ID` (id da Bia, na URL do agente) e, opcional,
+  `CONFIRMACAO_DEMO_TEMPLATE` (padrão `oni_confirmacao_demo_v3`). Usa
+  `CHATVOLT_API_KEY` e `CHATVOLT_AGENTE_ORG` que já existem.
+- **Sem nova tentativa:** se o Chatvolt/Meta falhar, a linha fica `failed` com o
+  motivo; se o envio saiu e a resposta se perdeu, repetir mandaria duas vezes. Para
+  reenviar, apagar a linha de `demo_confirmations` da tarefa (enquanto a demo
+  estiver na janela de 3 h).
+- **Template (o defeito do v1):** o `oni_confirmacao_demo` original foi criado com
+  a URL do botão `https://meet.google.com/%7B%7B1%7D%7D{{1}}` (um `{{1}}` literal
+  antes da variável), que leva a um link de Meet inexistente. O formulário
+  "Criar Novo Template" do Chatvolt **só cria botão de URL estático** (não manda o
+  `example` que a Meta exige para URL dinâmica). O v3 foi criado com
+  `POST /api/whatsapp/templates` (a mesma rota da tela) com
+  `url: "https://meet.google.com/{{1}}"` e
+  `example: ["https://meet.google.com/abc-defg-hij"]`. Só ligar o envio depois de
+  a Meta aprovar o v3 (Chatvolt → Disparos → Gerenciar Templates: "Aprovado").
+- **Cota:** o plano do Chatvolt mostra "Disp. WhatsApp 0 / 400"; confirmar se o
+  envio por API consome essa cota.
+- **Limites:** o horário vem de `tasks.due_date`; se o lead remarcar no Orbi, o CRM
+  não fica sabendo (já era assim) e a confirmação sai para o horário antigo.
+
 ## Diagnóstico
 
 ```sql
@@ -92,4 +141,10 @@ select id, title, external_status, external_error, external_attempts, external_n
   from tasks where external_status is not null order by updated_at desc limit 20;
 select * from orbi_cancels;
 select organization_id, enabled, last_error, last_ok_at, booking_link from org_orbi_integrations;
+```
+
+```sql
+-- Confirmação da demo (3 h antes)
+select c.created_at, c.status, c.reason, c.template, t.title, t.due_date, t.meeting_url
+  from demo_confirmations c join tasks t on t.id = c.task_id order by c.created_at desc limit 20;
 ```

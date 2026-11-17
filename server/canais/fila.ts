@@ -17,6 +17,8 @@ export const FILAS = {
   boasVindas: 'canais.chat.boasvindas',
   /** Boas-vindas sem a frase: 10 min depois do formulário, se o lead não escreveu (um por negócio). */
   boasVindasFormulario: 'canais.lead.boasvindas',
+  /** Cron (5 min): confirma no WhatsApp as demos do Orbi que começam em até 3 h. */
+  confirmarDemos: 'agenda.demo.confirmar',
   /** Cron: partições de mensagens. */
   manutencao: 'canais.manutencao',
   /** Cron: status das conexões na Evolution. */
@@ -53,6 +55,8 @@ export function fila(): Promise<PgBoss> {
       // Sem retry: o envio pode ter saído mesmo com erro na resposta (boas-vindas.ts).
       b.createQueue(FILAS.boasVindas, { policy: 'stately', retryLimit: 0, expireInSeconds: 120 }),
       b.createQueue(FILAS.boasVindasFormulario, { policy: 'stately', retryLimit: 0, expireInSeconds: 120 }),
+      // Sem retry: o envio pode ter saído mesmo com erro na resposta (confirmacao-demo.ts).
+      b.createQueue(FILAS.confirmarDemos, { policy: 'singleton', retryLimit: 0, expireInSeconds: 240 }),
       b.createQueue(FILAS.manutencao, { policy: 'singleton', retryLimit: 2, expireInSeconds: 300 }),
       b.createQueue(FILAS.saudeConexoes, { policy: 'singleton', retryLimit: 1, expireInSeconds: 120 }),
     ]);
