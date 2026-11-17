@@ -73,7 +73,10 @@ export async function conversa(chatId: string): Promise<ConversaCtx | null> {
 const COLUNAS_MSG = `m.id, m.sent_at, m.created_at, m.from_me, m.message_type, m.body, m.transcript, m.media, m.raw,
   exists (select 1 from channel_welcomes w where w.connection_id = m.connection_id
     and m.provider_message_id in (w.provider_message_id, w.intro_message_id))
-  -- Confirmação da demo (Chatvolt): o id da mensagem vem no webhook como "<id>:agent".
+  -- Mensagens de template mandadas pelo Chatvolt (boas-vindas do formulário e confirmação da demo):
+  -- a conversa é a do canal chatvolt, e o id da mensagem vem no webhook como "<id>:agent".
+  or exists (select 1 from channel_welcomes w where w.provider_message_id is not null
+    and split_part(m.provider_message_id, ':', 1) = w.provider_message_id)
   or exists (select 1 from demo_confirmations d where d.provider_message_id is not null
     and split_part(m.provider_message_id, ':', 1) = d.provider_message_id) as automatica`;
 

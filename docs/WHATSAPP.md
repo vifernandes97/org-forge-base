@@ -786,6 +786,38 @@ Endereços internos (rede `easypanel`, comum aos dois projetos): o CRM chama
 `http://n8n-n8n:5678/webhook/oni-boas-vindas`; o n8n chama
 `http://evolution-evolution-api:8080`.
 
+### Pelo Chatvolt (2026-11-17)
+
+**Por quê:** desde 13/11 o n8n mandava a boas-vindas do formulário direto à Meta
+(`graph.facebook.com`, template `oni_primeiro_contato` do piloto) e **nenhum envio
+passou**: todos falharam com `(#10) Viewer cannot access the provided Paid Message
+Account 1077414305258457` (o WABA do 0573). Pagar o saldo (R$ 2,20) e a conta
+estar aprovada com cartão válido não resolveu: o defeito é o token do n8n. Pelo
+Chatvolt, que usa a credencial dele no mesmo número, o mesmo template saiu e
+chegou. Resultado: 27 tentativas falharam entre 15 e 17/11 e 15 negócios ficaram
+em Novo Lead sem nenhuma mensagem (14 do formulário, mais um que chegou pelo WhatsApp).
+
+- **Código:** `server/canais/chatvolt-template.ts` (POST
+  `/whatsapp/<phoneNumberId>/template-message`, compartilhado com a confirmação da
+  demo) e `boasVindasFormulario` em `boas-vindas.ts`. Com `BOAS_VINDAS_CHATVOLT=1`,
+  a boas-vindas do **formulário** (sem a frase) vai direto ao Chatvolt: `var_1` =
+  primeiro nome ("tudo bem" sem nome que pareça nome), template `oni_primeiro_contato`
+  (ou `BOAS_VINDAS_TEMPLATE`), agente = a Bia. A conversa já nasce com a Bia. A
+  mesma trava por telefone vale; sucesso → `sent` com o id da mensagem, falha →
+  `failed` com `chatvolt: <motivo>`, sem nova tentativa. Sem a variável, segue o
+  caminho do n8n de sempre. A boas-vindas **pela frase** (áudio pela Evolution)
+  não mudou.
+- **Ambiente** (`secrets.env` do crm-app): `BOAS_VINDAS_CHATVOLT=1`,
+  `CHATVOLT_WHATSAPP_PHONE_ID` (Chatvolt → agente → Implantar → WhatsApp Official →
+  Phone Number ID; **não** é o telefone), `CHATVOLT_AGENT_ID` (id da Bia, na URL do
+  agente); usa `CHATVOLT_API_KEY` e `CHATVOLT_AGENTE_ORG` que já existem. Só vale
+  para a organização `CHATVOLT_AGENTE_ORG`.
+- **IA:** a mensagem cujo id (`<id>:agent` no webhook do Chatvolt) está em
+  `channel_welcomes.provider_message_id` aparece como "Equipe (mensagem automática)".
+- **Reenviar** os de 14–17/11: apagar a linha de `channel_welcomes` de cada negócio
+  (origem `form`, `meta_falhou`) e enfileirar `canais.lead.boasvindas` com
+  `{ leadId, reenvio: true }`, como em "Diagnóstico" abaixo.
+
 ### Estado em 2026-11-04
 
 Ligada para todos os leads da Oniplataforma. Áudios gravados pelo dono em 5

@@ -1,5 +1,6 @@
 import { servicePool } from '../db.js';
 import { decifrar } from './cifra.js';
+import { credencialChatvolt, postarTemplate, type CredencialChatvolt } from './chatvolt-template.js';
 
 // Boas-vindas por áudio (docs/WHATSAPP.md §17). O lead converte no formulário,
 // o WhatsApp abre com a frase pronta e ele manda. Quando a frase chega, o CRM
@@ -264,6 +265,41 @@ export function textoDeBoasVindas(modelo: string, nome: string | null): string {
   return (nome ? modelo.replace(/\{nome\}/g, nome) : modelo.replace(/,?\s*\{nome\}/g, '')).trim();
 }
 
+// Boas-vindas do formulário pelo Chatvolt (docs/WHATSAPP.md §17, "Pelo Chatvolt").
+// O caminho do n8n para a Meta (piloto, graph.facebook.com) falhou com o erro #10
+// ("Paid Message Account") por causa do token do n8n; o Chatvolt manda o mesmo
+// template (oni_primeiro_contato) pelo mesmo número com a credencial dele, e a
+// conversa já nasce com a Bia atendendo.
+
+export interface BoasVindasChatvolt extends CredencialChatvolt {
+  template: string;
+}
+
+/** Ligada com BOAS_VINDAS_CHATVOLT=1 e a credencial do Chatvolt no ambiente; só para a organização CHATVOLT_AGENTE_ORG. */
+export function boasVindasChatvolt(orgId: string, env: NodeJS.ProcessEnv = process.env): BoasVindasChatvolt | null {
+  if (env.BOAS_VINDAS_CHATVOLT !== '1' || !env.CHATVOLT_AGENTE_ORG || env.CHATVOLT_AGENTE_ORG !== orgId) return null;
+  const cred = credencialChatvolt(env);
+  return cred && { ...cred, template: env.BOAS_VINDAS_TEMPLATE || 'oni_primeiro_contato' };
+}
+
+/** O texto do template já preenchido: o Chatvolt guarda na conversa (campo `text`). */
+export const textoPrimeiroContato = (nome: string) =>
+  `Oi, ${nome}! Aqui é da Oniplataforma. Recebemos seu cadastro no nosso site. Quer que eu te mostre como o sistema pode ajudar no dia a dia do seu negócio?`;
+
+/** Corpo do POST do Chatvolt: `var_1` = primeiro nome (sem nome que pareça nome: "tudo bem", como no n8n). */
+export function corpoBoasVindasChatvolt(cfg: BoasVindasChatvolt, d: { telefone: string; nome: string | null; contato: string | null }) {
+  const nome = d.nome ?? 'tudo bem';
+  return {
+    to: d.telefone,
+    text: textoPrimeiroContato(nome),
+    agentId: cfg.agentId,
+    templateName: cfg.template,
+    templateLangCode: 'pt_BR',
+    var_1: nome,
+    ...(d.contato ? { contactName: d.contato } : {}),
+  };
+}
+
 interface LeadFormulario extends Negocio {
   organization_id: string;
   connection_id: string;
@@ -326,6 +362,19 @@ export async function boasVindasFormulario(leadId: string, opcoes: { reenvio?: b
      on conflict (organization_id, phone_key) do nothing returning id`,
     [lf.organization_id, lf.connection_id, lf.phone_key, leadId, lf.segment]);
   if (!bv) return { status: 'ignored', reason: 'ja_enviado' };
+
+  const chatvolt = boasVindasChatvolt(lf.organization_id);
+  if (chatvolt) {
+    const envio = await postarTemplate(chatvolt, corpoBoasVindasChatvolt(chatvolt, { telefone: numero, nome: primeiroNome(lf.contact_name), contato: lf.contact_name }));
+    const base = { lead_id: leadId, segment: lf.segment };
+    if (envio.ok) {
+      await fechar(bv.id, 'sent', { ...base, provider_message_id: envio.messageId });
+      return { status: 'sent' };
+    }
+    // Sem nova tentativa automática, como no n8n: o envio pode ter saído mesmo com erro na resposta.
+    await fechar(bv.id, 'failed', { ...base, reason: `chatvolt: ${envio.motivo}`.slice(0, 300) });
+    return { status: 'failed', reason: envio.motivo };
+  }
 
   return chamarWebhook(lf.welcome_webhook_url, lf.welcome_secret, bv.id, lf, {
     origin: 'form',
