@@ -3,6 +3,7 @@ import { serveStatic } from 'hono/bun';
 import { app } from './app.js';
 import { iniciarFilaDeWebhooks } from './webhook-saida.js';
 import { iniciarFilaDoOrbi } from './orbi.js';
+import { iniciarArquivoDePromocoes } from './agente/chatvolt.js';
 import { papelAtual, pararFila } from './canais/fila.js';
 import { iniciarWorker } from './worker.js';
 
@@ -29,6 +30,7 @@ if (papel === 'worker') {
   // duplicaria o intervalo. A fila de saída fica com a API (ainda é um intervalo simples).
   iniciarFilaDeWebhooks();
   iniciarFilaDoOrbi();
+  iniciarArquivoDePromocoes();
 }
 
 if (papel !== 'api') {

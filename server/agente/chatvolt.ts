@@ -181,13 +181,16 @@ export function textoQualificacao(c: Record<string, unknown>): string {
 /**
  * PCI da Oni: buffet infantil e espaço de eventos. true = no PCI, false = fora
  * (itinerante, casamento, corporativo, decoração, fotografia, produtora…),
- * null = não dá para saber (ex.: só "buffet").
+ * null = não dá para saber (ex.: só "buffet"). Demo só com true (decisão de
+ * 17/11): itinerante, produtora e fotógrafo ficam fora mesmo que digam
+ * "infantil" ou "eventos"; espaço que faz casamento continua dentro.
  */
 export function noPerfilIdeal(tipo: string): boolean | null {
   const t = normalizar(tipo);
   if (!t) return null;
-  if (/infantil|kids|crianca|espaco|salao|casa de festa/.test(t)) return true;
-  if (/itinerante|casamento|corporativ|decora|fotograf|produtor|cerimonial|assessoria|dj|som|bolo|doce|confeit/.test(t)) return false;
+  if (/itinerante|domicilio|delivery|produtor|fotograf|filmag|decora|cerimonial|assessoria|\bdj\b|\bsom\b|bolo|doce|confeit/.test(t)) return false;
+  if (/infantil|kids|crianca|espaco|salao|casa de festa|chacara/.test(t)) return true;
+  if (/casamento|corporativ/.test(t)) return false;
   return null;
 }
 
@@ -480,8 +483,8 @@ async function garantirNegocio(orgId: string, telefone: string, nome: string, se
     if (recentes.length === 1) {
       const f = recentes[0];
       const { rows: [ct] } = await client.query<{ id: string }>(
-        `insert into contacts (organization_id, lead_id, name, phone, phone_key, company_id) values ($1, $2, $3, $4, $5, $6) returning id`,
-        [orgId, f.id, nome || 'WhatsApp', `+${digitos}`, chave, f.company_id]);
+        `insert into contacts (organization_id, lead_id, name, phone, company_id) values ($1, $2, $3, $4, $5) returning id`,
+        [orgId, f.id, nome || 'WhatsApp', `+${digitos}`, f.company_id]);
       await client.query(`insert into lead_contacts (organization_id, lead_id, contact_id, is_primary) values ($1, $2, $3, false)`,
         [orgId, f.id, ct.id]);
       const { rows: [m0] } = await client.query<{ user_id: string }>(
@@ -715,22 +718,26 @@ agenteChatvolt.post('/qualificacao', async (c) => {
   }
   const etapa = await mover(n, userId, ETAPA_IA, 'Lead conversando com a Bia (IA) no 0573');
   atualizarPainelChatvolt(n, texto(p.corpo.conversa_id, 60));
-  return c.json({ ok: true, mensagem: novo ? 'Lead cadastrado e registrado no CRM.' : 'Registrado no CRM.', etapa } satisfies Resposta);
+  // Segmento fora do PCI: a Bia já sabe aqui que não tem demo, antes de oferecer horário.
+  const fora = noPerfilIdeal((await tipoDoNegocio(n)) || texto(p.corpo.tipo_negocio, 120)) === false ? ` ${FORA_DO_PCI}` : '';
+  // Achou caro depois de ouvir os valores: promoção do anual antes de desistir do lead.
+  const promo = (objecaoDePreco(p.corpo.objecao) || objecaoDePreco(p.corpo.resumo)) && await precoOuvido(n, p.corpo) && !(await promocaoOferecida(n.id)) ? ` ${OFERECER_PROMOCAO}` : '';
+  return c.json({ ok: true, mensagem: `${novo ? 'Lead cadastrado e registrado no CRM.' : 'Registrado no CRM.'}${fora}${promo}`, etapa } satisfies Resposta);
 });
 
 agenteChatvolt.post('/humano', async (c) => {
   const p = await preparar(c.req.raw);
   if (p instanceof Response) return p;
+  const { negocio: n } = await garantirNegocio(p.orgId, await telefoneDoLead(p.corpo), texto(p.corpo.nome, 120), texto(p.corpo.tipo_negocio, 120));
+  const tipo = (n && await tipoDoNegocio(n)) || texto(p.corpo.tipo_negocio, 120);
+  const motivo = motivoValido(p.corpo.motivo);
+  // Demo só com buffet infantil ou espaço de eventos, e handoff comercial só depois do preço: senão a Bia segue sozinha e a IA não pausa.
+  const barreira = barreiraDoHandoff(motivo, tipo, await precoOuvido(n, p.corpo));
+  if (barreira) return c.json({ ok: false, mensagem: barreira } satisfies Resposta);
   const pausada = await pausarIaChatvolt(texto(p.corpo.conversa_id, 60));
   const fim = pausada ? ' A conversa já está com a equipe: avise o lead em uma frase e pare de responder.' : '';
-  const { negocio: n } = await garantirNegocio(p.orgId, await telefoneDoLead(p.corpo), texto(p.corpo.nome, 120), texto(p.corpo.tipo_negocio, 120));
   if (!n) return c.json({ ok: pausada, mensagem: `Não foi possível registrar no CRM.${fim || ' Continue a conversa normalmente.'}` } satisfies Resposta);
   const userId = await autor(n);
-  let motivo = motivoValido(p.corpo.motivo);
-  // Fora do PCI não tem demo marcada pela Bia: vai para o vendedor qualificar antes.
-  const tipo = (await tipoDoNegocio(n)) || texto(p.corpo.tipo_negocio, 120);
-  const foraDoPci = noPerfilIdeal(tipo) === false;
-  if (motivo === 'demo' && foraDoPci) motivo = 'vendedor';
   const detalhe = texto(p.corpo.detalhe, 300);
   const demoDia = texto(p.corpo.demo_dia, 60);
   const demoPeriodo = texto(p.corpo.demo_periodo, 30);
@@ -781,7 +788,43 @@ agenteChatvolt.post('/humano', async (c) => {
 
 const DIAS_DE_HORARIOS = 14;
 const SEM_AGENDA = 'Não consegui ver a agenda agora. Pergunte o dia e o período que o lead prefere e chame humano com motivo demo.';
-const FORA_DO_PCI = 'Este lead está fora do perfil: não marque demonstração. Chame humano com motivo vendedor e diga que o consultor vai chamar para entender a operação.';
+// Fora do PCI a Bia não marca demo nem passa para humano por causa de demo: tenta fechar sozinha (decisão de 17/11).
+export const VIDEO_DEMO = 'https://oniplataforma.com.br/video';
+export const CHECKOUT_STARTER = 'https://app.teopay.me/checkout/qeya9AVyJj';
+export const FORA_DO_PCI = 'Este lead não é buffet infantil nem espaço de eventos: não marque demonstração e não passe para humano por causa de demo. '
+  + 'Passe os valores dos planos. Se ele aceitar os valores, mande o vídeo da demonstração '
+  + `(${VIDEO_DEMO}) e tente fechar por ali, com o link de contratação do plano Starter: ${CHECKOUT_STARTER}`;
+export const SEM_SEGMENTO = 'Antes de marcar a demonstração, confirme o tipo de negócio: só marcamos demo com buffet infantil ou espaço de eventos. '
+  + 'Pergunte ao lead (ex.: "é buffet infantil, espaço de eventos ou buffet itinerante?"), registre em qualificacao com tipo_negocio e só então chame horarios.';
+
+/** Mensagem que barra a demo; nulo quando o lead pode ter demo (buffet infantil ou espaço de eventos). */
+export function barreiraDaDemo(tipo: string): string | null {
+  const pci = noPerfilIdeal(tipo);
+  return pci === true ? null : pci === false ? FORA_DO_PCI : SEM_SEGMENTO;
+}
+
+// O consultor só entra com compromisso (decisão de 17/11): o lead ouviu os valores e topou um próximo passo.
+// Pergunta de qualificação é trabalho da Bia, não do consultor.
+export const SEM_PRECO = 'Não passe para humano ainda: o consultor só entra depois que o lead ouviu os valores e topou um próximo passo '
+  + '(demonstração, contratar ou negociar). Continue você: responda as dúvidas, passe os valores dos planos e registre em qualificacao com planos_informados. '
+  + `Se ele aceitar: buffet infantil ou espaço de eventos, chame horarios; outro segmento, mande o vídeo (${VIDEO_DEMO}) e o link do Starter (${CHECKOUT_STARTER}).`;
+/** Motivos que passam para humano sem compromisso comercial: já é cliente, reclamação, ou o lead exige uma pessoa. */
+const SEM_TRAVA: readonly Motivo[] = ['cliente', 'reclamacao', 'pessoa'];
+
+/** Mensagem que barra o handoff (ou a agenda, com motivo demo); nulo quando pode seguir. */
+export function barreiraDoHandoff(motivo: Motivo, tipo: string, precoOuvido: boolean): string | null {
+  if (SEM_TRAVA.includes(motivo)) return null;
+  return (motivo === 'demo' ? barreiraDaDemo(tipo) : null) ?? (precoOuvido ? null : SEM_PRECO);
+}
+
+/** O lead já ouviu os valores: planos_informados nesta chamada ou em algum registro da Bia no negócio. */
+async function precoOuvido(n: Negocio | null, corpo: Record<string, unknown>): Promise<boolean> {
+  if (texto(corpo.planos_informados, 300)) return true;
+  if (!n) return false;
+  const { rows } = await servicePool().query(
+    `select 1 from lead_activities where lead_id = $1 and coalesce(metadata->'campos'->>'planos_informados', '') <> '' limit 1`, [n.id]);
+  return rows.length > 0;
+}
 
 /** Demo futura já na agenda do Orbi para o negócio (marcada pela Bia ou confirmada lá). */
 async function demoMarcada(leadId: string): Promise<{ id: string; inicio: string } | null> {
@@ -809,9 +852,9 @@ agenteChatvolt.post('/horarios', async (c) => {
 
   const telefone = await telefoneDoLead(p.corpo);
   const { negocio: n } = telefone ? await negocioPorTelefone(p.orgId, telefone) : { negocio: null };
+  const barreira = barreiraDoHandoff('demo', (n && await tipoDoNegocio(n)) || texto(p.corpo.tipo_negocio, 120), await precoOuvido(n, p.corpo));
+  if (barreira) return c.json({ ok: false, mensagem: barreira, opcoes: [] });
   if (n) {
-    const tipo = (await tipoDoNegocio(n)) || texto(p.corpo.tipo_negocio, 120);
-    if (noPerfilIdeal(tipo) === false) return c.json({ ok: false, mensagem: FORA_DO_PCI, opcoes: [] });
     const ja = await demoMarcada(n.id);
     if (ja) {
       return c.json({ ok: false, mensagem: `A demo já está marcada para ${rotuloDoHorario(ja.inicio)}. Lembre o lead; se ele quiser outro horário, chame humano com motivo demo.`, opcoes: [] });
@@ -852,8 +895,8 @@ agenteChatvolt.post('/agendar', async (c) => {
   const nome = texto(p.corpo.nome, 120);
   const { negocio: n } = await garantirNegocio(p.orgId, telefone, nome, texto(p.corpo.tipo_negocio, 120));
   if (!n) return c.json({ ok: false, mensagem: 'Não encontrei o lead no CRM. Chame humano com motivo demo e o horário que o lead escolheu.' });
-  const tipo = (await tipoDoNegocio(n)) || texto(p.corpo.tipo_negocio, 120);
-  if (noPerfilIdeal(tipo) === false) return c.json({ ok: false, mensagem: FORA_DO_PCI });
+  const barreira = barreiraDoHandoff('demo', (await tipoDoNegocio(n)) || texto(p.corpo.tipo_negocio, 120), await precoOuvido(n, p.corpo));
+  if (barreira) return c.json({ ok: false, mensagem: barreira });
 
   const quando = rotuloDoHorario(inicio);
   const ja = await demoMarcada(n.id);
@@ -929,3 +972,165 @@ agenteChatvolt.post('/agendar', async (c) => {
     etapa,
   } satisfies Resposta);
 });
+
+// ── Promoção do anual e arquivamento pela Bia (decisão de 17/11) ──
+// Lead que acha caro ouve a promoção do anual. Se recusar, a Bia arquiva; se sumir,
+// o CRM arquiva sozinho depois de PRAZO_DA_PROMOCAO_H (arquivarPromocoesVencidas).
+
+export const PROMOCAO_ANUAL = 'plano anual: pagando os 12 meses, fica em 12x de R$ 149';
+export const PRAZO_DA_PROMOCAO_H = 48;
+const TITULO_PROMOCAO = 'Bia (IA) ofereceu a promoção do anual';
+
+export const MOTIVOS_DE_ARQUIVO = {
+  preco: 'Preço',
+  sem_interesse: 'Sem interesse',
+  concorrente: 'Contratou concorrente',
+  fora_perfil: 'Não tem perfil de cliente ideal',
+} as const;
+export type MotivoDeArquivo = keyof typeof MOTIVOS_DE_ARQUIVO;
+
+export function motivoDeArquivoValido(v: unknown): MotivoDeArquivo | null {
+  const t = normalizar(texto(v, 40)).replace(/[\s-]+/g, '_');
+  return t in MOTIVOS_DE_ARQUIVO ? (t as MotivoDeArquivo) : null;
+}
+
+/** Objeção de preço ("caro", "passou do orçamento", "sem dinheiro"); só menção a valor não conta. */
+export function objecaoDePreco(v: unknown): boolean {
+  return /\bcar[oa]\b|orcamento|sem (dinheiro|grana|verba)|fora do (meu )?bolso|acima do que|nao (cabe|consigo pagar|tenho como pagar|da pra pagar)|excede/
+    .test(normalizar(texto(v, 1500)));
+}
+
+export const OFERECER_PROMOCAO = `Antes de encerrar, ofereça a promoção: ${PROMOCAO_ANUAL}. Depois chame promocao para registrar. `
+  + 'Se ele recusar, chame arquivar com motivo preco.';
+
+async function promocaoOferecida(leadId: string): Promise<Date | null> {
+  const { rows } = await servicePool().query<{ created_at: Date }>(
+    `select created_at from lead_activities where lead_id = $1 and title = $2 order by created_at desc limit 1`, [leadId, TITULO_PROMOCAO]);
+  return rows[0]?.created_at ?? null;
+}
+
+/** Motivo de arquivamento da organização pelo rótulo; cria se ainda não existe (ex.: "Preço"). */
+async function motivoDoArquivo(orgId: string, rotulo: string): Promise<string> {
+  const pool = servicePool();
+  const { rows } = await pool.query<{ id: string; label: string }>(
+    `select id, label from archive_reasons where organization_id = $1 and is_active order by position`, [orgId]);
+  const achado = rows.find((r) => normalizar(r.label) === normalizar(rotulo));
+  if (achado) return achado.id;
+  const { rows: [novo] } = await pool.query<{ id: string }>(
+    `insert into archive_reasons (organization_id, label, position)
+     select $1, $2, coalesce(max(position), 0) + 1 from archive_reasons where organization_id = $1 returning id`, [orgId, rotulo]);
+  return novo.id;
+}
+
+/** Arquiva o negócio aberto com o motivo e uma nota; false se já não estava aberto. */
+async function arquivarNegocio(n: Negocio, motivo: MotivoDeArquivo, detalhes: string, metadata: object): Promise<boolean> {
+  const rotulo = MOTIVOS_DE_ARQUIVO[motivo];
+  const reasonId = await motivoDoArquivo(n.organization_id, rotulo);
+  const { rowCount } = await servicePool().query(
+    `update leads set archived_at = now(), archive_reason_id = $2, status = 'inactive', archive_details = $3
+      where id = $1 and status = 'open' and archived_at is null`, [n.id, reasonId, detalhes.slice(0, 1000) || null]);
+  if (!rowCount) return false;
+  await nota(n, await autor(n), `Arquivado pela Bia (IA): ${rotulo}`, detalhes, { motivo_arquivo: motivo, ...metadata });
+  return true;
+}
+
+agenteChatvolt.post('/promocao', async (c) => {
+  const p = await preparar(c.req.raw);
+  if (p instanceof Response) return p;
+  const { negocio: n } = await negocioPorTelefone(p.orgId, await telefoneDoLead(p.corpo));
+  if (!n) return c.json(naoAchado);
+  if (await promocaoOferecida(n.id)) {
+    return c.json({ ok: true, mensagem: 'A promoção já foi registrada. Se ele aceitar, chame humano com motivo preco; se recusar, chame arquivar com motivo preco.' } satisfies Resposta);
+  }
+  const resumo = texto(p.corpo.resumo, 1500);
+  await nota(n, await autor(n), TITULO_PROMOCAO, [`Oferta: ${PROMOCAO_ANUAL}.`, resumo].filter(Boolean).join('\n'),
+    { conversa_id: texto(p.corpo.conversa_id, 60) || null, promocao: 'anual_12x149' });
+  return c.json({
+    ok: true,
+    mensagem: 'Promoção registrada. Se ele aceitar, chame humano com motivo preco e detalhe "aceitou o anual 12x R$ 149". '
+      + `Se recusar, chame arquivar com motivo preco. Se ele não responder, o CRM arquiva sozinho em ${PRAZO_DA_PROMOCAO_H} h.`,
+  } satisfies Resposta);
+});
+
+agenteChatvolt.post('/arquivar', async (c) => {
+  const p = await preparar(c.req.raw);
+  if (p instanceof Response) return p;
+  const motivo = motivoDeArquivoValido(p.corpo.motivo);
+  if (!motivo) return c.json({ ok: false, mensagem: `Motivo inválido: use ${Object.keys(MOTIVOS_DE_ARQUIVO).join(', ')}.` } satisfies Resposta);
+  const { negocio: n } = await negocioPorTelefone(p.orgId, await telefoneDoLead(p.corpo));
+  if (!n) return c.json(naoAchado);
+  if (motivo === 'preco' && !(await promocaoOferecida(n.id))) return c.json({ ok: false, mensagem: OFERECER_PROMOCAO } satisfies Resposta);
+  const demo = await demoMarcada(n.id);
+  if (demo) return c.json({ ok: false, mensagem: `Não arquive: há demo marcada para ${rotuloDoHorario(demo.inicio)}. Chame humano com motivo demo.` } satisfies Resposta);
+  const detalhes = [texto(p.corpo.detalhe, 300), texto(p.corpo.resumo, 1200)].filter(Boolean).join('\n');
+  const ok = await arquivarNegocio(n, motivo, detalhes, { conversa_id: texto(p.corpo.conversa_id, 60) || null });
+  return c.json({
+    ok,
+    mensagem: ok
+      ? 'Negócio arquivado no CRM. Agradeça e se despeça com cordialidade, deixando a porta aberta; não insista.'
+      : 'O negócio já não estava aberto no CRM. Despeça-se com cordialidade.',
+  } satisfies Resposta);
+});
+
+type MensagemChatvolt = { from: string; userId: string | null; createdAt: string };
+
+/** Mensagens da conversa no Chatvolt (mais novas primeiro); nulo se não deu para ler. */
+export async function mensagensDaConversa(conversaId: string, fetchImpl: typeof fetch = fetch): Promise<MensagemChatvolt[] | null> {
+  const chave = process.env.CHATVOLT_API_KEY ?? '';
+  if (!chave || !/^[a-z0-9]{10,40}$/i.test(conversaId)) return null;
+  try {
+    const r = await fetchImpl(`${CHATVOLT_API}/conversations/${conversaId}`, { headers: { authorization: `Bearer ${chave}` }, signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return null;
+    const j = (await r.json()) as { messages?: MensagemChatvolt[] };
+    return Array.isArray(j.messages) ? j.messages : null;
+  } catch (e) {
+    console.error('[agente] chatvolt mensagens', e);
+    return null;
+  }
+}
+
+/** O lead (from=human) ou alguém da equipe (agent com userId) falou depois da promoção. */
+export function houveConversaDepois(msgs: MensagemChatvolt[], desde: Date): boolean {
+  return msgs.some((m) => Date.parse(m.createdAt) > desde.getTime() && (m.from === 'human' || (m.from === 'agent' && !!m.userId)));
+}
+
+/**
+ * Arquiva com motivo Preço quem recebeu a promoção há mais de PRAZO_DA_PROMOCAO_H e sumiu:
+ * nada no CRM depois da oferta (nota, tarefa, etapa) e, no Chatvolt, nem o lead nem a equipe falaram.
+ * Sem conversa_id ou sem resposta da API do Chatvolt não arquiva (na dúvida, fica aberto).
+ */
+export async function arquivarPromocoesVencidas(fetchImpl: typeof fetch = fetch): Promise<number> {
+  const { rows } = await servicePool().query<Negocio & { oferta: Date; conversa: string | null }>(
+    `select l.id, l.organization_id, l.name, l.stage_id, l.funnel_id, l.assigned_to, a.created_at as oferta, a.metadata->>'conversa_id' as conversa
+       from lead_activities a join leads l on l.id = a.lead_id
+      where a.title = $1 and a.created_at < now() - make_interval(hours => $2) and a.created_at > now() - interval '30 days'
+        and l.status = 'open' and l.archived_at is null
+        -- 10 min de folga: o que a Bia registra no mesmo turno da oferta não é resposta do lead.
+        and not exists (select 1 from lead_activities b where b.lead_id = l.id and b.created_at > a.created_at + interval '10 minutes')
+        and not exists (select 1 from tasks t where t.lead_id = l.id and (t.created_at > a.created_at + interval '10 minutes' or (t.task_type = 'meeting' and t.completed_at is null)))
+      limit 20`, [TITULO_PROMOCAO, PRAZO_DA_PROMOCAO_H]);
+  let n = 0;
+  for (const { oferta, conversa, ...negocio } of rows) {
+    const msgs = conversa ? await mensagensDaConversa(conversa, fetchImpl) : null;
+    if (!msgs || houveConversaDepois(msgs, oferta) || await demoMarcada(negocio.id)) continue;
+    const quando = oferta.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+    if (await arquivarNegocio(negocio, 'preco', `Não respondeu à promoção do anual (12x R$ 149) oferecida pela Bia em ${quando}.`, { automatico: true, conversa_id: conversa })) n++;
+  }
+  return n;
+}
+
+export function iniciarArquivoDePromocoes(intervaloMs = 30 * 60_000) {
+  let rodando = false;
+  setInterval(async () => {
+    if (rodando || !process.env.CHATVOLT_AGENTE_ORG) return;
+    rodando = true;
+    try {
+      const n = await arquivarPromocoesVencidas();
+      if (n) console.log(`[agente] ${n} negócio(s) arquivado(s) sem resposta à promoção`);
+    } catch (e) {
+      console.error('[agente] arquivo de promoções falhou:', e);
+    } finally {
+      rodando = false;
+    }
+  }, intervaloMs);
+}

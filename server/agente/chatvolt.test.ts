@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it } from 'vitest';
-import { agenteChatvolt, camposPersonalizados, etapaParaFrente, motivoValido, notaValida, pausarIaChatvolt, noPerfilIdeal, notaDoLead, enviarVariaveisChatvolt, quantasPessoas, usaSistema, dorForte, planoIndicado, emailValido, horarioDaDemo, tarefaDoHandoff, telefoneComDdi, telefoneDoLead, textoQualificacao, valorDoPlano } from './chatvolt';
+import { agenteChatvolt, houveConversaDepois, motivoDeArquivoValido, objecaoDePreco, mensagensDaConversa, barreiraDaDemo, barreiraDoHandoff, SEM_PRECO, FORA_DO_PCI, SEM_SEGMENTO, camposPersonalizados, etapaParaFrente, motivoValido, notaValida, pausarIaChatvolt, noPerfilIdeal, notaDoLead, enviarVariaveisChatvolt, quantasPessoas, usaSistema, dorForte, planoIndicado, emailValido, horarioDaDemo, tarefaDoHandoff, telefoneComDdi, telefoneDoLead, textoQualificacao, valorDoPlano } from './chatvolt';
 import type { Etapa } from '../negocios/etapa';
 
 const e = (id: string, name: string, position: number): Etapa => ({ id, name, position, funnel_id: 'f', sla_hours: null, webhook_url: null });
@@ -201,6 +201,33 @@ describe('PCI', () => {
     expect(noPerfilIdeal('Produtora de eventos')).toBe(false);
     expect(noPerfilIdeal('buffet')).toBeNull();
     expect(noPerfilIdeal('')).toBeNull();
+    expect(noPerfilIdeal('Buffet infantil itinerante')).toBe(false);
+    expect(noPerfilIdeal('Fotógrafo de festa infantil')).toBe(false);
+    expect(noPerfilIdeal('Espaço para casamentos')).toBe(true);
+    expect(noPerfilIdeal('Salão de festas')).toBe(true);
+    expect(noPerfilIdeal('Somos um espaço de eventos')).toBe(true);
+  });
+  it('demo só com buffet infantil ou espaço de eventos', () => {
+    expect(barreiraDaDemo('Buffet Infantil')).toBeNull();
+    expect(barreiraDaDemo('Espaço de eventos')).toBeNull();
+    expect(barreiraDaDemo('Buffet itinerante')).toBe(FORA_DO_PCI);
+    expect(barreiraDaDemo('Produtora de eventos')).toBe(FORA_DO_PCI);
+    expect(barreiraDaDemo('buffet')).toBe(SEM_SEGMENTO);
+    expect(barreiraDaDemo('')).toBe(SEM_SEGMENTO);
+    expect(FORA_DO_PCI).toContain('https://oniplataforma.com.br/video');
+    expect(FORA_DO_PCI).toContain('https://app.teopay.me/checkout/qeya9AVyJj');
+  });
+  it('consultor só entra depois do preço e com compromisso', () => {
+    // Elisângela/Luiz Carlos (produtora) e Rosy (itinerante) pediram demo sem ouvir preço.
+    expect(barreiraDoHandoff('demo', 'produtora', false)).toBe(FORA_DO_PCI);
+    expect(barreiraDoHandoff('vendedor', 'Buffet itinerante', false)).toBe(SEM_PRECO);
+    expect(barreiraDoHandoff('vendedor', 'Buffet itinerante', true)).toBeNull();
+    expect(barreiraDoHandoff('demo', 'Buffet infantil', false)).toBe(SEM_PRECO);
+    expect(barreiraDoHandoff('demo', 'Buffet infantil', true)).toBeNull();
+    expect(barreiraDoHandoff('duvida', '', false)).toBe(SEM_PRECO);
+    expect(barreiraDoHandoff('cliente', '', false)).toBeNull();
+    expect(barreiraDoHandoff('reclamacao', '', false)).toBeNull();
+    expect(barreiraDoHandoff('pessoa', '', false)).toBeNull();
   });
   it('tarefa do vendedor', () => {
     expect(tarefaDoHandoff('vendedor', 'buffet itinerante', '', '')).toBe('Lead fora do PCI: vendedor qualifica antes da demo: buffet itinerante');
@@ -260,5 +287,38 @@ describe('variáveis no Chatvolt', () => {
   it('sem chave ou id inválido não chama', async () => {
     process.env.CHATVOLT_API_KEY = '';
     expect(await enviarVariaveisChatvolt('cmconversa789', { a: '1' })).toBe(0);
+  });
+});
+
+describe('promoção do anual e arquivamento', () => {
+  it('motivo de arquivamento', () => {
+    expect(motivoDeArquivoValido('preco')).toBe('preco');
+    expect(motivoDeArquivoValido('Sem interesse')).toBe('sem_interesse');
+    expect(motivoDeArquivoValido('fora-perfil')).toBe('fora_perfil');
+    expect(motivoDeArquivoValido('sumiu')).toBeNull();
+  });
+  it('objeção de preço', () => {
+    expect(objecaoDePreco('Passou do meu orçamento amigo')).toBe(true);
+    expect(objecaoDePreco('O usuário informou que o valor do sistema excede seu orçamento')).toBe(true);
+    expect(objecaoDePreco('achei caro')).toBe(true);
+    expect(objecaoDePreco('Faixa R$ 199 a R$ 549 informada; provável Starter')).toBe(false);
+    expect(objecaoDePreco('Perguntou o valor do plano Pro')).toBe(false);
+    expect(objecaoDePreco('Buffet em Caruaru')).toBe(false);
+  });
+  it('resposta depois da promoção: lead ou equipe, não a própria Bia', () => {
+    const oferta = new Date('2026-11-17T11:00:00Z');
+    expect(houveConversaDepois([{ from: 'agent', userId: null, createdAt: '2026-11-17T11:01:00Z' }], oferta)).toBe(false);
+    expect(houveConversaDepois([{ from: 'human', userId: null, createdAt: '2026-11-17T10:59:00Z' }], oferta)).toBe(false);
+    expect(houveConversaDepois([{ from: 'human', userId: null, createdAt: '2026-11-17T12:00:00Z' }], oferta)).toBe(true);
+    expect(houveConversaDepois([{ from: 'agent', userId: 'u1', createdAt: '2026-11-17T12:00:00Z' }], oferta)).toBe(true);
+  });
+  it('lê as mensagens da conversa; falha vira nulo', async () => {
+    process.env.CHATVOLT_API_KEY = 'chave';
+    const ok = (async () => new Response(JSON.stringify({ messages: [{ from: 'human', userId: null, createdAt: '2026-11-17T12:00:00Z' }] }))) as unknown as typeof fetch;
+    expect(await mensagensDaConversa('cmwkeajqf002zwaqp8kyyenk5', ok)).toHaveLength(1);
+    const erro = (async () => new Response('x', { status: 500 })) as unknown as typeof fetch;
+    expect(await mensagensDaConversa('cmwkeajqf002zwaqp8kyyenk5', erro)).toBeNull();
+    expect(await mensagensDaConversa('id inválido', ok)).toBeNull();
+    delete process.env.CHATVOLT_API_KEY;
   });
 });
